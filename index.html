@@ -382,7 +382,7 @@
 
   <div class=tool>
     <div class=row>
-      <label class=f><span>Visão</span>
+      <label class=f id=fvisao><span>Visão</span>
         <select id=visao>
           <option value=c>Ciclo
           <option value=k>Comparar
@@ -403,12 +403,19 @@
         </select></label>
       <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
     </div>
-    <div class=f><span>Situação</span>
-      <div class=chk>
-        <label><input type=checkbox id=cpago checked>Pago</label>
-        <label><input type=checkbox id=caberto checked>Aberto</label>
-        <label><input type=checkbox id=ativo checked>Ativo</label>
-      </div>
+    <div class=row id=fsit>
+      <label class=f><span>Pago</span>
+        <select id=fpago>
+          <option value=B>Ambos
+          <option value=S>Sim
+          <option value=N>Não
+        </select></label>
+      <label class=f><span>Ativo</span>
+        <select id=fativo>
+          <option value=S>Sim
+          <option value=B>Ambos
+          <option value=N>Não
+        </select></label>
     </div>
   </div>
   <div id=out></div>
@@ -428,7 +435,7 @@
   const Cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
   // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número
   const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categoria', 'Categoria', 't'],
-  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
+  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
   let C = [], L = [];
   // ordenacao por bloco: S[id]={k,d}. Padrao data asc. d: 1 asc, 2 desc
   const S = {};
@@ -473,8 +480,8 @@
     } catch (e) { $('st').textContent = ''; $('out').innerHTML = '<p class=empty>Falhou: ' + e.message + '</p>' }
   }
 
-  const filt = () => L.filter(r => (!$('ativo').checked || r.ativo)
-    && (r.pago ? $('cpago').checked : $('caberto').checked)
+  const okBool = (sel, val) => { const v = $(sel).value; return v == 'B' || (v == 'S') == !!val; };
+  const filt = () => L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago)
     && ({ A: 1, D: !r.fatura, F: r.fatura })[$('origem').value]
     && ({ T: 1, E: !r.isabella, I: r.isabella })[$('titular').value]);
 
@@ -482,7 +489,7 @@
     const { k, d } = so(id), t = COLS.find(c => c[0] == k)[2], s = [...x];
     s.sort((a, b) => {
       const A = a[k], B = b[k];
-      const c = t == 'n' ? ((+A || 0) - (+B || 0)) : t == 'd' ? (ts(A) - ts(B)) : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
+      const c = t == 'n' || t == 'b' ? ((+A || 0) - (+B || 0)) : t == 'd' ? (ts(A) - ts(B)) : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
       return d == 1 ? c : -c;
     });
     return s;
@@ -497,7 +504,8 @@
 
   const tabela = (x, id) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
     ordena(x, id).map(r => `<tr${r._fat ? ' class=fat' : ''}>` + COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
-      : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('')).join('') + '</tbody></table></div>'
+      : tp == 'b' ? `<td>${r[k] == null ? '—' : r[k] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
+        : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('')).join('') + '</tbody></table></div>'
     : '<p class=empty>Vazio</p>';
 
   const linha = (r, v) => `<div><span>${r}</span><span class="${cls(v)}">${brl(v)}</span></div>`;
@@ -536,8 +544,7 @@
   }
 
   function vInv() {
-    const d = L.filter(r => (!$('ativo').checked || r.ativo)
-      && (r.pago ? $('cpago').checked : $('caberto').checked) && r.p != null);
+    const d = L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago) && r.p != null);
     if (!d.length) return '<p class=empty>Vazio</p>';
     let ac = 0;
     const corpo = [...new Set(d.map(r => r.p))].sort((a, b) => a - b).map(i => {
@@ -554,15 +561,18 @@
   function aplicaPerfil() {
     if (!RESTRITO) return;
     $('visao').value = 'c';
-    for (const o of $('visao').options) o.hidden = o.value != 'c';   // so Ciclo no menu
-    $('ftit').hidden = true;                                     // sem titular
+    $('fvisao').hidden = true;   // sem seletor de visao
+    $('fsit').hidden = true;     // sem checkboxes
+    $('fpago').value = 'B'; $('fativo').value = 'S';  // ve tudo (pago+aberto), so ativos
   }
   function draw() {
     const v = RESTRITO ? 'c' : $('visao').value;
     $('fciclo').hidden = v != 'c';
-    $('forigem').hidden = $('fgrupo').hidden = v != 'k';
-    $('ftit').hidden = v != 'k' || RESTRITO;
-    if (v != 'k') { $('origem').value = 'A'; $('titular').value = 'T'; }   // selects ocultos nao filtram
+    $('forigem').hidden = $('fgrupo').hidden = v != 'k' || RESTRITO;
+    $('ftit').hidden = v == 'p' || RESTRITO;
+    if (RESTRITO) { $('fsit').hidden = $('fvisao').hidden = true; }
+    if (v != 'k') $('origem').value = 'A';
+    if (v == 'p') $('titular').value = 'T';
     $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
   }
 

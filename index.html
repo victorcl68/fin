@@ -525,7 +525,7 @@
       data: c.data_inicio, nome: 'Fatura do cartão', categoria: 'Fatura',
       freq: '', obs: C[i - 1] ? C[i - 1].nome : '', id: 0, v: sf, _fat: 1
     };
-    const debT = RESTRITO ? deb : [...deb, linhaFat];
+    const debT = [...deb, linhaFat];   // fatura entra no debito p/ todos, so o total
     const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, debT, 'db');
     return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
   }

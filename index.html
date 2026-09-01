@@ -239,6 +239,14 @@
     font-weight: 600
   }
 
+  tbody tr.fat td {
+    background: #FBEFE4
+  }
+
+  tbody tr.fat:hover td {
+    background: #F7E6D5
+  }
+
   .vm {
     color: var(--vm);
     font-weight: 600
@@ -264,6 +272,30 @@
     font-style: italic;
     font-size: .9rem;
     padding: .8rem
+  }
+
+  .sumr {
+    margin: .5rem 0 0;
+    font-size: .9rem
+  }
+
+  .sumr div {
+    display: flex;
+    justify-content: space-between;
+    padding: .3rem .1rem;
+    border-bottom: 1px solid var(--ln)
+  }
+
+  .sumr div:last-child {
+    border-bottom: 0;
+    font-weight: 700;
+    border-top: 2px solid var(--fg);
+    padding-top: .4rem
+  }
+
+  .sumr span:last-child {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap
   }
 
   #login {
@@ -380,7 +412,7 @@
 
 <script>
   const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
-  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
+  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';
 
   const $ = i => document.getElementById(i);
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -460,12 +492,13 @@
   window.sortCol = (id, k) => { const s = so(id); if (s.k != k) { s.k = k; s.d = 1 } else s.d = s.d == 1 ? 2 : 1; draw(); };
 
   const tabela = (x, id) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
-    ordena(x, id).map(r => '<tr>' + COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
+    ordena(x, id).map(r => `<tr${r._fat ? ' class=fat' : ''}>` + COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
       : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('')).join('') + '</tbody></table></div>'
     : '<p class=empty>Vazio</p>';
 
-  const bloco = (t, valor, meta, x, id) =>
-    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id)}</div>`;
+  const linha = (r, v) => `<div><span>${r}</span><span class="${cls(v)}">${brl(v)}</span></div>`;
+  const bloco = (t, valor, meta, x, id, resumo = '') =>
+    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id)}${resumo}</div>`;
 
   function vCiclo() {
     const i = +$('ciclo').value;
@@ -475,8 +508,14 @@
     }
     const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
     const deb = filt().filter(r => r.p == i && !r.fatura), fat = filt().filter(r => r.p == i && r.fatura);
-    const dbl = bloco('Débito', deb.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, deb, 'db');
-    return RESTRITO ? dbl : dbl + bloco('Crédito', fat.reduce((s, r) => s + r.v, 0), C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
+    const sf = fat.reduce((s, r) => s + r.v, 0);
+    const linhaFat = {
+      data: c.data_inicio, nome: 'Fatura do cartão', categoria: 'Fatura',
+      freq: '', obs: C[i - 1] ? C[i - 1].nome : '', id: 0, v: sf, _fat: 1
+    };
+    const debT = RESTRITO ? deb : [...deb, linhaFat];
+    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, debT, 'db');
+    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
   }
 
   function vComp() {

@@ -30,9 +30,35 @@
   h1 {
     font: 700 1.35rem/1 inherit;
     letter-spacing: -.02em;
-    margin: 0 0 .3rem;
+    margin: 0;
     cursor: pointer;
     display: inline-block
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin: 0 0 .3rem
+  }
+
+  #sair {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    color: var(--mu);
+    background: var(--pa);
+    border: 1px solid var(--ln);
+    border-radius: 9px;
+    cursor: pointer
+  }
+
+  #sair:hover {
+    color: var(--vm);
+    border-color: var(--vm)
   }
 
   h1 .tt {
@@ -308,8 +334,15 @@
 </div>
 
 <div id=app>
-  <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
-  <p class=sub><span id=st></span> · <a id=sair>sair</a></p>
+  <div class=head>
+    <button id=sair title="Encerrar" aria-label="Encerrar"><svg viewBox="0 0 24 24" width=17 height=17 fill=none
+        stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+        <path d="M12 3v9" />
+        <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+      </svg></button>
+    <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+  </div>
+  <p class=sub><span id=st></span></p>
 
   <div class=tool>
     <div class=row>
@@ -347,7 +380,7 @@
 
 <script>
   const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
-  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';
+  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
 
   const $ = i => document.getElementById(i);
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

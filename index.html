@@ -555,7 +555,10 @@
   }
   function draw() {
     const v = RESTRITO ? 'c' : $('visao').value;
-    $('fciclo').hidden = v != 'c'; $('fgrupo').hidden = v != 'k'; $('forigem').hidden = $('ftit').hidden = v == 'p';
+    $('fciclo').hidden = v != 'c';
+    $('forigem').hidden = $('fgrupo').hidden = v != 'k';
+    $('ftit').hidden = v != 'k' || RESTRITO;
+    if (v != 'k') { $('origem').value = 'A'; $('titular').value = 'T'; }   // selects ocultos nao filtram
     $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
   }
 

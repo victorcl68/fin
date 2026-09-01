@@ -357,6 +357,30 @@
   #app {
     display: none
   }
+
+  .wx td.c1,
+  .wx th.c1 {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--pa)
+  }
+
+  .wx thead th.c1 {
+    z-index: 3
+  }
+
+  .wx tbody tr:hover td.c1 {
+    background: var(--bg)
+  }
+
+  .wx tr.tot td.c1 {
+    background: var(--bg)
+  }
+
+  .wx td.c1 {
+    border-right: 1px solid var(--ln)
+  }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -536,10 +560,10 @@
     const ms = [...new Set(d.map(r => r.p))].sort((a, b) => a - b), m = {};
     d.forEach(r => { const k = r[g] ?? '—'; (m[k] = m[k] || {})[r.p] = (m[k][r.p] || 0) + r.v });
     const sum = k => Object.values(m[k]).reduce((a, b) => a + b, 0);
-    return `<div class="wrap wx"><table><thead><tr><th>${Cap(g)}${ms.map(i => `<th class=n>${C[i].nome}`).join('')}<th class=n>Total</thead><tbody>` +
-      Object.keys(m).sort((a, b) => sum(b) - sum(a)).map(k => `<tr><td>${k}` +
+    return `<div class="wrap wx"><table><thead><tr><th class=c1>${Cap(g)}${ms.map(i => `<th class=n>${C[i].nome}`).join('')}<th class=n>Total</thead><tbody>` +
+      Object.keys(m).sort((a, b) => sum(b) - sum(a)).map(k => `<tr><td class=c1>${k}` +
         ms.map(i => m[k][i] == null ? '<td class=n>·' : nu(m[k][i])).join('') + nu(sum(k))).join('') +
-      '<tr class=tot><td>Total' + ms.map(i => nu(d.filter(r => r.p == i).reduce((s, r) => s + r.v, 0))).join('') +
+      '<tr class=tot><td class=c1>Total' + ms.map(i => nu(d.filter(r => r.p == i).reduce((s, r) => s + r.v, 0))).join('') +
       nu(d.reduce((s, r) => s + r.v, 0)) + '</tbody></table></div>';
   }
 

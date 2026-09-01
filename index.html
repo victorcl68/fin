@@ -346,7 +346,8 @@
 </div>
 
 <script>
-  const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
+  const API = 'https://SEUPROJETO.supabase.co', KEY = 'sb_publishable_...';
+  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
 
   const $ = i => document.getElementById(i);
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -364,7 +365,7 @@
   const S = {};
   const so = id => S[id] || (S[id] = { k: 'data', d: 1 });
 
-  let TOKEN = KEY;
+  let TOKEN = KEY, RESTRITO = false;
   const get = async t => {
     const r = await fetch(`${API}/rest/v1/${t}?select=*&limit=100000`,
       { headers: { apikey: KEY, Authorization: 'Bearer ' + TOKEN } });
@@ -441,8 +442,8 @@
     }
     const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
     const deb = filt().filter(r => r.p == i && !r.fatura), fat = filt().filter(r => r.p == i && r.fatura);
-    return bloco('Débito', deb.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, deb, 'db')
-      + bloco('Crédito', fat.reduce((s, r) => s + r.v, 0), C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
+    const dbl = bloco('Débito', deb.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, deb, 'db');
+    return RESTRITO ? dbl : dbl + bloco('Crédito', fat.reduce((s, r) => s + r.v, 0), C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
   }
 
   function vComp() {
@@ -474,8 +475,14 @@
       + '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
   }
 
+  function aplicaPerfil() {
+    if (!RESTRITO) return;
+    $('visao').value = 'c';
+    for (const o of $('visao').options) o.hidden = o.value != 'c';   // so Ciclo no menu
+    $('ftit').hidden = true;                                     // sem titular
+  }
   function draw() {
-    const v = $('visao').value;
+    const v = RESTRITO ? 'c' : $('visao').value;
     $('fciclo').hidden = v != 'c'; $('fgrupo').hidden = v != 'k'; $('forigem').hidden = $('ftit').hidden = v == 'p';
     $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
   }
@@ -488,7 +495,7 @@
 
   async function boot() {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) { TOKEN = session.access_token; mostra(1); load(); }
+    if (session) { TOKEN = session.access_token; RESTRITO = (session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase(); aplicaPerfil(); mostra(1); load(); }
     else mostra(0);
   }
   $('entrar').onclick = async () => {
@@ -496,7 +503,7 @@
     const { data, error } = await sb.auth.signInWithPassword(
       { email: $('email').value.trim(), password: $('senha').value });
     if (error) return $('lerr').textContent = 'E-mail ou senha inválidos.';
-    TOKEN = data.session.access_token; mostra(1); load();
+    TOKEN = data.session.access_token; RESTRITO = (data.session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase(); aplicaPerfil(); mostra(1); load();
   };
   $('senha').onkeydown = e => { if (e.key == 'Enter') $('entrar').click(); };
   $('sair').onclick = async () => { await sb.auth.signOut(); TOKEN = KEY; $('senha').value = ''; mostra(0); };

@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang=pt-br>
+<meta charset=utf-8>
+<link rel=icon
+  href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
+<title>Lançamentos</title>
+<style>
+  :root {
+    --bg: #F7F6F3;
+    --pa: #FFF;
+    --fg: #1A1917;
+    --mu: #8A857C;
+    --ln: #E7E4DD;
+    --vd: #2F7D4F;
+    --vm: #C0392B
+  }
+
+  * {
+    box-sizing: border-box
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 2rem 1.4rem;
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif
+  }
+
+  h1 {
+    font: 700 1.35rem/1 inherit;
+    letter-spacing: -.02em;
+    margin: 0 0 .3rem;
+    cursor: pointer;
+    display: inline-block
+  }
+
+  h1 .tt {
+    text-decoration: underline;
+    text-underline-offset: 3px
+  }
+
+  h1 .ic {
+    text-decoration: none
+  }
+
+  h1:hover .tt {
+    color: var(--mu)
+  }
+
+  .sub {
+    font-size: .85rem;
+    color: var(--mu);
+    font-style: italic;
+    margin: 0 0 1.8rem
+  }
+
+  .sub a {
+    color: var(--fg);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px
+  }
+
+  .tool {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--ln)
+  }
+
+  .row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    align-items: flex-end
+  }
+
+  .f {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem
+  }
+
+  .f>span {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mu)
+  }
+
+  select {
+    font: inherit;
+    color: inherit;
+    background: var(--pa);
+    border: 1px solid var(--ln);
+    border-radius: 9px;
+    padding: .42rem 1.9rem .42rem .7rem;
+    cursor: pointer;
+    appearance: none;
+    background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .7rem center
+  }
+
+  .chk {
+    display: flex;
+    gap: 1.1rem;
+    align-items: center;
+    height: 2.1rem
+  }
+
+  .chk label {
+    display: flex;
+    gap: .4rem;
+    align-items: center;
+    font-size: .92rem;
+    cursor: pointer
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px
+  }
+
+  .blk {
+    margin: 0 0 1.8rem
+  }
+
+  .blk h3 {
+    font: 700 1.05rem/1.3 inherit;
+    margin: 0
+  }
+
+  .blk h3 b {
+    font-weight: 700
+  }
+
+  .blk .meta {
+    font-size: .85rem;
+    color: var(--mu);
+    font-style: italic;
+    margin: .1rem 0 .6rem
+  }
+
+  .wrap {
+    background: var(--pa);
+    border: 1px solid var(--ln);
+    border-radius: 10px;
+    overflow: hidden
+  }
+
+  .wx {
+    overflow-x: auto
+  }
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    background: var(--pa)
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--pa);
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mu);
+    text-align: left;
+    padding: .55rem .7rem;
+    border-bottom: 1px solid var(--ln);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap
+  }
+
+  th .ar {
+    color: var(--fg);
+    font-style: normal
+  }
+
+  td {
+    padding: .5rem .7rem;
+    border-bottom: 1px solid var(--ln)
+  }
+
+  tr:last-child td {
+    border-bottom: 0
+  }
+
+  tbody tr:hover td {
+    background: var(--bg)
+  }
+
+  .wrap {
+    -webkit-overflow-scrolling: touch
+  }
+
+  .n {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap
+  }
+
+  .vd {
+    color: var(--vd);
+    font-weight: 600
+  }
+
+  .vm {
+    color: var(--vm);
+    font-weight: 600
+  }
+
+  .tot td {
+    font-weight: 700;
+    border-top: 1px solid var(--ln);
+    border-bottom: 0;
+    background: var(--bg)
+  }
+
+  .tot td:first-child {
+    border-radius: 0 0 0 10px
+  }
+
+  .tot td:last-child {
+    border-radius: 0 0 10px 0
+  }
+
+  .empty {
+    color: var(--mu);
+    font-style: italic;
+    font-size: .9rem;
+    padding: .8rem
+  }
+
+  #login {
+    max-width: 19rem;
+    margin: 16vh auto 0;
+    display: none;
+    flex-direction: column;
+    gap: .7rem
+  }
+
+  #login h1 {
+    cursor: default
+  }
+
+  #login h1 .tt {
+    text-decoration: none
+  }
+
+  #login input {
+    font: inherit;
+    padding: .55rem .7rem;
+    border: 1px solid var(--ln);
+    border-radius: 9px;
+    background: var(--pa)
+  }
+
+  #login button {
+    font: inherit;
+    color: var(--pa);
+    background: var(--fg);
+    border: 0;
+    border-radius: 9px;
+    padding: .6rem;
+    cursor: pointer
+  }
+
+  #login button:hover {
+    opacity: .85
+  }
+
+  #login .err {
+    color: var(--vm);
+    font-size: .85rem;
+    min-height: 1.1rem
+  }
+
+  #login .out {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-size: .8rem;
+    color: var(--mu)
+  }
+
+  #app {
+    display: none
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div id=login>
+  <h1><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+  <input id=email type=email placeholder="e-mail" autocomplete=username>
+  <input id=senha type=password placeholder="senha" autocomplete=current-password>
+  <button id=entrar>Entrar</button>
+  <div class=err id=lerr></div>
+</div>
+
+<div id=app>
+  <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+  <p class=sub><span id=st></span> · <a id=sair>sair</a></p>
+
+  <div class=tool>
+    <div class=row>
+      <label class=f><span>Visão</span>
+        <select id=visao>
+          <option value=c>Ciclo
+          <option value=k>Comparar
+          <option value=p>Investimento
+        </select></label>
+      <label class=f id=fciclo><span>Ciclo</span><select id=ciclo></select></label>
+      <label class=f id=forigem><span>Origem</span>
+        <select id=origem>
+          <option value=A>Tudo
+          <option value=D>Débito
+          <option value=F>Crédito
+        </select></label>
+      <label class=f id=ftit><span>Titular</span>
+        <select id=titular>
+          <option value=T>Todos
+          <option value=E>Eu
+          <option value=I>Isabella
+        </select></label>
+      <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
+    </div>
+    <div class=f><span>Situação</span>
+      <div class=chk>
+        <label><input type=checkbox id=cpago checked>Pago</label>
+        <label><input type=checkbox id=caberto checked>Aberto</label>
+        <label><input type=checkbox id=ativo checked>Ativo</label>
+      </div>
+    </div>
+  </div>
+  <div id=out></div>
+</div>
+
+<script>
+  const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
+
+  const $ = i => document.getElementById(i);
+  const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const cls = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';
+  const nu = v => `<td class="n ${cls(v)}">${brl(v)}`;
+  const d10 = s => String(s || '').slice(0, 10);
+  const ts = s => Date.parse(d10(s)) || 0;
+  const br = s => { const p = d10(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s };
+  const Cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+  // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número
+  const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categoria', 'Categoria', 't'],
+  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
+  let C = [], L = [];
+  // ordenacao por bloco: S[id]={k,d}. Padrao data asc. d: 1 asc, 2 desc
+  const S = {};
+  const so = id => S[id] || (S[id] = { k: 'data', d: 1 });
+
+  let TOKEN = KEY;
+  const get = async t => {
+    const r = await fetch(`${API}/rest/v1/${t}?select=*&limit=100000`,
+      { headers: { apikey: KEY, Authorization: 'Bearer ' + TOKEN } });
+    if (!r.ok) throw Error(`${t}: ${r.status} ${await r.text()}`);
+    return r.json();
+  };
+
+  async function load() {
+    if (API.includes('SEUPROJETO')) return $('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
+    $('st').textContent = 'Carregando…';
+    try {
+      const [cc, ll] = await Promise.all([get('ciclos'), get('lancamentos')]);
+      C = cc.sort((a, b) => ts(a.data_inicio) - ts(b.data_inicio));
+      L = ll.map(r => {
+        const i = C.findIndex(c => d10(r.data) >= d10(c.data_inicio) && d10(r.data) <= d10(c.data_fim));
+        const p = i < 0 ? null : (r.fatura ? i + 1 : i);
+        return {
+          ...r, v: +r.valor || 0, inv: /^investimento$/i.test(String(r.categoria || '').trim()),
+          p: p != null && p < C.length ? p : null
+        };
+      });
+      const k = $('ciclo').value;
+      const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      const atual = C.findIndex(c => hoje >= d10(c.data_inicio) && hoje <= d10(c.data_fim));
+      const us = [...new Set(L.map(r => r.p).filter(p => p != null))];
+      if (atual >= 0 && !us.includes(atual)) us.push(atual);
+      us.sort((a, b) => a - b);
+      $('ciclo').innerHTML = '<option value=-1>Backlog' + us.map(i => `<option value=${i}>${C[i].nome}`).join('');
+      const kk = k === '' ? null : +k;
+      $('ciclo').value = kk !== null && (kk < 0 || us.includes(kk)) ? kk : (atual >= 0 ? atual : us.at(-1) ?? -1);
+      $('grupo').innerHTML = Object.keys(ll[0] || {})
+        .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${Cap(c)}`).join('');
+      const b = L.filter(r => r.p == null).length;
+      $('st').innerHTML = `<b>${L.length}</b> Lançamentos · <b>${b}</b> Itens no Backlog`;
+      draw();
+    } catch (e) { $('st').textContent = ''; $('out').innerHTML = '<p class=empty>Falhou: ' + e.message + '</p>' }
+  }
+
+  const filt = () => L.filter(r => (!$('ativo').checked || r.ativo)
+    && (r.pago ? $('cpago').checked : $('caberto').checked)
+    && ({ A: 1, D: !r.fatura, F: r.fatura })[$('origem').value]
+    && ({ T: 1, E: !r.isabella, I: r.isabella })[$('titular').value]);
+
+  function ordena(x, id) {
+    const { k, d } = so(id), t = COLS.find(c => c[0] == k)[2], s = [...x];
+    s.sort((a, b) => {
+      const A = a[k], B = b[k];
+      const c = t == 'n' ? ((+A || 0) - (+B || 0)) : t == 'd' ? (ts(A) - ts(B)) : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
+      return d == 1 ? c : -c;
+    });
+    return s;
+  }
+  function th(id) {
+    const { k, d } = so(id); return COLS.map(([kk, t, tp]) => {
+      const ar = k == kk ? (d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
+      return `<th class="${tp == 'n' ? 'n' : ''}" onclick="sortCol('${id}','${kk}')">${t}${ar}`;
+    }).join('');
+  }
+  window.sortCol = (id, k) => { const s = so(id); if (s.k != k) { s.k = k; s.d = 1 } else s.d = s.d == 1 ? 2 : 1; draw(); };
+
+  const tabela = (x, id) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
+    ordena(x, id).map(r => '<tr>' + COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
+      : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('')).join('') + '</tbody></table></div>'
+    : '<p class=empty>Vazio</p>';
+
+  const bloco = (t, valor, meta, x, id) =>
+    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id)}</div>`;
+
+  function vCiclo() {
+    const i = +$('ciclo').value;
+    if (i < 0) {
+      const x = filt().filter(r => r.p == null);
+      return bloco('Backlog', x.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', x, 'bk');
+    }
+    const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
+    const deb = filt().filter(r => r.p == i && !r.fatura), fat = filt().filter(r => r.p == i && r.fatura);
+    return bloco('Débito', deb.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, deb, 'db')
+      + bloco('Crédito', fat.reduce((s, r) => s + r.v, 0), C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
+  }
+
+  function vComp() {
+    const g = $('grupo').value, d = filt().filter(r => r.p != null);
+    if (!d.length) return '<p class=empty>Vazio</p>';
+    const ms = [...new Set(d.map(r => r.p))].sort((a, b) => a - b), m = {};
+    d.forEach(r => { const k = r[g] ?? '—'; (m[k] = m[k] || {})[r.p] = (m[k][r.p] || 0) + r.v });
+    const sum = k => Object.values(m[k]).reduce((a, b) => a + b, 0);
+    return `<div class="wrap wx"><table><thead><tr><th>${Cap(g)}${ms.map(i => `<th class=n>${C[i].nome}`).join('')}<th class=n>Total</thead><tbody>` +
+      Object.keys(m).sort((a, b) => sum(b) - sum(a)).map(k => `<tr><td>${k}` +
+        ms.map(i => m[k][i] == null ? '<td class=n>·' : nu(m[k][i])).join('') + nu(sum(k))).join('') +
+      '<tr class=tot><td>Total' + ms.map(i => nu(d.filter(r => r.p == i).reduce((s, r) => s + r.v, 0))).join('') +
+      nu(d.reduce((s, r) => s + r.v, 0)) + '</tbody></table></div>';
+  }
+
+  function vInv() {
+    const d = L.filter(r => (!$('ativo').checked || r.ativo)
+      && (r.pago ? $('cpago').checked : $('caberto').checked) && r.p != null);
+    if (!d.length) return '<p class=empty>Vazio</p>';
+    let ac = 0;
+    const corpo = [...new Set(d.map(r => r.p))].sort((a, b) => a - b).map(i => {
+      const x = d.filter(r => r.p == i), iv = x.filter(r => r.inv);
+      const ap = iv.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
+      const sq = iv.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+      ac += ap - sq;
+      return `<tr><td>${C[i].nome}` + nu(x.reduce((s, r) => s + r.v, 0)) + nu(ap) + nu(sq) + nu(ap - sq) + nu(ac);
+    }).join('');
+    return '<div class=wrap><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Sacado'
+      + '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
+  }
+
+  function draw() {
+    const v = $('visao').value;
+    $('fciclo').hidden = v != 'c'; $('fgrupo').hidden = v != 'k'; $('forigem').hidden = $('ftit').hidden = v == 'p';
+    $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
+  }
+
+  document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = draw);
+
+  // ---- login ----
+  const sb = supabase.createClient(API, KEY);
+  const mostra = s => { $('login').style.display = s ? 'none' : 'flex'; $('app').style.display = s ? 'block' : 'none'; };
+
+  async function boot() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { TOKEN = session.access_token; mostra(1); load(); }
+    else mostra(0);
+  }
+  $('entrar').onclick = async () => {
+    $('lerr').textContent = '';
+    const { data, error } = await sb.auth.signInWithPassword(
+      { email: $('email').value.trim(), password: $('senha').value });
+    if (error) return $('lerr').textContent = 'E-mail ou senha inválidos.';
+    TOKEN = data.session.access_token; mostra(1); load();
+  };
+  $('senha').onkeydown = e => { if (e.key == 'Enter') $('entrar').click(); };
+  $('sair').onclick = async () => { await sb.auth.signOut(); TOKEN = KEY; $('senha').value = ''; mostra(0); };
+
+  if (API.includes('SEUPROJETO')) { mostra(1); load(); }   // sem config: abre direto (dev)
+  else boot();
+</script>

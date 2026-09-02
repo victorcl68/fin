@@ -359,6 +359,67 @@
     display: none
   }
 
+  #selbar {
+    position: fixed;
+    right: 1.6rem;
+    bottom: 1.6rem;
+    display: none;
+    align-items: center;
+    gap: 1.4rem;
+    background: var(--pa);
+    color: var(--fg);
+    padding: .9rem 1.3rem;
+    border: 1px solid var(--ln);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
+    z-index: 20
+  }
+
+  #selbar .info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2
+  }
+
+  #selbar .cnt {
+    font-size: .78rem;
+    color: var(--mu);
+    text-transform: uppercase;
+    letter-spacing: .04em
+  }
+
+  #selbar .val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums
+  }
+
+  #selbar button {
+    font: inherit;
+    color: var(--pa);
+    background: var(--fg);
+    border: 0;
+    border-radius: 9px;
+    padding: .5rem .9rem;
+    cursor: pointer
+  }
+
+  #selbar button:hover {
+    opacity: .85
+  }
+
+  tbody tr.pick {
+    cursor: pointer
+  }
+
+  tbody tr.on td {
+    background: #EAF3EC
+  }
+
+  tbody tr.on:hover td {
+    background: #E0EDE3
+  }
+
   .wx td.c1,
   .wx th.c1 {
     position: sticky;
@@ -444,11 +505,12 @@
     </div>
   </div>
   <div id=out></div>
+  <div id=selbar><span id=selinfo class=info></span><button id=selclear>Limpar</button></div>
 </div>
 
 <script>
   const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
-  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';
+  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
 
   const $ = i => document.getElementById(i);
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -462,6 +524,8 @@
   const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categoria', 'Categoria', 't'],
   ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
   let C = [], L = [];
+  const CURFAT = {};
+  const SEL = new Map();   // chave -> valor (linhas reais e fatura sintetica)
   // ordenacao por bloco: S[id]={k,d}. Padrao data asc. d: 1 asc, 2 desc
   const S = {};
   const so = id => S[id] || (S[id] = { k: 'data', d: 1 });
@@ -527,32 +591,38 @@
   }
   window.sortCol = (id, k) => { const s = so(id); if (s.k != k) { s.k = k; s.d = 1 } else s.d = s.d == 1 ? 2 : 1; draw(); };
 
-  const tabela = (x, id) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
-    ordena(x, id).map(r => `<tr${r._fat ? ' class=fat' : ''}>` + COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
-      : tp == 'b' ? `<td>${r[k] == null ? '—' : r[k] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
-        : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('')).join('') + '</tbody></table></div>'
+  const sidOf = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
+  const cel = r => COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
+    : tp == 'b' ? `<td>${r[k] == null ? '—' : r[k] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
+      : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('');
+  const tabela = (x, id, selavel) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
+    ordena(x, id).map(r => {
+      const sid = sidOf(r), on = selavel && sid && SEL.has(sid);
+      return `<tr class="${r._fat ? 'fat ' : ''}${on ? 'on' : ''}${selavel && sid ? ' pick' : ''}" data-sid="${selavel ? sid : ''}">` + cel(r);
+    }).join('') + '</tbody></table></div>'
     : '<p class=empty>Vazio</p>';
 
   const linha = (r, v) => `<div><span>${r}</span><span class="${cls(v)}">${brl(v)}</span></div>`;
-  const bloco = (t, valor, meta, x, id, resumo = '') =>
-    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id)}${resumo}</div>`;
+  const bloco = (t, valor, meta, x, id, resumo = '', selavel = false) =>
+    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id, selavel)}${resumo}</div>`;
 
   function vCiclo() {
     const i = +$('ciclo').value;
     if (i < 0) {
       const x = filt().filter(r => r.p == null);
-      return bloco('Backlog', x.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', x, 'bk');
+      return bloco('Backlog', x.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', x, 'bk', '', true);
     }
     const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
     const deb = filt().filter(r => r.p == i && !r.fatura), fat = filt().filter(r => r.p == i && r.fatura);
     const sf = fat.reduce((s, r) => s + r.v, 0);
     const linhaFat = {
       data: c.data_inicio, nome: 'Fatura do cartão', categoria: 'Fatura',
-      freq: '', obs: C[i - 1] ? C[i - 1].nome : '', id: 0, v: sf, _fat: 1
+      freq: '', obs: C[i - 1] ? C[i - 1].nome : '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
     };
+    CURFAT[linhaFat._sid] = sf;
     const debT = [...deb, linhaFat];   // fatura entra no debito p/ todos, so o total
-    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, debT, 'db');
-    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? C[i - 1].nome : '—', fat, 'cr');
+    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, debT, 'db', '', true);
+    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? C[i - 1].nome : '—', fat, 'cr', '', true);
   }
 
   function vComp() {
@@ -599,7 +669,32 @@
     if (v != 'k') $('origem').value = 'A';
     if (v == 'p') $('titular').value = 'T';
     $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
+    if (v != 'c') { SEL.clear(); }
+    if (typeof atualizaSelbar == 'function') atualizaSelbar();
   }
+
+  function atualizaSelbar() {
+    if (!SEL.size) { $('selbar').style.display = 'none'; return; }
+    let soma = 0; for (const v of SEL.values()) soma += v;
+    $('selinfo').innerHTML = `<span class=cnt>${SEL.size} ${SEL.size == 1 ? 'selecionado' : 'selecionados'}</span><span class="val ${cls(soma)}">${brl(soma)}</span>`;
+    $('selbar').style.display = 'flex';
+  }
+  function valorDe(sid) {
+    if (sid.startsWith('fat:')) return CURFAT[sid] || 0;
+    const r = L.find(x => String(x.id) == sid); return r ? r.v : 0;
+  }
+  function toggleSel(sid) {
+    if (!sid) return;
+    SEL.has(sid) ? SEL.delete(sid) : SEL.set(sid, valorDe(sid));
+    document.querySelectorAll(`tr[data-sid="${sid}"]`).forEach(tr => tr.classList.toggle('on', SEL.has(sid)));
+    atualizaSelbar();
+  }
+  $('out').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-sid]');
+    if (tr && tr.dataset.sid && !e.target.closest('th')) toggleSel(tr.dataset.sid);
+  });
+  $('selclear').onclick = () => { SEL.clear(); document.querySelectorAll('tr.on').forEach(tr => tr.classList.remove('on')); atualizaSelbar(); };
+  $('ciclo').addEventListener('change', () => { SEL.clear(); atualizaSelbar(); });
 
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = draw);
 

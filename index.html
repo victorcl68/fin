@@ -527,6 +527,11 @@
     d.setUTCDate(d.getUTCDate() + 1);
     return d.toISOString().slice(0, 10);
   }
+  function menos30(iso) {
+    const d = new Date(d10(iso) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 30);
+    return d.toISOString().slice(0, 10);
+  }
 
   // nome do periodo: mes anterior ao fat. ex: fat=2026-07-06 -> "Junho 2026"
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -564,7 +569,7 @@
 
   // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número, b=booleano
   const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
-  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
+  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n']];
   let C = [], L = [];
   const CURFAT = {};
   const SEL = new Map();
@@ -584,16 +589,19 @@
     $('st').textContent = 'Carregando…';
     try {
       const [cc, ll] = await Promise.all([get('periodos'), get('lancamentos')]);
-      // ordena por fat; ini de cada periodo = fat do anterior + 1 dia; primeiro tem ini = null (mapeamento)
+      // ordena por fat; ini de cada periodo = fat do anterior + 1 dia
+      // (o primeiro periodo comeca no proprio fat - 30 dias, so pra ter um limite inferior)
       C = cc.sort((a, b) => ts(a.fat) - ts(b.fat)).map((p, i, arr) => ({
         ...p,
-        ini: i == 0 ? null : proximoDia(arr[i - 1].fat),
+        ini: i == 0 ? menos30(p.fat) : proximoDia(arr[i - 1].fat),
       }));
-      // cicloDe: em qual periodo cai uma data iso? ini==null (primeiro) aceita ate seu fat
-      const cicloDe = iso => C.findIndex(c => (c.ini == null || iso >= c.ini) && iso <= d10(c.fat));
+      // cicloDe: em qual periodo cai uma data iso? Data ausente -> null (Backlog).
+      const cicloDe = iso => !iso ? null : C.findIndex(c => iso >= c.ini && iso <= d10(c.fat));
       L = ll.map(r => {
         let p;
-        if (r.cred) {
+        if (!r.data) {
+          p = null;   // sem data -> Backlog, sempre
+        } else if (r.cred) {
           p = compFatura(r.data, r.isa);
         } else {
           p = cicloDe(d10(r.data));
@@ -605,7 +613,7 @@
       });
       const k = $('ciclo').value;
       const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-      const atual = C.findIndex(c => (c.ini == null || hoje >= c.ini) && hoje <= d10(c.fat));
+      const atual = C.findIndex(c => hoje >= c.ini && hoje <= d10(c.fat));
       const us = [...new Set(L.map(r => r.p).filter(p => p != null))];
       if (atual >= 0 && !us.includes(atual)) us.push(atual);
       us.sort((a, b) => a - b);
@@ -668,7 +676,7 @@
     const sf = fat.reduce((s, r) => s + r.v, 0);
     const linhaFat = {
       data: c.ini || c.fat, nome: 'Fatura do cartão', categ: 'Fatura',
-      freq: '', obs: C[i - 1] ? nomePeriodo(C[i - 1].fat) : '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
+      freq: '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
     };
     CURFAT[linhaFat._sid] = sf;
     const debT = [...deb, linhaFat];

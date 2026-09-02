@@ -1,775 +1,843 @@
--- =====================================================================
---  DEPLOY CONSOLIDADO - BANCO: SGEWEB
---  Pack : pack_PR450    Base: origin/main    Head: HEAD (83729bc)
---  Ordem: SCRIPTS(PRE) -> FUNCOES -> PROCEDURES -> TRIGGERS -> SCRIPTS/POS
---  Cada objeto e um batch separado por GO (T-SQL / SQL Server).
---  Gerado automaticamente - nao editar manualmente.
--- =====================================================================
-
--- ---------------------------------------------------------------------
--- [SCRIPT-PRE ] SGEWEB/SCRIPTS/GS3063/QUERIES.sql
--- ---------------------------------------------------------------------
-ALTER TABLE dbo.AspNetUsers
-ADD UserActive BIT NOT NULL DEFAULT (1);
-GO
-
-ALTER TABLE dbo.AspNetUsers
-ADD LastStateChangedUserId VARCHAR(128);
-GO
-
-CREATE INDEX IX_AspNetUsers_UserActive ON dbo.AspNetUsers(UserActive);
-GO
-
-UPDATE AspNetUsers
-SET LockoutEndDateUtc = NULL,
-    LockoutEnabled = 0
-FROM AspNetUsers;
-GO
-
-UPDATE U
-SET U.UserActive =
-    CASE
-        WHEN U.LockoutEnabled = 1
-         AND U.LockoutEndDateUtc = CAST('9999-12-31T23:59:59.997' AS datetime)
-            THEN 0
-        ELSE 1
-    END
-FROM dbo.AspNetUsers U;
-GO
-GO
-
--- ---------------------------------------------------------------------
--- [SCRIPT-PRE ] SGEWEB/SCRIPTS/GS3063/tb_usuarios_ativacao_desativacao_log.sql
--- ---------------------------------------------------------------------
-CREATE TABLE tb_usuarios_ativacao_desativacao_log
-(
-    tb_usuarios_ativacao_desativacao_log_cod BIGINT PRIMARY KEY IDENTITY (1,1) NOT NULL,
-    usuario_cod_afetado                      NVARCHAR(128)                     NOT NULL,
-    usuario_cod_executor                     NVARCHAR(128)                     NOT NULL,
-    ativacao_desativacao                     BIT                               NOT NULL,
-    data_cadastro                            DATETIME DEFAULT GETDATE()        NOT NULL,
-);
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/DestravaUsuario.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-CREATE OR ALTER PROCEDURE DestravaUsuario
-    @Email varchar(255)
-AS
-
-DECLARE @Id UNIQUEIDENTIFIER;
-
-SELECT @Id = Id
-FROM AspNetUsers (NOLOCK)
-WHERE Email = @Email;
-
-UPDATE AspNetUsers
-SET LockoutEnabled    = 0,
-    LockoutEndDateUtc = NULL
-WHERE Id = @Id;
-
-SELECT U.usuario_cod,
-       A.Email,
-       U.usuario_nome,
-       U.usuario_data_ultimo_acesso,
-       A.LockoutEnabled,
-       A.LockoutEndDateUtc
-FROM tb_usuarios U
-         INNER JOIN AspNetUsers A ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE A.Email = @Email;
-
-/*
-
--- Usuarios e Grupos
-select U.usuario_cod, UPPER(replace(replace(substring(Email,CHARINDEX('@',Email)+1,100),'.com.br',''),'.com','')) as grupo, U.usuario_nome
-from AspNetUsers A
-inner join tb_usuarios U ON A.Info_ApplicationUserInfoId = U.usuario_cod
-order by U.usuario_nome
-
--- Acessos ao Portal
---update AspNetUsers set LockoutEndDateUtc = '2048-12-31 23:59' where Info_ApplicationUserInfoId IN (select usuario_cod from tb_usuarios  where usuario_data_ultimo_acesso <= dateadd(month, -1, getdate()) )
---update AspNetUsers set LockoutEndDateUtc = '2048-12-31 23:59' where Info_ApplicationUserInfoId IN (select usuario_cod from tb_usuarios  where usuario_data_ultimo_acesso IS NULL)
-select U.usuario_cod, A.Email, U.usuario_nome, U.usuario_data_ultimo_acesso
-from tb_usuarios U
-inner join AspNetUsers A ON A.Info_ApplicationUserInfoId = U.usuario_cod
-where LockoutEndDateUtc IS NULL
-order by usuario_data_ultimo_acesso--12
-
--- Pesquisas
-SELECT UPPER(replace(replace(substring(Email,CHARINDEX('@',Email)+1,100),'.com.br',''),'.com','')) as Grupo, usuario_nome as Usuario, count(L.log_consulta_cod) as Pesquisas
-from log_tb_consultas L
-inner join tb_usuarios U ON U.usuario_cod = L.usuario_cod
-inner join AspNetUsers A ON A.Info_ApplicationUserInfoId = U.usuario_cod
-where data_consulta between '2021-06-01' AND '2021-06-30 23:59'
-group by UPPER(replace(replace(substring(Email,CHARINDEX('@',Email)+1,100),'.com.br',''),'.com','')), usuario_nome
-order by count(L.log_consulta_cod)  desc
-
-*/
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0', 'SGE-1', 'SGE-2')
-    RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-    GRANT EXECUTE ON [dbo].[DestravaUsuario] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-    GRANT EXECUTE ON [dbo].[DestravaUsuario] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-    GRANT EXECUTE ON [dbo].[DestravaUsuario] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-    GRANT EXECUTE ON [dbo].[DestravaUsuario] TO usr_sgeweb;
-GO
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/i_tb_usuarios_ativacao_desativacao_log.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-GO
-CREATE OR ALTER PROCEDURE i_tb_usuarios_ativacao_desativacao_log
-(
-    @usuario_cod_afetado NVARCHAR(128),
-    @usuario_cod_executor NVARCHAR(128),
-    @ativacao_desativacao BIT,
-    @ocultar_retorno BIT = 0
-)
-AS
-BEGIN
-    DECLARE
-        @sucesso BIT = 0,
-        @feedback VARCHAR(155);
-
-    INSERT INTO tb_usuarios_ativacao_desativacao_log
-    (usuario_cod_afetado,
-     usuario_cod_executor,
-     ativacao_desativacao,
-     data_cadastro)
-    VALUES (@usuario_cod_afetado,
-            @usuario_cod_executor,
-            @ativacao_desativacao,
-            GETDATE());
-
-    IF @@ROWCOUNT > 0
-        BEGIN
-            SET @sucesso = 1;
-            SET @feedback = N'Log registrado com sucesso!';
-        END
-    ELSE
-        BEGIN
-            SET @sucesso = 0;
-            SET @feedback = N'Erro! Log não registrado.';
-        END
-
-    IF(@ocultar_retorno = 0)
-        SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-END
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0','SGE-1','SGE-2')
-	RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-	GRANT EXECUTE ON [dbo].[i_tb_usuarios_ativacao_desativacao_log] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-	GRANT EXECUTE ON [dbo].[i_tb_usuarios_ativacao_desativacao_log] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-	GRANT EXECUTE ON [dbo].[i_tb_usuarios_ativacao_desativacao_log] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-	GRANT EXECUTE ON [dbo].[i_tb_usuarios_ativacao_desativacao_log] TO usr_sgeweb
-GO
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/script_rel_escolha_placa.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-CREATE OR ALTER PROCEDURE script_rel_escolha_placa
-AS
-
-/*ANALITICO PLACA ESPECIAL*/
-SELECT U.usuario_nome
-     , CONVERT(VARCHAR(30), C.data_cadas, 3)                              AS data_busca
-     , CONVERT(VARCHAR(5), C.data_cadas, 14)                              AS hora_busca
-     , C.consulta_escolha_placa_especial_send_chassi                      AS chassi
-     , ISNULL(C.consulta_escolha_placa_especial_send_letra_entrada, '')   AS LetrasEscolha
-     , ISNULL(C.consulta_escolha_placa_especial_send_numeros_entrada, '') AS numerosEscolha
-FROM tb_consulta_escolha_placa_especial C (NOLOCK)
-         INNER JOIN tb_usuarios U (NOLOCK) ON U.usuario_cod = C.usuario_cod
-WHERE C.usuario_cod > 2
-  AND data_cadas BETWEEN '2021-06-01' AND '2021-06-30 23:59'
-
-/*ANALITICO PLACA COMUM*/
-SELECT UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) AS Grupo
-     , U.usuario_nome
-     , CONVERT(varchar(30), C.data_cadas, 3)                                                                AS data_busca
-     , CONVERT(varchar(5), C.data_cadas, 14)                                                                AS hora_busca
-     , C.consulta_escolha_placa_send_chassi                                                                 AS chassi
-FROM tb_consulta_escolha_placa C (NOLOCK)
-         INNER JOIN tb_usuarios U (NOLOCK) ON U.usuario_cod = C.usuario_cod
-         INNER JOIN AspNetUsers A (NOLOCK) ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE C.usuario_cod > 2
-  AND consulta_escolha_placa_send_data BETWEEN '2021-06-01' AND '2021-06-30 23:59'
-
-/*AGRUPADO PLACA ESPECIAL*/
-SELECT UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) AS Grupo,
-       U.usuario_nome                                                                                       AS usuario,
-       COUNT(C.consulta_escolha_placa_especial_cod)                                                         AS consultas
-FROM tb_consulta_escolha_placa_especial C (NOLOCK)
-         INNER JOIN tb_usuarios U (NOLOCK) ON U.usuario_cod = C.usuario_cod
-         INNER JOIN AspNetUsers A (NOLOCK) ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE C.usuario_cod > 2
-  AND data_cadas BETWEEN '2021-06-01' AND '2021-06-30 23:59'
-GROUP BY REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', ''), U.usuario_nome
-ORDER BY COUNT(C.consulta_escolha_placa_especial_cod) DESC
-
-/*AGRUPADO PLACA COMUM*/
-SELECT UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) AS Grupo,
-       U.usuario_nome                                                                                       AS usuario,
-       COUNT(C.consulta_escolha_placa_cod)                                                                  AS consultas
-FROM tb_consulta_escolha_placa C
-         INNER JOIN tb_usuarios U (NOLOCK) ON U.usuario_cod = C.usuario_cod
-         INNER JOIN AspNetUsers A (NOLOCK) ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE C.usuario_cod > 2
-  AND consulta_escolha_placa_send_data BETWEEN '2021-06-01' AND '2021-06-30 23:59'
-GROUP BY REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', ''), U.usuario_nome
-ORDER BY COUNT(C.consulta_escolha_placa_cod) DESC
-
-/*usuarios e grupos*/
-SELECT U.usuario_cod,
-       UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) AS grupo,
-       U.usuario_nome
-FROM AspNetUsers A (NOLOCK)
-         INNER JOIN tb_usuarios U (NOLOCK) ON A.Info_ApplicationUserInfoId = U.usuario_cod
-ORDER BY U.usuario_nome
-
-    /*ACESSOS AO PORTAL*/
---update AspNetUsers set LockoutEndDateUtc = '2048-12-31 23:59' where Info_ApplicationUserInfoId IN (select usuario_cod from tb_usuarios  where usuario_data_ultimo_acesso <= dateadd(month, -1, getdate()) )
---update AspNetUsers set LockoutEndDateUtc = '2048-12-31 23:59' where Info_ApplicationUserInfoId IN (select usuario_cod from tb_usuarios  where usuario_data_ultimo_acesso IS NULL)
-SELECT U.usuario_cod, A.Email, U.usuario_nome, U.usuario_data_ultimo_acesso
-FROM tb_usuarios U (NOLOCK)
-         INNER JOIN AspNetUsers A (NOLOCK) ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE UserActive = 1
-ORDER BY usuario_data_ultimo_acesso--12
-
-/*PESQUISAS*/
-SELECT UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) AS Grupo,
-       usuario_nome                                                                                         AS Usuario,
-       COUNT(L.log_consulta_cod)                                                                            AS Pesquisas
-FROM log_tb_consultas L (NOLOCK)
-         INNER JOIN tb_usuarios U (NOLOCK) ON U.usuario_cod = L.usuario_cod
-         INNER JOIN AspNetUsers A (NOLOCK) ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE data_consulta BETWEEN '2021-06-01' AND '2021-06-30 23:59'
-GROUP BY UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')),
-         usuario_nome
-ORDER BY COUNT(L.log_consulta_cod) DESC
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0', 'SGE-1', 'SGE-2')
-    RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-    GRANT EXECUTE ON [dbo].[script_rel_escolha_placa] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-    GRANT EXECUTE ON [dbo].[script_rel_escolha_placa] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-    GRANT EXECUTE ON [dbo].[script_rel_escolha_placa] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-    GRANT EXECUTE ON [dbo].[script_rel_escolha_placa] TO usr_sgeweb;
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/s_novo_login.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-CREATE OR ALTER PROCEDURE s_novo_login
-(
-  @usuario_cod INT -- usuario_cod logado que solicitou a criação do login
-, @Email VARCHAR(512) -- Login a ser criado - email para a AspNetUsers
-)
-AS
-
-DECLARE
-    @senha      VARCHAR(255) = ''
-    , @char     CHAR         = ''
-    , @charI    INT          = 0
-    , @tamanho  TINYINT      = 8
-    , @erro     TINYINT      = 0
-    , @erro_msg VARCHAR(255) = 'ok';
-
-    WHILE @tamanho > 0
-        BEGIN
-            SET @charI = ROUND(RAND() * 100, 0)
-            SET @char = char(@charI)
-            IF (@charI BETWEEN 49 AND 57 OR @charI BETWEEN 65 AND 90 OR
-                @charI BETWEEN 97 AND 122 AND @charI NOT IN (79, 111)) OR @charI = 23
-                BEGIN
-                    SET @senha += @char
-                    SET @tamanho = @tamanho - 1
-                END;
-        END;
-
-    IF EXISTS (SELECT Email FROM AspNetUsers (NOLOCK) WHERE Email = @Email)
-        BEGIN
-            SET @erro = 1;
-            SET @erro_msg = 'Usuário já cadastrado';
-        END;
-
-    IF @erro = 0 AND
-       (
-           @Email LIKE '%gmail%'
-               OR @Email LIKE '%titan.%'
-               OR @Email LIKE '%constant.%'
-               OR @Email LIKE '%hubspot.%'
-               OR @Email LIKE '%sendinblue.%'
-               OR @Email LIKE '%protonmail%'
-               OR @Email LIKE '%outlook%'
-               OR @Email LIKE '%yahoo%'
-               OR @Email LIKE '%zoho.%'
-               OR @Email LIKE '%aol.%'
-               OR @Email LIKE '%mail.%'
-               OR @Email LIKE '%gmx.%'
-               OR @Email LIKE '%icloud%'
-               OR @Email LIKE '%yandex%'
-               OR @Email LIKE '%hotmail%'
-               OR @Email LIKE '%terra.com%'
-               OR @Email LIKE '%pm.me%'
-               --OR @Email LIKE '%aweber.%'
-           )
-        BEGIN
-            SET @erro = 2;
-            SET @erro_msg = 'Endereço de e-mail não é valido. Favor informar um e-mail corporativo.'
-        END;
-
-    /*destrava o usuario se o mesmo já existir e estiver locado*/
-    IF @erro = 1 AND EXISTS (SELECT Id
-                             FROM AspNetUsers (NOLOCK)
-                             WHERE Email = @Email
-                               AND LockoutEnabled = 1
-                               AND ISNULL(LockoutEndDateUtc, 0) > GETDATE())
-        UPDATE AspNetUsers
-        SET LockoutEnabled    = 0,
-            LockoutEndDateUtc = NULL
-        WHERE Email = @Email;
-
-INSERT INTO log_criacao_usuario (usuario_cod, log_data, Email, Retorno)
-VALUES (@usuario_cod, DATEADD(hh, -3, GETDATE()), @Email, @erro_msg);
-
-SELECT @senha AS senha, @erro AS erro, @erro_msg AS erro_msg;
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0','SGE-1','SGE-2')
-    RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-    GRANT EXECUTE ON [dbo].[s_novo_login] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-    GRANT EXECUTE ON [dbo].[s_novo_login] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-    GRANT EXECUTE ON [dbo].[s_novo_login] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-    GRANT EXECUTE ON [dbo].[s_novo_login] TO usr_sgeweb;
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/s_processo_pre_cadastro_confirmacao.sql
--- ---------------------------------------------------------------------
-CREATE OR ALTER PROCEDURE s_processo_pre_cadastro_confirmacao
-    @processo_pre_cadastro_guid_consultas VARCHAR(255)
-AS
-BEGIN
-    SELECT
-        processo_pre_cadastro_cod,
-        processo_pre_cadastro_data_confirmacao
-    FROM tb_processo_pre_cadastro WITH (NOLOCK)
-    WHERE processo_pre_cadastro_guid_consultas = @processo_pre_cadastro_guid_consultas;
-END;
-GO
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV' GRANT EXECUTE ON s_processo_pre_cadastro_confirmacao TO usr_sgewebdev; ELSE GRANT EXECUTE ON s_processo_pre_cadastro_confirmacao TO usr_sgeweb;
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/s_tb_usuarios.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-CREATE OR ALTER PROCEDURE s_tb_usuarios
-(
-  @usuario_gerente BIT = NULL
-, @gerente_usuario_cod INT = NULL
-, @tipo_departamento_cod TINYINT = NULL
-, @lista_tipo_departamento_cod VARCHAR(MAX) = NULL
-, @lista_processo_ficha_segmento_cod VARCHAR(MAX) = NULL
-, @usuario_lider BIT = NULL
-, @usuario_cod INT = NULL
-, @usuario_nome VARCHAR(MAX) = NULL
-, @usuario_cpf CHAR(11) = NULL
-, @usuario_ativo BIT = NULL
-, @manipula_ativo_inativo BIT = NULL -- Flag para habilitar filtro de ativos/inativos (caso contrário traz só ativos)
-, @usuario_email VARCHAR(MAX) = NULL
-)
-AS
-
-DECLARE @data_agora DATETIME = GETDATE();
-
-SELECT B.usuario_cod                                                                                                    -- COD
-     , UPPER(UserName)                                            as usuario_login                                      -- LOGIN
-     , UPPER(usuario_nome)                                        AS usuario_nome                                       -- NOME
-     , UPPER(usuario_nome) + ' (' + UPPER(UserName) + ')'         as NomeLogin                                          -- NOME LOGIN
-     , SUBSTRING(usuario_nome, 1, CHARINDEX(' ', usuario_nome + ' ') - 1) +
-       RIGHT(usuario_nome, CHARINDEX(' ', REVERSE(usuario_nome))) AS PrimeiroUltimoNome                                 -- PRIMEIRO ULTIMO NOME
-     , ''                                                         AS Assinatura                                         -- ASSINATURA
-     , usuario_data_cadastro                                      as usuario_data_cadas                                 -- DATA CADAS
-     , UserActive                                                 AS usuario_ativo                                      -- ATIVO
-     , NULL                                                       as usuario_lider                                      -- LÍDER
-     , UPPER(Email)                                               AS usuario_email                                      -- EMAIL
-     , NULL                                                       as tipo_departamento_cod                              -- DEPARTAMENTO COD
-     , NULL                                                       AS tipo_departamento_nome                             -- DEPARTAMENTO NOME
-     , NULL                                                       as usuario_gerente                                    -- GERENTE
-     , NULL                                                       AS usuario_gestor                                     -- GESTOR
-     , NULL                                                       AS usuario_senha                                      -- SENHA
-     , NULL                                                       AS usuario_ultima_edicao                              -- ÚLTIMA EDIÇÃO
-     , Id                                                         AS usuario_id                                         -- UUID USUÁRIO
-     , NULL                                                       AS usuario_ramal                                      -- RAMAL
-     , usuario_acesso_numero                                                                                            -- Nº ACESSO
-     , usuario_data_ultimo_acesso                                 AS usuario_ultimo_acesso                              -- ÚLTIMO ACESSO
-     , NULL                                                       AS usuario_versao_sistema                             -- VERSÃO SISTEMA
-     , NULL                                                       AS usuario_maquina                                    -- MÁQUINA
-     , NULL                                                       AS usuario_cod_cadastrou                              -- COD CADASTROU
-     , usuario_cpf                                                AS usuario_cpf                                        -- CPF
-     , NULL                                                       AS usuario_limite_pesquisa_multipla                   -- LIMITE PESQ. MÚLTIPLA
-     , NULL                                                       AS usuario_data_nascimento                            -- DATA NASCIMENTO
---  ,D.processo_tipo_loja_cod                                                                                           -- LOJA COD
---  ,D.processo_tipo_loja_nome                                                                                          -- LOJA NOME
-FROM AspNetUsers A
-         INNER JOIN tb_usuarios B on B.usuario_cod = A.Info_ApplicationUserInfoId
---  LEFT JOIN tb_usuario_loja C ON C.usuario_cod = B.usuario_cod
---  LEFT JOIN tb_processo_tipo_loja D ON D.processo_tipo_loja_cod = C.processo_tipo_loja_cod
---  LEFT JOIN tb_processo_tipo_loja_grupo E ON E.processo_tipo_loja_grupo_cod = D.processo_tipo_loja_grupo_cod
---  WHERE LockoutEnabled = CASE WHEN @manipula_ativo_inativo IS NULL THEN 1 ELSE ISNULL(@usuario_ativo, LockoutEnabled) END
-WHERE (
-    @manipula_ativo_inativo IS NULL AND UserActive = 0 -- padrão: só bloqueados de verdade
-        OR
-    @manipula_ativo_inativo IS NOT NULL AND (
-        @usuario_ativo IS NULL -- todos
-            OR (@usuario_ativo = 0 AND UserActive = 0) -- inativos/bloqueados
-            OR (@usuario_ativo = 1 AND UserActive = 1) -- ativos/desbloqueados
-        )
-    )
-  AND B.usuario_cod = ISNULL(@usuario_cod, B.usuario_cod)
-  AND (@usuario_nome IS NULL OR usuario_nome LIKE '%' + @usuario_nome + '%')
-  AND (@usuario_email IS NULL OR Email LIKE '%' + @usuario_email + '%')
-  AND (@usuario_cpf IS NULL OR usuario_cpf = @usuario_cpf)
---  AND TU.usuario_gerente = ISNULL(@usuario_gerente, TU.usuario_gerente)
---  AND TU.usuario_lider = ISNULL(@usuario_lider, TU.usuario_lider)
---  AND (@gerente_usuario_cod IS NULL OR TU.gerente_usuario_cod = @gerente_usuario_cod)
---  AND TU.tipo_departamento_cod = ISNULL(@tipo_departamento_cod, TU.tipo_departamento_cod)
---  AND (@lista_tipo_departamento_cod IS NULL OR TU.tipo_departamento_cod IN (SELECT codigo FROM dbo.TransformaListaEmTabela(@lista_tipo_departamento_cod, ';')))
---  AND (@lista_processo_ficha_segmento_cod IS NULL OR TU.tipo_departamento_cod IN (SELECT P.tipo_departamento_cod FROM tb_processo_ficha_segmento_tipo_departamento P WITH(NOLOCK)
---      WHERE P.processo_ficha_segmento_cod IN (SELECT codigo FROM dbo.TransformaListaEmTabela(@lista_processo_ficha_segmento_cod, ';'))))
-ORDER BY usuario_nome;
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0','SGE-1','SGE-2')
-    RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-    GRANT EXECUTE ON [dbo].[s_tb_usuarios] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-    GRANT EXECUTE ON [dbo].[s_tb_usuarios] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-    GRANT EXECUTE ON [dbo].[s_tb_usuarios] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-    GRANT EXECUTE ON [dbo].[s_tb_usuarios] TO usr_sgeweb;
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/TravaUsuarioGrupo.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-CREATE OR ALTER PROC TravaUsuarioGrupo
-    @grupo VARCHAR(255)
-AS
-
-SELECT U.usuario_cod,
-       UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) AS grupo,
-       U.usuario_nome,
-       A.Email
-INTO #t1
-FROM AspNetUsers A
-         INNER JOIN tb_usuarios U ON A.Info_ApplicationUserInfoId = U.usuario_cod
-WHERE UPPER(REPLACE(REPLACE(SUBSTRING(Email, CHARINDEX('@', Email) + 1, 100), '.com.br', ''), '.com', '')) = @grupo;
-
-UPDATE AspNetUsers
-SET LockoutEnabled    = 1,
-    LockoutEndDateUtc = CONVERT(DATETIME, '9999-12-31T23:59:59.997')
-WHERE Email IN (SELECT Email FROM #t1);
-
-SELECT *
-FROM #t1
-ORDER BY usuario_nome;
-
-SELECT Email, LockoutEnabled, LockoutEndDateUtc
-FROM AspNetUsers
-WHERE Email IN (SELECT Email FROM #t1);
-
-    DROP TABLE #t1;
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0', 'SGE-1', 'SGE-2')
-    RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-    GRANT EXECUTE ON [dbo].[TravaUsuarioGrupo] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-    GRANT EXECUTE ON [dbo].[TravaUsuarioGrupo] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-    GRANT EXECUTE ON [dbo].[TravaUsuarioGrupo] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-    GRANT EXECUTE ON [dbo].[TravaUsuarioGrupo] TO usr_sgeweb;
-GO
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/u_tb_processo_pre_cadastro_confirmacao.sql
--- ---------------------------------------------------------------------
-CREATE OR ALTER PROCEDURE u_tb_processo_pre_cadastro_confirmacao
-    @processo_pre_cadastro_cod BIGINT,
-    @usuario_cod INT
-AS
-BEGIN
-    UPDATE tb_processo_pre_cadastro
-    SET usuario_cod_confirmou = @usuario_cod,
-        processo_pre_cadastro_data_confirmacao = GETDATE()
-    WHERE processo_pre_cadastro_cod = @processo_pre_cadastro_cod;
-
-    SELECT CAST(1 AS TINYINT) AS retorno_cod;
-END;
-GO
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV' GRANT EXECUTE ON u_tb_processo_pre_cadastro_confirmacao TO usr_sgewebdev; ELSE GRANT EXECUTE ON u_tb_processo_pre_cadastro_confirmacao TO usr_sgeweb;
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/u_tb_usuarios.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-GO
-CREATE OR ALTER PROCEDURE u_tb_usuarios
-(
-    @usuario_lider BIT = NULL,
-    @usuario_data_nascimento DATE = NULL,
-    @usuario_cod INT,
-    @usuario_cpf VARCHAR(255),
-    @usuario_nome VARCHAR(255) = NULL,
-    @usuario_ativo BIT = NULL,
-    @usuario_email VARCHAR(100) = NULL,
-    @usuario_email_executor VARCHAR(100) = NULL
-)
-AS
-BEGIN
-    DECLARE
-        @sucesso BIT = 0,
-        @feedback NVARCHAR(255),
-        @usuario_cod_executor NVARCHAR(128) = (SELECT TOP 1 Id FROM AspNetUsers (NOLOCK) WHERE Email = @usuario_email_executor ORDER BY Info_ApplicationUserInfoId DESC);
-
-    BEGIN TRANSACTION;
-
-    BEGIN TRY
-        UPDATE TU
-        SET TU.usuario_nome = ISNULL(@usuario_nome, TU.usuario_nome),
-            TU.usuario_cpf  = ISNULL(@usuario_cpf, TU.usuario_cpf)
-        FROM tb_usuarios TU
-        WHERE TU.usuario_cod = @usuario_cod;
-
-        UPDATE ANU
-        SET ANU.Email = ISNULL(@usuario_email, ANU.Email)
-        FROM AspNetUsers ANU
-        WHERE ANU.Info_ApplicationUserInfoId = @usuario_cod;
-
-        COMMIT TRANSACTION;
-    END TRY
-    BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        SELECT
-            @sucesso = 0,
-            @feedback = N'Erro na atualização de usuário: ' + ERROR_MESSAGE();
-
-        SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-        RETURN;
-    END CATCH;
-
-    IF @usuario_ativo IS NOT NULL
-    BEGIN
-        DECLARE
-            @data_agora DATETIME = GETDATE();
-
-        -- Usuário Executor Não Encontrado
-        IF @usuario_cod_executor IS NULL
-        BEGIN
-            SELECT @sucesso = 0,
-                   @feedback = N'Erro! Usuário Executor Não Encontrado.';
-            SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-            RETURN;
-        END
-
-        -- Usuário Alvo Não Encontrado
-        IF NOT EXISTS (SELECT 1 FROM AspNetUsers (NOLOCK) WHERE Info_ApplicationUserInfoId = @usuario_cod)
-        BEGIN
-            SELECT @sucesso = 0,
-                   @feedback = N'Erro! Usuário Alvo Não Encontrado.';
-            SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-            RETURN;
-        END
-
-        IF @usuario_ativo = 0
-        BEGIN
-            -- Usuário já está bloqueado
-            IF EXISTS (SELECT 1 FROM AspNetUsers (NOLOCK) WHERE Info_ApplicationUserInfoId = @usuario_cod AND LockoutEnabled = 1 AND LockoutEndDateUtc > @data_agora)
-            BEGIN
-                SELECT @sucesso = 0,
-                       @feedback = N'Aviso! Usuário Alvo já está bloqueado.';
-                SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-                RETURN;
-            END
-
-            -- Remove permissões e loga cada remoção
-            DECLARE
-                @role_id NVARCHAR(128),
-                @aspnet_user_id NVARCHAR(128);
-
-            SELECT @aspnet_user_id = ANU.Id
-            FROM AspNetUsers ANU (NOLOCK)
-            WHERE ANU.Info_ApplicationUserInfoId = @usuario_cod;
-
-            DECLARE cursor_roles CURSOR FAST_FORWARD FOR
-                SELECT UR.RoleId
-                FROM AspNetUserRoles UR (NOLOCK)
-                WHERE UR.UserId = @aspnet_user_id;
-
-            OPEN cursor_roles;
-            FETCH NEXT FROM cursor_roles INTO @role_id;
-
-            WHILE @@FETCH_STATUS = 0
-            BEGIN
-                EXEC d_tb_usuario_permissao @usuario_cod = @usuario_cod, @tipo_permissao_cod = @role_id, @usuario_email_executor = @usuario_email_executor, @ocultar_retorno = 1;
-                FETCH NEXT FROM cursor_roles INTO @role_id;
-            END
-
-            CLOSE cursor_roles;
-            DEALLOCATE cursor_roles;
-        END
-        ELSE IF @usuario_ativo = 1
-        BEGIN
-            -- Usuário já está desbloqueado
-            IF EXISTS (SELECT 1 FROM AspNetUsers (NOLOCK) WHERE Info_ApplicationUserInfoId = @usuario_cod AND (LockoutEnabled = 0 OR ISNULL(LockoutEndDateUtc, 0) <= @data_agora))
-            BEGIN
-                SELECT @sucesso = 0,
-                       @feedback = N'Aviso! Usuário Alvo já está desbloqueado.';
-                SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-                RETURN;
-            END
-        END
-
-        -- Bloqueia/Desbloqueia respeitando o contrato esperado pelo sistema
-        UPDATE ANU
-        SET ANU.LockoutEnabled    = CASE
-                                        WHEN @usuario_ativo = 0 THEN 1
-                                        WHEN @usuario_ativo = 1 THEN 0
-                                        ELSE ANU.LockoutEnabled
-                                    END,
-            ANU.LockoutEndDateUtc = CASE
-                                        WHEN @usuario_ativo = 0 THEN CONVERT(DATETIME, '9999-12-31T23:59:59.997')
-                                        WHEN @usuario_ativo = 1 THEN NULL
-                                        ELSE ANU.LockoutEndDateUtc
-                                    END
-        FROM AspNetUsers ANU
-        WHERE ANU.Info_ApplicationUserInfoId = @usuario_cod;
-
-        -- Loga a operação mantendo o parâmetro original do contrato
-        EXEC i_tb_usuarios_ativacao_desativacao_log
-             @usuario_cod_afetado = @usuario_cod,
-             @usuario_cod_executor = @usuario_cod_executor,
-             @ativacao_desativacao = @usuario_ativo;
-    END
-
-    SET @sucesso = 1;
-    SET @feedback = N'Informações alteradas com sucesso!';
-
-    SELECT @sucesso AS Sucesso, @feedback AS Feedback;
-END
-GO
-
-IF UPPER(@@SERVERNAME) IN ('SGE-0','SGE-1','SGE-2')
-    RETURN;
-ELSE IF UPPER(DB_NAME()) = 'SGE_DEV'
-    GRANT EXECUTE ON [dbo].[u_tb_usuarios] TO user_sge_dev;
-IF UPPER(DB_NAME()) = 'SGEWEB_DEV'
-    GRANT EXECUTE ON [dbo].[u_tb_usuarios] TO usr_sgewebdev;
-ELSE IF UPPER(DB_NAME()) = 'SGE'
-    GRANT EXECUTE ON [dbo].[u_tb_usuarios] TO user_sge;
-ELSE IF UPPER(DB_NAME()) = 'SGEWEB'
-    GRANT EXECUTE ON [dbo].[u_tb_usuarios] TO usr_sgeweb;
-GO
-GO
-
--- ---------------------------------------------------------------------
--- [PROCEDURE  ] SGEWEB/PROCEDURES/v_usuarios_porto.sql
--- ---------------------------------------------------------------------
-USE sgeweb;
-ALTER VIEW v_usuarios_porto
-AS
-
-SELECT A.Email,
-       U.usuario_nome,
-       CASE
-           WHEN (SELECT count(RoleId)
-                 FROM AspNetUserRoles
-                 WHERE RoleId IN (SELECT id FROM AspNetRoles WHERE name LIKE 'Porto Se%')
-                   AND UserId = A.id) > 1 THEN 'CarroFacil'
-           ELSE 'Despachante'
-           END AS perfil
-FROM AspNetUsers A (NOLOCK)
-         INNER JOIN tb_usuarios U (NOLOCK) ON U.usuario_cod = A.Info_ApplicationUserInfoId
-WHERE A.Email LIKE '%portoseg%'
-  AND UserActive = 1;
-GO
-
-GO
-
--- ---------------------------------------------------------------------
--- [TRIGGER    ] SGEWEB/TRIGGERS/TR_AspNetUsers_SetUserActive.sql
--- ---------------------------------------------------------------------
-CREATE OR ALTER TRIGGER dbo.TR_AspNetUsers_SetUserActive
-ON dbo.AspNetUsers
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT (EXISTS (SELECT 1 FROM inserted EXCEPT SELECT 1 FROM deleted)
-            OR UPDATE(LockoutEnabled)
-            OR UPDATE(LockoutEndDateUtc))
-        RETURN;
-
-    UPDATE U
-       SET U.UserActive =
-           CASE
-               WHEN I.LockoutEnabled = 1
-                    AND I.LockoutEndDateUtc = CAST('9999-12-31T23:59:59.997' AS datetime)
-                   THEN 0
-               ELSE 1
-           END
-    FROM dbo.AspNetUsers U
-    INNER JOIN inserted I
-            ON I.Id = U.Id;
-END;
-GO
-
-GO
-
+<!doctype html>
+<html lang=pt-br>
+<meta charset=utf-8>
+<link rel=icon
+  href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
+<title>Lançamentos</title>
+<style>
+  :root {
+    --bg: #F7F6F3;
+    --pa: #FFF;
+    --fg: #1A1917;
+    --mu: #8A857C;
+    --ln: #E7E4DD;
+    --vd: #2F7D4F;
+    --vm: #C0392B
+  }
+
+  * {
+    box-sizing: border-box
+  }
+
+  [hidden] {
+    display: none !important
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 2rem 1.4rem;
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif
+  }
+
+  h1 {
+    font: 700 1.35rem/1 inherit;
+    letter-spacing: -.02em;
+    margin: 0;
+    cursor: pointer;
+    display: inline-block
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin: 0 0 .3rem
+  }
+
+  #sair {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    color: var(--mu);
+    background: var(--pa);
+    border: 1px solid var(--ln);
+    border-radius: 9px;
+    cursor: pointer
+  }
+
+  #sair:hover {
+    color: var(--vm);
+    border-color: var(--vm)
+  }
+
+  h1 .tt {
+    text-decoration: underline;
+    text-underline-offset: 3px
+  }
+
+  h1 .ic {
+    text-decoration: none
+  }
+
+  h1:hover .tt {
+    color: var(--mu)
+  }
+
+  .sub {
+    font-size: .85rem;
+    color: var(--mu);
+    font-style: italic;
+    margin: 0 0 1.8rem
+  }
+
+  .sub a {
+    color: var(--fg);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px
+  }
+
+  .tool {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--ln)
+  }
+
+  .row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    align-items: flex-end
+  }
+
+  .f {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem
+  }
+
+  .f>span {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mu)
+  }
+
+  select {
+    font: inherit;
+    color: inherit;
+    background: var(--pa);
+    border: 1px solid var(--ln);
+    border-radius: 9px;
+    padding: .42rem 1.9rem .42rem .7rem;
+    cursor: pointer;
+    appearance: none;
+    background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .7rem center
+  }
+
+  .chk {
+    display: flex;
+    gap: 1.1rem;
+    align-items: center;
+    height: 2.1rem
+  }
+
+  .chk label {
+    display: flex;
+    gap: .4rem;
+    align-items: center;
+    font-size: .92rem;
+    cursor: pointer
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px
+  }
+
+  .blk {
+    margin: 0 0 1.8rem
+  }
+
+  .blk h3 {
+    font: 700 1.05rem/1.3 inherit;
+    margin: 0
+  }
+
+  .blk h3 b {
+    font-weight: 700
+  }
+
+  .blk .meta {
+    font-size: .85rem;
+    color: var(--mu);
+    font-style: italic;
+    margin: .1rem 0 .6rem
+  }
+
+  .wrap {
+    background: var(--pa);
+    border: 1px solid var(--ln);
+    border-radius: 10px;
+    overflow: hidden
+  }
+
+  .wx {
+    overflow: auto;
+    max-height: 78vh
+  }
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    background: var(--pa)
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--pa);
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mu);
+    text-align: left;
+    padding: .55rem .7rem;
+    border-bottom: 1px solid var(--ln);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap
+  }
+
+  th .ar {
+    color: var(--fg);
+    font-style: normal
+  }
+
+  td {
+    padding: .5rem .7rem;
+    border-bottom: 1px solid var(--ln)
+  }
+
+  tr:last-child td {
+    border-bottom: 0
+  }
+
+  tbody tr:hover td {
+    background: var(--bg)
+  }
+
+  .wrap {
+    -webkit-overflow-scrolling: touch
+  }
+
+  .n {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap
+  }
+
+  .vd {
+    color: var(--vd);
+    font-weight: 600
+  }
+
+  tbody tr.fat td {
+    background: #FBEFE4
+  }
+
+  tbody tr.fat:hover td {
+    background: #F7E6D5
+  }
+
+  .vm {
+    color: var(--vm);
+    font-weight: 600
+  }
+
+  .tot td {
+    font-weight: 700;
+    border-top: 1px solid var(--ln);
+    border-bottom: 0;
+    background: var(--bg)
+  }
+
+  .tot td:first-child {
+    border-radius: 0 0 0 10px
+  }
+
+  .tot td:last-child {
+    border-radius: 0 0 10px 0
+  }
+
+  .empty {
+    color: var(--mu);
+    font-style: italic;
+    font-size: .9rem;
+    padding: .8rem
+  }
+
+  .sumr {
+    margin: .5rem 0 0;
+    font-size: .9rem
+  }
+
+  .sumr div {
+    display: flex;
+    justify-content: space-between;
+    padding: .3rem .1rem;
+    border-bottom: 1px solid var(--ln)
+  }
+
+  .sumr div:last-child {
+    border-bottom: 0;
+    font-weight: 700;
+    border-top: 2px solid var(--fg);
+    padding-top: .4rem
+  }
+
+  .sumr span:last-child {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap
+  }
+
+  #login {
+    max-width: 19rem;
+    margin: 16vh auto 0;
+    display: none;
+    flex-direction: column;
+    gap: .7rem
+  }
+
+  #login h1 {
+    cursor: default
+  }
+
+  #login h1 .tt {
+    text-decoration: none
+  }
+
+  #login input {
+    font: inherit;
+    padding: .55rem .7rem;
+    border: 1px solid var(--ln);
+    border-radius: 9px;
+    background: var(--pa)
+  }
+
+  #login button {
+    font: inherit;
+    color: var(--pa);
+    background: var(--fg);
+    border: 0;
+    border-radius: 9px;
+    padding: .6rem;
+    cursor: pointer
+  }
+
+  #login button:hover {
+    opacity: .85
+  }
+
+  #login .err {
+    color: var(--vm);
+    font-size: .85rem;
+    min-height: 1.1rem
+  }
+
+  #login .out {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-size: .8rem;
+    color: var(--mu)
+  }
+
+  #app {
+    display: none
+  }
+
+  #selbar {
+    position: fixed;
+    right: 1.6rem;
+    bottom: 1.6rem;
+    display: none;
+    align-items: center;
+    gap: 1.4rem;
+    background: var(--pa);
+    color: var(--fg);
+    padding: .9rem 1.3rem;
+    border: 1px solid var(--ln);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
+    z-index: 20
+  }
+
+  #selbar .info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2
+  }
+
+  #selbar .cnt {
+    font-size: .78rem;
+    color: var(--mu);
+    text-transform: uppercase;
+    letter-spacing: .04em
+  }
+
+  #selbar .val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums
+  }
+
+  #selbar button {
+    font: inherit;
+    color: var(--pa);
+    background: var(--fg);
+    border: 0;
+    border-radius: 9px;
+    padding: .5rem .9rem;
+    cursor: pointer
+  }
+
+  #selbar button:hover {
+    opacity: .85
+  }
+
+  tbody tr.pick {
+    cursor: pointer
+  }
+
+  tbody tr.on td {
+    background: #EAF3EC
+  }
+
+  tbody tr.on:hover td {
+    background: #E0EDE3
+  }
+
+  .wx td.c1,
+  .wx th.c1 {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--pa)
+  }
+
+  .wx thead th.c1 {
+    z-index: 3
+  }
+
+  .wx tbody tr:hover td.c1 {
+    background: var(--bg)
+  }
+
+  .wx tr.tot td.c1 {
+    background: var(--bg)
+  }
+
+  .wx td.c1 {
+    border-right: 1px solid var(--ln)
+  }
+
+  #abreFiltros, #fechaFiltros { display: none }
+
+  @media (max-width: 640px) {
+    body { padding: 1.2rem .9rem }
+    h1 { font-size: 1.15rem }
+    .head { gap: .5rem }
+
+    /* botao Filtros aparece a direita, com o mesmo estilo do sair */
+    #abreFiltros {
+      display: flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; padding: 0; margin-left: auto;
+      color: var(--mu); background: var(--pa);
+      border: 1px solid var(--ln); border-radius: 9px; cursor: pointer;
+    }
+    #abreFiltros:hover { color: var(--fg); border-color: var(--fg) }
+
+    /* gaveta: painel sobre o conteudo, deslizando de cima */
+    .tool {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 30;
+      background: var(--pa);
+      padding: 3rem 1.2rem 1.4rem;
+      margin: 0;
+      border: 0; border-bottom: 1px solid var(--ln);
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .tool.open { display: flex }
+    #fechaFiltros {
+      display: block; position: absolute; top: .6rem; right: .8rem;
+      font-size: 1.6rem; line-height: 1;
+      background: transparent; border: 0; color: var(--mu); cursor: pointer;
+      padding: .2rem .5rem;
+    }
+    .row { flex-direction: column; align-items: stretch; gap: .8rem }
+    .f { width: 100% }
+    select { width: 100% }
+    .chk { flex-wrap: wrap }
+
+    /* esconde abas nao-Ciclo no combo Visao (Comparar/Investimento) */
+    #visao option[value=k], #visao option[value=p] { display: none }
+
+    /* tabela: scroll horizontal em todas as visoes */
+    .wrap { overflow-x: auto }
+
+    /* barra flutuante ocupa a largura */
+    #selbar { left: .8rem; right: .8rem; bottom: .8rem; padding: .7rem 1rem }
+    #selbar .val { font-size: 1.2rem }
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div id=login>
+  <h1><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+  <input id=email type=email placeholder="e-mail" autocomplete=username>
+  <input id=senha type=password placeholder="senha" autocomplete=current-password>
+  <button id=entrar>Entrar</button>
+  <div class=err id=lerr></div>
+</div>
+
+<div id=app>
+  <div class=head>
+    <button id=sair title="Encerrar" aria-label="Encerrar"><svg viewBox="0 0 24 24" width=17 height=17 fill=none
+        stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+        <path d="M12 3v9" />
+        <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+      </svg></button>
+    <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+    <button id=abreFiltros title="Filtros" aria-label="Filtros"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><line x1=4 y1=6 x2=20 y2=6/><line x1=7 y1=12 x2=17 y2=12/><line x1=10 y1=18 x2=14 y2=18/></svg></button>
+  </div>
+  <p class=sub><span id=st></span></p>
+
+  <div class=tool>
+    <button id=fechaFiltros aria-label="Fechar filtros">×</button>
+    <div class=row>
+      <label class=f id=fvisao><span>Visão</span>
+        <select id=visao>
+          <option value=c>Ciclo
+          <option value=k>Comparar
+          <option value=p>Investimento
+        </select></label>
+      <label class=f id=fciclo><span>Ciclo</span><select id=ciclo></select></label>
+      <label class=f id=forigem><span>Origem</span>
+        <select id=origem>
+          <option value=A>Tudo
+          <option value=D>Débito
+          <option value=F>Crédito
+        </select></label>
+      <label class=f id=ftit><span>Titular</span>
+        <select id=titular>
+          <option value=T>Todos
+          <option value=E>Eu
+          <option value=I>Isabella
+        </select></label>
+      <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
+    </div>
+    <div class=row id=fsit>
+      <label class=f><span>Pago</span>
+        <select id=fpago>
+          <option value=B>Ambos
+          <option value=S>Sim
+          <option value=N>Não
+        </select></label>
+      <label class=f><span>Ativo</span>
+        <select id=fativo>
+          <option value=S>Sim
+          <option value=B>Ambos
+          <option value=N>Não
+        </select></label>
+    </div>
+  </div>
+  <div id=out></div>
+  <div id=selbar><span id=selinfo class=info></span><button id=selclear>Limpar</button></div>
+</div>
+
+<script>
+  const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
+  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
+
+  const $ = i => document.getElementById(i);
+  const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const cls = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';
+  const nu = v => `<td class="n ${cls(v)}">${brl(v)}`;
+  const d10 = s => String(s || '').slice(0, 10);
+  const ts = s => Date.parse(d10(s)) || 0;
+  const br = s => { const p = d10(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s };
+  const Cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+
+  // proximo dia (para calcular o inicio de um periodo a partir do fat do anterior)
+  function proximoDia(iso) {
+    const d = new Date(d10(iso) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  function menos30(iso) {
+    const d = new Date(d10(iso) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 30);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // nome do periodo: mes anterior ao fat. ex: fat=2026-07-06 -> "Junho 2026"
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function nomePeriodo(fatStr) {
+    const iso = d10(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+    let am = m - 1, ay = y;
+    if (am == 0) { am = 12; ay--; }
+    return `${MESES[am - 1]} ${ay}`;
+  }
+
+  // Competencia de uma compra no credito.
+  // 1) acha a fatura que recebe a compra: primeiro periodo cujo fecha >= data da compra
+  // 2) essa fatura vence no venc(_isa) desse periodo
+  // 3) a compra aparece no periodo cujo NOME bate com o mes/ano do vencimento
+  //    (nome do periodo = mes anterior ao seu fat, entao fat.mes = venc.mes + 1)
+  // Se venc for null, cai no backlog.
+  function compFatura(dataStr, isa) {
+    const iso = d10(dataStr);
+    const i = C.findIndex(c => {
+      const f = isa ? c.fecha_isa : c.fecha;
+      return f && d10(f) >= iso;
+    });
+    if (i < 0) return null;
+    const v = isa ? C[i].venc_isa : C[i].venc;
+    if (!v) return null;
+    const vi = d10(v), vy = +vi.slice(0, 4), vm = +vi.slice(5, 7);
+    // procura periodo cujo fat.mes/ano === venc.mes+1/ano (com virada dez->jan)
+    let em = vm + 1, ey = vy;
+    if (em == 13) { em = 1; ey++; }
+    return C.findIndex(c => {
+      const fi = d10(c.fat);
+      return +fi.slice(0, 4) == ey && +fi.slice(5, 7) == em;
+    });
+  }
+
+  // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número, b=booleano
+  const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
+  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n']];
+  let C = [], L = [];
+  const CURFAT = {};
+  const SEL = new Map();
+  const S = {};
+  const so = id => S[id] || (S[id] = { k: 'data', d: 1 });
+
+  let TOKEN = KEY, RESTRITO = false;
+  const get = async t => {
+    const r = await fetch(`${API}/rest/v1/${t}?select=*&limit=100000`,
+      { headers: { apikey: KEY, Authorization: 'Bearer ' + TOKEN } });
+    if (!r.ok) throw Error(`${t}: ${r.status} ${await r.text()}`);
+    return r.json();
+  };
+
+  async function load() {
+    if (API.includes('SEUPROJETO')) return $('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
+    $('st').textContent = 'Carregando…';
+    try {
+      const [cc, ll] = await Promise.all([get('periodos'), get('lancamentos')]);
+      // ordena por fat; ini de cada periodo = fat do anterior + 1 dia
+      // (o primeiro periodo comeca no proprio fat - 30 dias, so pra ter um limite inferior)
+      C = cc.sort((a, b) => ts(a.fat) - ts(b.fat)).map((p, i, arr) => ({
+        ...p,
+        ini: i == 0 ? menos30(p.fat) : proximoDia(arr[i - 1].fat),
+      }));
+      // cicloDe: em qual periodo cai uma data iso? Data ausente -> null (Backlog).
+      const cicloDe = iso => !iso ? null : C.findIndex(c => iso >= c.ini && iso <= d10(c.fat));
+      L = ll.map(r => {
+        let p;
+        if (!r.data) {
+          p = null;   // sem data -> Backlog, sempre
+        } else if (r.cred) {
+          p = compFatura(r.data, r.isa);
+        } else {
+          p = cicloDe(d10(r.data));
+        }
+        return {
+          ...r, v: +r.valor || 0, inv: /^investimento$/i.test(String(r.categ || '').trim()),
+          p: p != null && p >= 0 && p < C.length ? p : null
+        };
+      });
+      const k = $('ciclo').value;
+      const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      const atual = C.findIndex(c => hoje >= c.ini && hoje <= d10(c.fat));
+      const us = [...new Set(L.map(r => r.p).filter(p => p != null))];
+      if (atual >= 0 && !us.includes(atual)) us.push(atual);
+      us.sort((a, b) => a - b);
+      $('ciclo').innerHTML = '<option value=-1>Backlog' + us.map(i => `<option value=${i}>${nomePeriodo(C[i].fat)}`).join('');
+      const kk = k === '' ? null : +k;
+      $('ciclo').value = kk !== null && (kk < 0 || us.includes(kk)) ? kk : (atual >= 0 ? atual : us.at(-1) ?? -1);
+      $('grupo').innerHTML = Object.keys(ll[0] || {})
+        .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${Cap(c)}`).join('');
+      const b = L.filter(r => r.p == null).length;
+      $('st').innerHTML = `<b>${L.length}</b> Lançamentos · <b>${b}</b> Itens no Backlog`;
+      draw();
+    } catch (e) { $('st').textContent = ''; $('out').innerHTML = '<p class=empty>Falhou: ' + e.message + '</p>' }
+  }
+
+  const okBool = (sel, val) => { const v = $(sel).value; return v == 'B' || (v == 'S') == !!val; };
+  const filt = () => L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago)
+    && ({ A: 1, D: !r.cred, F: r.cred })[$('origem').value]
+    && ({ T: 1, E: !r.isa, I: r.isa })[$('titular').value]);
+
+  function ordena(x, id) {
+    const { k, d } = so(id), t = COLS.find(c => c[0] == k)[2], s = [...x];
+    s.sort((a, b) => {
+      const A = a[k], B = b[k];
+      const c = t == 'n' || t == 'b' ? ((+A || 0) - (+B || 0)) : t == 'd' ? (ts(A) - ts(B)) : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
+      return d == 1 ? c : -c;
+    });
+    return s;
+  }
+  function th(id) {
+    const { k, d } = so(id); return COLS.map(([kk, t, tp]) => {
+      const ar = k == kk ? (d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
+      return `<th class="${tp == 'n' ? 'n' : ''}" onclick="sortCol('${id}','${kk}')">${t}${ar}`;
+    }).join('');
+  }
+  window.sortCol = (id, k) => { const s = so(id); if (s.k != k) { s.k = k; s.d = 1 } else s.d = s.d == 1 ? 2 : 1; draw(); };
+
+  const sidOf = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
+  const cel = r => COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
+    : tp == 'b' ? `<td>${r[k] == null ? '—' : r[k] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
+      : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('');
+  const tabela = (x, id, selavel) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
+    ordena(x, id).map(r => {
+      const sid = sidOf(r), on = selavel && sid && SEL.has(sid);
+      return `<tr class="${r._fat ? 'fat ' : ''}${on ? 'on' : ''}${selavel && sid ? ' pick' : ''}" data-sid="${selavel ? sid : ''}">` + cel(r);
+    }).join('') + '</tbody></table></div>'
+    : '<p class=empty>Vazio</p>';
+
+  const linha = (r, v) => `<div><span>${r}</span><span class="${cls(v)}">${brl(v)}</span></div>`;
+  const bloco = (t, valor, meta, x, id, resumo = '', selavel = false) =>
+    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id, selavel)}${resumo}</div>`;
+
+  function vCiclo() {
+    const i = +$('ciclo').value;
+    if (i < 0) {
+      const x = filt().filter(r => r.p == null);
+      return bloco('Backlog', x.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', x, 'bk', '', true);
+    }
+    const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
+    const deb = filt().filter(r => r.p == i && !r.cred), fat = filt().filter(r => r.p == i && r.cred);
+    const sf = fat.reduce((s, r) => s + r.v, 0);
+    const linhaFat = {
+      data: c.ini || c.fat, nome: 'Fatura do cartão', categ: 'Fatura',
+      freq: '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
+    };
+    CURFAT[linhaFat._sid] = sf;
+    const debT = [...deb, linhaFat];
+    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${c.ini ? br(c.ini) : 'inicio'} a ${br(c.fat)}`, debT, 'db', '', true);
+    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? nomePeriodo(C[i - 1].fat) : '—', fat, 'cr', '', true);
+  }
+
+  function vComp() {
+    const g = $('grupo').value, d = filt().filter(r => r.p != null);
+    if (!d.length) return '<p class=empty>Vazio</p>';
+    const ms = [...new Set(d.map(r => r.p))].sort((a, b) => a - b), m = {};
+    d.forEach(r => { const k = r[g] ?? '—'; (m[k] = m[k] || {})[r.p] = (m[k][r.p] || 0) + r.v });
+    const sum = k => Object.values(m[k]).reduce((a, b) => a + b, 0);
+    return `<div class="wrap wx"><table><thead><tr><th class=c1>${Cap(g)}${ms.map(i => `<th class=n>${nomePeriodo(C[i].fat)}`).join('')}<th class=n>Total</thead><tbody>` +
+      Object.keys(m).sort((a, b) => sum(b) - sum(a)).map(k => `<tr><td class=c1>${k}` +
+        ms.map(i => m[k][i] == null ? '<td class=n>·' : nu(m[k][i])).join('') + nu(sum(k))).join('') +
+      '<tr class=tot><td class=c1>Total' + ms.map(i => nu(d.filter(r => r.p == i).reduce((s, r) => s + r.v, 0))).join('') +
+      nu(d.reduce((s, r) => s + r.v, 0)) + '</tbody></table></div>';
+  }
+
+  function vInv() {
+    const d = L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago) && r.p != null);
+    if (!d.length) return '<p class=empty>Vazio</p>';
+    let ac = 0;
+    const corpo = [...new Set(d.map(r => r.p))].sort((a, b) => a - b).map(i => {
+      const x = d.filter(r => r.p == i), iv = x.filter(r => r.inv);
+      const ap = iv.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
+      const sq = iv.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+      ac += ap - sq;
+      return `<tr><td>${nomePeriodo(C[i].fat)}` + nu(x.reduce((s, r) => s + r.v, 0)) + nu(ap) + nu(sq) + nu(ap - sq) + nu(ac);
+    }).join('');
+    return '<div class=wrap><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Sacado'
+      + '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
+  }
+
+  function aplicaPerfil() {
+    if (!RESTRITO) return;
+    $('visao').value = 'c';
+    $('fvisao').hidden = true;
+    $('fsit').hidden = true;
+    $('fpago').value = 'B'; $('fativo').value = 'S';
+  }
+  function draw() {
+    const isMobile = matchMedia('(max-width: 640px)').matches;
+    const v = (RESTRITO || isMobile) ? 'c' : $('visao').value;
+    $('fciclo').hidden = v != 'c';
+    $('forigem').hidden = $('fgrupo').hidden = v != 'k' || RESTRITO;
+    $('ftit').hidden = v == 'p' || RESTRITO;
+    if (RESTRITO) { $('fsit').hidden = $('fvisao').hidden = true; }
+    if (v != 'k') $('origem').value = 'A';
+    if (v == 'p') $('titular').value = 'T';
+    $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
+    if (v != 'c') { SEL.clear(); }
+    if (typeof atualizaSelbar == 'function') atualizaSelbar();
+  }
+
+  function atualizaSelbar() {
+    if (!SEL.size) { $('selbar').style.display = 'none'; return; }
+    let soma = 0; for (const v of SEL.values()) soma += v;
+    $('selinfo').innerHTML = `<span class=cnt>${SEL.size} ${SEL.size == 1 ? 'selecionado' : 'selecionados'}</span><span class="val ${cls(soma)}">${brl(soma)}</span>`;
+    $('selbar').style.display = 'flex';
+  }
+  function valorDe(sid) {
+    if (sid.startsWith('fat:')) return CURFAT[sid] || 0;
+    const r = L.find(x => String(x.id) == sid); return r ? r.v : 0;
+  }
+  function toggleSel(sid) {
+    if (!sid) return;
+    SEL.has(sid) ? SEL.delete(sid) : SEL.set(sid, valorDe(sid));
+    document.querySelectorAll(`tr[data-sid="${sid}"]`).forEach(tr => tr.classList.toggle('on', SEL.has(sid)));
+    atualizaSelbar();
+  }
+  $('out').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-sid]');
+    if (tr && tr.dataset.sid && !e.target.closest('th')) toggleSel(tr.dataset.sid);
+  });
+  $('selclear').onclick = () => { SEL.clear(); document.querySelectorAll('tr.on').forEach(tr => tr.classList.remove('on')); atualizaSelbar(); };
+  $('ciclo').addEventListener('change', () => { SEL.clear(); atualizaSelbar(); });
+
+  document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = draw);
+
+  // gaveta de filtros (mobile)
+  const tool = document.querySelector('.tool');
+  $('abreFiltros').onclick = () => tool.classList.add('open');
+  $('fechaFiltros').onclick = () => tool.classList.remove('open');
+  // no mobile, mudar filtro fecha a gaveta pra ver o resultado
+  document.querySelectorAll('.tool select,.tool input').forEach(e => e.addEventListener('change', () => {
+    if (matchMedia('(max-width: 640px)').matches) tool.classList.remove('open');
+  }));
+
+  const sb = supabase.createClient(API, KEY);
+  const mostra = s => { $('login').style.display = s ? 'none' : 'flex'; $('app').style.display = s ? 'block' : 'none'; };
+
+  async function boot() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { TOKEN = session.access_token; RESTRITO = (session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase(); aplicaPerfil(); mostra(1); load(); }
+    else mostra(0);
+  }
+  $('entrar').onclick = async () => {
+    $('lerr').textContent = '';
+    const { data, error } = await sb.auth.signInWithPassword(
+      { email: $('email').value.trim(), password: $('senha').value });
+    if (error) return $('lerr').textContent = 'E-mail ou senha inválidos.';
+    TOKEN = data.session.access_token; RESTRITO = (data.session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase(); aplicaPerfil(); mostra(1); load();
+  };
+  $('senha').onkeydown = e => { if (e.key == 'Enter') $('entrar').click(); };
+  $('sair').onclick = async () => { await sb.auth.signOut(); TOKEN = KEY; $('senha').value = ''; mostra(0); };
+
+  if (API.includes('SEUPROJETO')) { mostra(1); load(); }
+  else boot();
+</script>

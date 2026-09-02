@@ -443,6 +443,57 @@
   .wx td.c1 {
     border-right: 1px solid var(--ln)
   }
+
+  #abreFiltros, #fechaFiltros { display: none }
+
+  @media (max-width: 640px) {
+    body { padding: 1.2rem .9rem }
+    h1 { font-size: 1.15rem }
+    .head { gap: .5rem }
+
+    /* botao Filtros aparece a direita, com o mesmo estilo do sair */
+    #abreFiltros {
+      display: flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; padding: 0; margin-left: auto;
+      color: var(--mu); background: var(--pa);
+      border: 1px solid var(--ln); border-radius: 9px; cursor: pointer;
+    }
+    #abreFiltros:hover { color: var(--fg); border-color: var(--fg) }
+
+    /* gaveta: painel sobre o conteudo, deslizando de cima */
+    .tool {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 30;
+      background: var(--pa);
+      padding: 3rem 1.2rem 1.4rem;
+      margin: 0;
+      border: 0; border-bottom: 1px solid var(--ln);
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .tool.open { display: flex }
+    #fechaFiltros {
+      display: block; position: absolute; top: .6rem; right: .8rem;
+      font-size: 1.6rem; line-height: 1;
+      background: transparent; border: 0; color: var(--mu); cursor: pointer;
+      padding: .2rem .5rem;
+    }
+    .row { flex-direction: column; align-items: stretch; gap: .8rem }
+    .f { width: 100% }
+    select { width: 100% }
+    .chk { flex-wrap: wrap }
+
+    /* esconde abas nao-Ciclo no combo Visao (Comparar/Investimento) */
+    #visao option[value=k], #visao option[value=p] { display: none }
+
+    /* tabela: scroll horizontal em todas as visoes */
+    .wrap { overflow-x: auto }
+
+    /* barra flutuante ocupa a largura */
+    #selbar { left: .8rem; right: .8rem; bottom: .8rem; padding: .7rem 1rem }
+    #selbar .val { font-size: 1.2rem }
+  }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -463,10 +514,12 @@
         <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
       </svg></button>
     <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+    <button id=abreFiltros title="Filtros" aria-label="Filtros"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><line x1=4 y1=6 x2=20 y2=6/><line x1=7 y1=12 x2=17 y2=12/><line x1=10 y1=18 x2=14 y2=18/></svg></button>
   </div>
   <p class=sub><span id=st></span></p>
 
   <div class=tool>
+    <button id=fechaFiltros aria-label="Fechar filtros">×</button>
     <div class=row>
       <label class=f id=fvisao><span>Visão</span>
         <select id=visao>
@@ -720,7 +773,8 @@
     $('fpago').value = 'B'; $('fativo').value = 'S';
   }
   function draw() {
-    const v = RESTRITO ? 'c' : $('visao').value;
+    const isMobile = matchMedia('(max-width: 640px)').matches;
+    const v = (RESTRITO || isMobile) ? 'c' : $('visao').value;
     $('fciclo').hidden = v != 'c';
     $('forigem').hidden = $('fgrupo').hidden = v != 'k' || RESTRITO;
     $('ftit').hidden = v == 'p' || RESTRITO;
@@ -756,6 +810,15 @@
   $('ciclo').addEventListener('change', () => { SEL.clear(); atualizaSelbar(); });
 
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = draw);
+
+  // gaveta de filtros (mobile)
+  const tool = document.querySelector('.tool');
+  $('abreFiltros').onclick = () => tool.classList.add('open');
+  $('fechaFiltros').onclick = () => tool.classList.remove('open');
+  // no mobile, mudar filtro fecha a gaveta pra ver o resultado
+  document.querySelectorAll('.tool select,.tool input').forEach(e => e.addEventListener('change', () => {
+    if (matchMedia('(max-width: 640px)').matches) tool.classList.remove('open');
+  }));
 
   const sb = supabase.createClient(API, KEY);
   const mostra = s => { $('login').style.display = s ? 'none' : 'flex'; $('app').style.display = s ? 'block' : 'none'; };

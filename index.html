@@ -512,9 +512,6 @@
   const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
   const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
 
-  // Fechamento e vencimento por titular. Fallback caso a coluna nao exista em ciclos.
-  const FECH_EU = 5, VENC_EU = 12, FECH_ISA = 8, VENC_ISA = 12;
-
   const $ = i => document.getElementById(i);
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const cls = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';
@@ -524,20 +521,49 @@
   const br = s => { const p = d10(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s };
   const Cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
 
+  // proximo dia (para calcular o inicio de um periodo a partir do fat do anterior)
+  function proximoDia(iso) {
+    const d = new Date(d10(iso) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // nome do periodo: mes anterior ao fat. ex: fat=2026-07-06 -> "Junho 2026"
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function nomePeriodo(fatStr) {
+    const iso = d10(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+    let am = m - 1, ay = y;
+    if (am == 0) { am = 12; ay--; }
+    return `${MESES[am - 1]} ${ay}`;
+  }
+
   // Competencia de uma compra no credito.
-  // 1) fatura fecha no dia `fech`: compra depois do fechamento entra na fatura do mes seguinte
-  // 2) essa fatura vence no dia `venc` do mes seguinte ao fechamento
-  // 3) a compra aparece no ciclo que contem a data de vencimento
-  function compFatura(dataStr, fech, venc, cicloDe) {
-    const iso = d10(dataStr), y = +iso.slice(0, 4), m0 = +iso.slice(5, 7) - 1, dia = +iso.slice(8, 10);
-    let fm = m0;              // mes da compra (0-based)
-    if (dia > fech) fm += 1;  // comprou apos o corte -> fecha no mes seguinte
-    const venci = new Date(Date.UTC(y, fm, venc)); // vence no mes do fechamento
-    return cicloDe(venci.toISOString().slice(0, 10));
+  // 1) acha a fatura que recebe a compra: primeiro periodo cujo fecha >= data da compra
+  // 2) essa fatura vence no venc(_isa) desse periodo
+  // 3) a compra aparece no periodo cujo NOME bate com o mes/ano do vencimento
+  //    (nome do periodo = mes anterior ao seu fat, entao fat.mes = venc.mes + 1)
+  // Se venc for null, cai no backlog.
+  function compFatura(dataStr, isa) {
+    const iso = d10(dataStr);
+    const i = C.findIndex(c => {
+      const f = isa ? c.fecha_isa : c.fecha;
+      return f && d10(f) >= iso;
+    });
+    if (i < 0) return null;
+    const v = isa ? C[i].venc_isa : C[i].venc;
+    if (!v) return null;
+    const vi = d10(v), vy = +vi.slice(0, 4), vm = +vi.slice(5, 7);
+    // procura periodo cujo fat.mes/ano === venc.mes+1/ano (com virada dez->jan)
+    let em = vm + 1, ey = vy;
+    if (em == 13) { em = 1; ey++; }
+    return C.findIndex(c => {
+      const fi = d10(c.fat);
+      return +fi.slice(0, 4) == ey && +fi.slice(5, 7) == em;
+    });
   }
 
   // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número, b=booleano
-  const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categoria', 'Categoria', 't'],
+  const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
   ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
   let C = [], L = [];
   const CURFAT = {};
@@ -557,33 +583,33 @@
     if (API.includes('SEUPROJETO')) return $('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
     $('st').textContent = 'Carregando…';
     try {
-      const [cc, ll] = await Promise.all([get('ciclos'), get('lancamentos')]);
-      C = cc.sort((a, b) => ts(a.data_inicio) - ts(b.data_inicio));
-      const cicloDe = iso => C.findIndex(c => iso >= d10(c.data_inicio) && iso <= d10(c.data_fim));
-      // fechamento/vencimento sao do cartao (iguais em todo ciclo): pega do 1o, cai no fallback se ausente
-      const cfg = C[0] || {};
-      const fEu = +cfg.fechamento || FECH_EU, vEu = +cfg.vencimento || VENC_EU;
-      const fIsa = +cfg.fechamento_isabella || FECH_ISA, vIsa = +cfg.vencimento_isabella || VENC_ISA;
+      const [cc, ll] = await Promise.all([get('periodos'), get('lancamentos')]);
+      // ordena por fat; ini de cada periodo = fat do anterior + 1 dia; primeiro tem ini = null (mapeamento)
+      C = cc.sort((a, b) => ts(a.fat) - ts(b.fat)).map((p, i, arr) => ({
+        ...p,
+        ini: i == 0 ? null : proximoDia(arr[i - 1].fat),
+      }));
+      // cicloDe: em qual periodo cai uma data iso? ini==null (primeiro) aceita ate seu fat
+      const cicloDe = iso => C.findIndex(c => (c.ini == null || iso >= c.ini) && iso <= d10(c.fat));
       L = ll.map(r => {
         let p;
-        if (r.fatura) {
-          const fech = r.isabella ? fIsa : fEu, venc = r.isabella ? vIsa : vEu;
-          p = compFatura(r.data, fech, venc, cicloDe);
+        if (r.cred) {
+          p = compFatura(r.data, r.isa);
         } else {
           p = cicloDe(d10(r.data));
         }
         return {
-          ...r, v: +r.valor || 0, inv: /^investimento$/i.test(String(r.categoria || '').trim()),
+          ...r, v: +r.valor || 0, inv: /^investimento$/i.test(String(r.categ || '').trim()),
           p: p != null && p >= 0 && p < C.length ? p : null
         };
       });
       const k = $('ciclo').value;
       const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-      const atual = C.findIndex(c => hoje >= d10(c.data_inicio) && hoje <= d10(c.data_fim));
+      const atual = C.findIndex(c => (c.ini == null || hoje >= c.ini) && hoje <= d10(c.fat));
       const us = [...new Set(L.map(r => r.p).filter(p => p != null))];
       if (atual >= 0 && !us.includes(atual)) us.push(atual);
       us.sort((a, b) => a - b);
-      $('ciclo').innerHTML = '<option value=-1>Backlog' + us.map(i => `<option value=${i}>${C[i].nome}`).join('');
+      $('ciclo').innerHTML = '<option value=-1>Backlog' + us.map(i => `<option value=${i}>${nomePeriodo(C[i].fat)}`).join('');
       const kk = k === '' ? null : +k;
       $('ciclo').value = kk !== null && (kk < 0 || us.includes(kk)) ? kk : (atual >= 0 ? atual : us.at(-1) ?? -1);
       $('grupo').innerHTML = Object.keys(ll[0] || {})
@@ -596,8 +622,8 @@
 
   const okBool = (sel, val) => { const v = $(sel).value; return v == 'B' || (v == 'S') == !!val; };
   const filt = () => L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago)
-    && ({ A: 1, D: !r.fatura, F: r.fatura })[$('origem').value]
-    && ({ T: 1, E: !r.isabella, I: r.isabella })[$('titular').value]);
+    && ({ A: 1, D: !r.cred, F: r.cred })[$('origem').value]
+    && ({ T: 1, E: !r.isa, I: r.isa })[$('titular').value]);
 
   function ordena(x, id) {
     const { k, d } = so(id), t = COLS.find(c => c[0] == k)[2], s = [...x];
@@ -638,16 +664,16 @@
       return bloco('Backlog', x.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', x, 'bk', '', true);
     }
     const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
-    const deb = filt().filter(r => r.p == i && !r.fatura), fat = filt().filter(r => r.p == i && r.fatura);
+    const deb = filt().filter(r => r.p == i && !r.cred), fat = filt().filter(r => r.p == i && r.cred);
     const sf = fat.reduce((s, r) => s + r.v, 0);
     const linhaFat = {
-      data: c.data_inicio, nome: 'Fatura do cartão', categoria: 'Fatura',
-      freq: '', obs: C[i - 1] ? C[i - 1].nome : '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
+      data: c.ini || c.fat, nome: 'Fatura do cartão', categ: 'Fatura',
+      freq: '', obs: C[i - 1] ? nomePeriodo(C[i - 1].fat) : '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
     };
     CURFAT[linhaFat._sid] = sf;
     const debT = [...deb, linhaFat];
-    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, debT, 'db', '', true);
-    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? C[i - 1].nome : '—', fat, 'cr', '', true);
+    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${c.ini ? br(c.ini) : 'inicio'} a ${br(c.fat)}`, debT, 'db', '', true);
+    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? nomePeriodo(C[i - 1].fat) : '—', fat, 'cr', '', true);
   }
 
   function vComp() {
@@ -656,7 +682,7 @@
     const ms = [...new Set(d.map(r => r.p))].sort((a, b) => a - b), m = {};
     d.forEach(r => { const k = r[g] ?? '—'; (m[k] = m[k] || {})[r.p] = (m[k][r.p] || 0) + r.v });
     const sum = k => Object.values(m[k]).reduce((a, b) => a + b, 0);
-    return `<div class="wrap wx"><table><thead><tr><th class=c1>${Cap(g)}${ms.map(i => `<th class=n>${C[i].nome}`).join('')}<th class=n>Total</thead><tbody>` +
+    return `<div class="wrap wx"><table><thead><tr><th class=c1>${Cap(g)}${ms.map(i => `<th class=n>${nomePeriodo(C[i].fat)}`).join('')}<th class=n>Total</thead><tbody>` +
       Object.keys(m).sort((a, b) => sum(b) - sum(a)).map(k => `<tr><td class=c1>${k}` +
         ms.map(i => m[k][i] == null ? '<td class=n>·' : nu(m[k][i])).join('') + nu(sum(k))).join('') +
       '<tr class=tot><td class=c1>Total' + ms.map(i => nu(d.filter(r => r.p == i).reduce((s, r) => s + r.v, 0))).join('') +
@@ -672,7 +698,7 @@
       const ap = iv.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
       const sq = iv.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
       ac += ap - sq;
-      return `<tr><td>${C[i].nome}` + nu(x.reduce((s, r) => s + r.v, 0)) + nu(ap) + nu(sq) + nu(ap - sq) + nu(ac);
+      return `<tr><td>${nomePeriodo(C[i].fat)}` + nu(x.reduce((s, r) => s + r.v, 0)) + nu(ap) + nu(sq) + nu(ap - sq) + nu(ac);
     }).join('');
     return '<div class=wrap><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Sacado'
       + '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';

@@ -512,6 +512,9 @@
   const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
   const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
 
+  // Fechamento e vencimento por titular. Fallback caso a coluna nao exista em ciclos.
+  const FECH_EU = 5, VENC_EU = 12, FECH_ISA = 8, VENC_ISA = 12;
+
   const $ = i => document.getElementById(i);
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const cls = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';
@@ -520,13 +523,25 @@
   const ts = s => Date.parse(d10(s)) || 0;
   const br = s => { const p = d10(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s };
   const Cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
-  // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número
+
+  // Competencia de uma compra no credito.
+  // 1) fatura fecha no dia `fech`: compra depois do fechamento entra na fatura do mes seguinte
+  // 2) essa fatura vence no dia `venc` do mes seguinte ao fechamento
+  // 3) a compra aparece no ciclo que contem a data de vencimento
+  function compFatura(dataStr, fech, venc, cicloDe) {
+    const iso = d10(dataStr), y = +iso.slice(0, 4), m0 = +iso.slice(5, 7) - 1, dia = +iso.slice(8, 10);
+    let fm = m0;              // mes da compra (0-based)
+    if (dia > fech) fm += 1;  // comprou apos o corte -> fecha no mes seguinte
+    const venci = new Date(Date.UTC(y, fm, venc)); // vence no mes do fechamento
+    return cicloDe(venci.toISOString().slice(0, 10));
+  }
+
+  // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número, b=booleano
   const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categoria', 'Categoria', 't'],
   ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['obs', 'Obs', 't'], ['id', 'ID', 'n']];
   let C = [], L = [];
   const CURFAT = {};
-  const SEL = new Map();   // chave -> valor (linhas reais e fatura sintetica)
-  // ordenacao por bloco: S[id]={k,d}. Padrao data asc. d: 1 asc, 2 desc
+  const SEL = new Map();
   const S = {};
   const so = id => S[id] || (S[id] = { k: 'data', d: 1 });
 
@@ -544,12 +559,22 @@
     try {
       const [cc, ll] = await Promise.all([get('ciclos'), get('lancamentos')]);
       C = cc.sort((a, b) => ts(a.data_inicio) - ts(b.data_inicio));
+      const cicloDe = iso => C.findIndex(c => iso >= d10(c.data_inicio) && iso <= d10(c.data_fim));
+      // fechamento/vencimento sao do cartao (iguais em todo ciclo): pega do 1o, cai no fallback se ausente
+      const cfg = C[0] || {};
+      const fEu = +cfg.fechamento || FECH_EU, vEu = +cfg.vencimento || VENC_EU;
+      const fIsa = +cfg.fechamento_isabella || FECH_ISA, vIsa = +cfg.vencimento_isabella || VENC_ISA;
       L = ll.map(r => {
-        const i = C.findIndex(c => d10(r.data) >= d10(c.data_inicio) && d10(r.data) <= d10(c.data_fim));
-        const p = i < 0 ? null : (r.fatura ? i + 1 : i);
+        let p;
+        if (r.fatura) {
+          const fech = r.isabella ? fIsa : fEu, venc = r.isabella ? vIsa : vEu;
+          p = compFatura(r.data, fech, venc, cicloDe);
+        } else {
+          p = cicloDe(d10(r.data));
+        }
         return {
           ...r, v: +r.valor || 0, inv: /^investimento$/i.test(String(r.categoria || '').trim()),
-          p: p != null && p < C.length ? p : null
+          p: p != null && p >= 0 && p < C.length ? p : null
         };
       });
       const k = $('ciclo').value;
@@ -620,7 +645,7 @@
       freq: '', obs: C[i - 1] ? C[i - 1].nome : '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
     };
     CURFAT[linhaFat._sid] = sf;
-    const debT = [...deb, linhaFat];   // fatura entra no debito p/ todos, so o total
+    const debT = [...deb, linhaFat];
     const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${br(c.data_inicio)} a ${br(c.data_fim)}`, debT, 'db', '', true);
     return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? C[i - 1].nome : '—', fat, 'cr', '', true);
   }
@@ -656,9 +681,9 @@
   function aplicaPerfil() {
     if (!RESTRITO) return;
     $('visao').value = 'c';
-    $('fvisao').hidden = true;   // sem seletor de visao
-    $('fsit').hidden = true;     // sem checkboxes
-    $('fpago').value = 'B'; $('fativo').value = 'S';  // ve tudo (pago+aberto), so ativos
+    $('fvisao').hidden = true;
+    $('fsit').hidden = true;
+    $('fpago').value = 'B'; $('fativo').value = 'S';
   }
   function draw() {
     const v = RESTRITO ? 'c' : $('visao').value;
@@ -698,7 +723,6 @@
 
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = draw);
 
-  // ---- login ----
   const sb = supabase.createClient(API, KEY);
   const mostra = s => { $('login').style.display = s ? 'none' : 'flex'; $('app').style.display = s ? 'block' : 'none'; };
 
@@ -717,6 +741,6 @@
   $('senha').onkeydown = e => { if (e.key == 'Enter') $('entrar').click(); };
   $('sair').onclick = async () => { await sb.auth.signOut(); TOKEN = KEY; $('senha').value = ''; mostra(0); };
 
-  if (API.includes('SEUPROJETO')) { mostra(1); load(); }   // sem config: abre direto (dev)
+  if (API.includes('SEUPROJETO')) { mostra(1); load(); }
   else boot();
 </script>

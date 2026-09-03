@@ -4,7 +4,7 @@
 <meta name=viewport content="width=device-width, initial-scale=1">
 <link rel=icon
   href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
-<title>Fin</title>
+<title>Lançamentos</title>
 <style>
   :root {
     --bg: #F7F6F3;
@@ -211,6 +211,17 @@
     user-select: none;
     white-space: nowrap
   }
+
+  thead tr.filtros th {
+    position: sticky; top: 1.9rem; z-index: 1; background: var(--pa);
+    padding: .25rem .5rem .45rem; border-bottom: 1px solid var(--ln); cursor: default
+  }
+  thead tr.filtros input {
+    width: 100%; font: 12px/1.3 inherit; font-weight: 400; text-transform: none;
+    letter-spacing: normal; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--ln); border-radius: 6px; padding: .2rem .4rem
+  }
+  thead tr.filtros input::placeholder { color: var(--mu) }
 
   th .ar {
     color: var(--fg);
@@ -500,7 +511,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <div id=login>
-  <h1><span class=ic>💰</span> <span class=tt>Fin</span></h1>
+  <h1><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
   <input id=email type=email placeholder="e-mail" autocomplete=username>
   <input id=senha type=password placeholder="senha" autocomplete=current-password>
   <button id=entrar>Entrar</button>
@@ -514,7 +525,7 @@
         <path d="M12 3v9" />
         <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
       </svg></button>
-    <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Fin</span></h1>
+    <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
     <button id=abreFiltros title="Filtros" aria-label="Filtros"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><line x1=4 y1=6 x2=20 y2=6/><line x1=7 y1=12 x2=17 y2=12/><line x1=10 y1=18 x2=14 y2=18/></svg></button>
   </div>
   <p class=sub><span id=st></span></p>
@@ -542,6 +553,8 @@
           <option value=I>Isabella
         </select></label>
       <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
+      <label class=f id=fde><span>De</span><select id=compDe></select></label>
+      <label class=f id=fate><span>Até</span><select id=compAte></select></label>
     </div>
     <div class=row id=fsit>
       <label class=f><span>Pago</span>
@@ -563,282 +576,525 @@
 </div>
 
 <script>
+    // ===================================================================
+  // CONFIG — credenciais do Supabase, e-mail do perfil restrito, e as
+  // definicoes que moldam a interface (meses, colunas das tabelas)
+  // ===================================================================
   const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
-  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // e-mail do usuario restrito
+  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // login que recebe a visao restrita
 
-  const $ = i => document.getElementById(i);
-  const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const cls = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';
-  const nu = v => `<td class="n ${cls(v)}">${brl(v)}`;
-  const d10 = s => String(s || '').slice(0, 10);
-  const ts = s => Date.parse(d10(s)) || 0;
-  const br = s => { const p = d10(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s };
-  const Cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+  // nomes dos meses, usados por nomePeriodo() pra rotular cada periodo (ex: "Junho 2026")
+  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-  // proximo dia (para calcular o inicio de um periodo a partir do fat do anterior)
+  // colunas mostradas nas tabelas de lancamentos, na ordem em que aparecem.
+  // [chave no objeto, rotulo exibido, tipo]  tipo: d=data, t=texto, n=numero, b=booleano
+  const COLS = [
+    ['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
+    ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n'],
+  ];
+
+  // ===================================================================
+  // ESTADO — tudo que muda durante o uso do app fica junto aqui, num
+  // objeto so. Facilita saber "o que e dado da aplicacao" so olhando
+  // essa lista, em vez de variaveis soltas espalhadas pelo arquivo.
+  // ===================================================================
+  const Estado = {
+    periodos: [],              // linhas da tabela 'periodos', ja com o campo 'ini' calculado
+    lancamentos: [],           // linhas da tabela 'lancamentos', ja com 'v' (numero) e 'periodoIdx'
+    valorFaturaPorCiclo: {},   // chave 'fat:<indice>' -> total da fatura daquele periodo (usado na selecao)
+    selecionados: new Map(),   // chave de selecao -> valor da linha (soma da barra flutuante)
+    ordenacaoPorTabela: {},    // id da tabela -> { k: coluna, d: direcao (1 asc, 2 desc) }
+    filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
+    token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
+    restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
+  };
+
+  // le (ou cria) o estado de ordenacao de uma tabela especifica
+  const estadoOrdenacao = id => Estado.ordenacaoPorTabela[id] || (Estado.ordenacaoPorTabela[id] = { k: 'data', d: 1 });
+  const estadoFiltroTexto = id => Estado.filtroTexto[id] || (Estado.filtroTexto[id] = {});
+
+  // ===================================================================
+  // HELPERS — pequenas funcoes puras usadas em toda parte
+  // ===================================================================
+  const el = id => document.getElementById(id);                         // atalho pra getElementById
+  const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); // formata em R$
+  const corValor = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';                // classe css: vermelho/verde conforme o sinal
+  const celValor = v => `<td class="n ${corValor(v)}">${brl(v)}`;        // celula <td> ja formatada em R$
+  const dataISO = s => String(s || '').slice(0, 10);                    // normaliza pra 'YYYY-MM-DD'
+  const timestamp = s => Date.parse(dataISO(s)) || 0;                   // 'YYYY-MM-DD' -> numero, pra comparar/ordenar
+  const dataBR = s => { const p = dataISO(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s }; // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
+  const capitaliza = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+
+  // proximo dia (usado pra calcular o inicio de um periodo a partir do 'fat' do anterior)
   function proximoDia(iso) {
-    const d = new Date(d10(iso) + 'T00:00:00Z');
+    const d = new Date(dataISO(iso) + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() + 1);
     return d.toISOString().slice(0, 10);
   }
+  // 30 dias antes de uma data (usado so pro limite inferior do primeiro periodo, que nao tem "anterior")
   function menos30(iso) {
-    const d = new Date(d10(iso) + 'T00:00:00Z');
+    const d = new Date(dataISO(iso) + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() - 30);
     return d.toISOString().slice(0, 10);
   }
 
-  // nome do periodo: mes anterior ao fat. ex: fat=2026-07-06 -> "Junho 2026"
-  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'.
+  // Ex.: periodo com fat=2026-07-06 se chama "Junho 2026" (o mes em que ele comecou).
   function nomePeriodo(fatStr) {
-    const iso = d10(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
-    let am = m - 1, ay = y;
-    if (am == 0) { am = 12; ay--; }
-    return `${MESES[am - 1]} ${ay}`;
+    const iso = dataISO(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+    let mesAnterior = m - 1, ano = y;
+    if (mesAnterior == 0) { mesAnterior = 12; ano--; }   // janeiro -> volta pra dezembro do ano anterior
+    return `${MESES[mesAnterior - 1]} ${ano}`;
   }
 
-  // Competencia de uma compra no credito.
-  // 1) acha a fatura que recebe a compra: primeiro periodo cujo fecha >= data da compra
-  // 2) essa fatura vence no venc(_isa) desse periodo
-  // 3) a compra aparece no periodo cujo NOME bate com o mes/ano do vencimento
-  //    (nome do periodo = mes anterior ao seu fat, entao fat.mes = venc.mes + 1)
-  // Se venc for null, cai no backlog.
-  function compFatura(dataStr, isa) {
-    const iso = d10(dataStr);
-    const i = C.findIndex(c => {
-      const f = isa ? c.fecha_isa : c.fecha;
-      return f && d10(f) >= iso;
+  // Em qual PERIODO uma compra no CREDITO aparece.
+  // Passos:
+  //  1) acha a fatura que recebe a compra: primeiro periodo cujo 'fecha' (ou 'fecha_isa')
+  //     e maior ou igual a data da compra
+  //  2) essa fatura vence no 'venc' (ou 'venc_isa') desse mesmo periodo
+  //  3) a compra aparece no periodo cujo NOME bate com o mes/ano desse vencimento
+  //     (nome do periodo = mes anterior ao seu 'fat', entao fat.mes = venc.mes + 1)
+  // Se o vencimento nao estiver preenchido, retorna null (a compra cai no Backlog).
+  function periodoDoCredito(dataStr, ehIsabella) {
+    const dataCompra = dataISO(dataStr);
+    const iFatura = Estado.periodos.findIndex(per => {
+      const fechamento = ehIsabella ? per.fecha_isa : per.fecha;
+      return fechamento && dataISO(fechamento) >= dataCompra;
     });
-    if (i < 0) return null;
-    const v = isa ? C[i].venc_isa : C[i].venc;
-    if (!v) return null;
-    const vi = d10(v), vy = +vi.slice(0, 4), vm = +vi.slice(5, 7);
-    // procura periodo cujo fat.mes/ano === venc.mes+1/ano (com virada dez->jan)
-    let em = vm + 1, ey = vy;
-    if (em == 13) { em = 1; ey++; }
-    return C.findIndex(c => {
-      const fi = d10(c.fat);
-      return +fi.slice(0, 4) == ey && +fi.slice(5, 7) == em;
+    if (iFatura < 0) return null;
+    const vencimento = ehIsabella ? Estado.periodos[iFatura].venc_isa : Estado.periodos[iFatura].venc;
+    if (!vencimento) return null;   // sem vencimento cadastrado -> Backlog
+    const v = dataISO(vencimento), anoVenc = +v.slice(0, 4), mesVenc = +v.slice(5, 7);
+    // mes/ano do periodo que deve exibir essa fatura: mes seguinte ao vencimento vira o 'fat' dele
+    let mesAlvo = mesVenc + 1, anoAlvo = anoVenc;
+    if (mesAlvo == 13) { mesAlvo = 1; anoAlvo++; }
+    return Estado.periodos.findIndex(per => {
+      const f = dataISO(per.fat);
+      return +f.slice(0, 4) == anoAlvo && +f.slice(5, 7) == mesAlvo;
     });
   }
 
-  // [chave, rótulo, tipo]  tipo: d=data, t=texto, n=número, b=booleano
-  const COLS = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
-  ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n']];
-  let C = [], L = [];
-  const CURFAT = {};
-  const SEL = new Map();
-  const S = {};
-  const so = id => S[id] || (S[id] = { k: 'data', d: 1 });
+  // Em qual PERIODO uma movimentacao de DEBITO cai: o periodo cujo intervalo [ini, fat] contem a data.
+  // Retorna null se a data for vazia (Backlog) ou nao cair em nenhum periodo cadastrado.
+  function periodoDoDebito(iso) {
+    if (!iso) return null;
+    return Estado.periodos.findIndex(per => iso >= per.ini && iso <= dataISO(per.fat));
+  }
 
-  let TOKEN = KEY, RESTRITO = false;
-  const get = async t => {
-    const r = await fetch(`${API}/rest/v1/${t}?select=*&limit=100000`,
-      { headers: { apikey: KEY, Authorization: 'Bearer ' + TOKEN } });
-    if (!r.ok) throw Error(`${t}: ${r.status} ${await r.text()}`);
+  // ===================================================================
+  // CARGA DE DADOS — busca no Supabase e processa (sem tocar na tela)
+  // ===================================================================
+  const buscar = async tabela => {
+    const r = await fetch(`${API}/rest/v1/${tabela}?select=*&limit=100000`,
+      { headers: { apikey: KEY, Authorization: 'Bearer ' + Estado.token } });
+    if (!r.ok) throw Error(`${tabela}: ${r.status} ${await r.text()}`);
     return r.json();
   };
 
-  async function load() {
-    if (API.includes('SEUPROJETO')) return $('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
-    $('st').textContent = 'Carregando…';
-    try {
-      const [cc, ll] = await Promise.all([get('periodos'), get('lancamentos')]);
-      // ordena por fat; ini de cada periodo = fat do anterior + 1 dia
-      // (o primeiro periodo comeca no proprio fat - 30 dias, so pra ter um limite inferior)
-      C = cc.sort((a, b) => ts(a.fat) - ts(b.fat)).map((p, i, arr) => ({
-        ...p,
-        ini: i == 0 ? menos30(p.fat) : proximoDia(arr[i - 1].fat),
-      }));
-      // cicloDe: em qual periodo cai uma data iso? Data ausente -> null (Backlog).
-      const cicloDe = iso => !iso ? null : C.findIndex(c => iso >= c.ini && iso <= d10(c.fat));
-      L = ll.map(r => {
-        let p;
-        if (!r.data) {
-          p = null;   // sem data -> Backlog, sempre
-        } else if (r.cred) {
-          p = compFatura(r.data, r.isa);
-        } else {
-          p = cicloDe(d10(r.data));
-        }
-        return {
-          ...r, v: +r.valor || 0, inv: /^investimento$/i.test(String(r.categ || '').trim()),
-          p: p != null && p >= 0 && p < C.length ? p : null
-        };
-      });
-      const k = $('ciclo').value;
-      const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-      const atual = C.findIndex(c => hoje >= c.ini && hoje <= d10(c.fat));
-      const us = [...new Set(L.map(r => r.p).filter(p => p != null))];
-      if (atual >= 0 && !us.includes(atual)) us.push(atual);
-      us.sort((a, b) => a - b);
-      $('ciclo').innerHTML = '<option value=-1>Backlog' + us.map(i => `<option value=${i}>${nomePeriodo(C[i].fat)}`).join('');
-      const kk = k === '' ? null : +k;
-      $('ciclo').value = kk !== null && (kk < 0 || us.includes(kk)) ? kk : (atual >= 0 ? atual : us.at(-1) ?? -1);
-      $('grupo').innerHTML = Object.keys(ll[0] || {})
-        .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${Cap(c)}`).join('');
-      const b = L.filter(r => r.p == null).length;
-      $('st').innerHTML = `<b>${L.length}</b> Lançamentos · <b>${b}</b> Itens no Backlog`;
-      draw();
-    } catch (e) { $('st').textContent = ''; $('out').innerHTML = '<p class=empty>Falhou: ' + e.message + '</p>' }
-  }
+  // Busca periodos + lancamentos no Supabase e monta Estado.periodos / Estado.lancamentos,
+  // ja com a competencia (periodoIdx) de cada lancamento calculada. Nao mexe na tela.
+  async function carregarDados() {
+    const [periodosCrus, lancamentosCrus] = await Promise.all([buscar('periodos'), buscar('lancamentos')]);
 
-  const okBool = (sel, val) => { const v = $(sel).value; return v == 'B' || (v == 'S') == !!val; };
-  const filt = () => L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago)
-    && ({ A: 1, D: !r.cred, F: r.cred })[$('origem').value]
-    && ({ T: 1, E: !r.isa, I: r.isa })[$('titular').value]);
+    // ordena por 'fat' e calcula o inicio de cada periodo (= fat do anterior + 1 dia).
+    // o primeiro periodo nao tem anterior, entao usa fat-30dias so como limite inferior.
+    Estado.periodos = periodosCrus
+      .sort((a, b) => timestamp(a.fat) - timestamp(b.fat))
+      .map((per, i, arr) => ({ ...per, ini: i == 0 ? menos30(per.fat) : proximoDia(arr[i - 1].fat) }));
 
-  function ordena(x, id) {
-    const { k, d } = so(id), t = COLS.find(c => c[0] == k)[2], s = [...x];
-    s.sort((a, b) => {
-      const A = a[k], B = b[k];
-      const c = t == 'n' || t == 'b' ? ((+A || 0) - (+B || 0)) : t == 'd' ? (ts(A) - ts(B)) : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
-      return d == 1 ? c : -c;
+    // classifica cada lancamento na sua competencia (periodoIdx)
+    Estado.lancamentos = lancamentosCrus.map(r => {
+      let periodoIdx;
+      if (!r.data) {
+        periodoIdx = null;                                   // sem data -> Backlog, sempre
+      } else if (r.cred) {
+        periodoIdx = periodoDoCredito(r.data, r.isa);         // credito segue fechamento/vencimento do cartao
+      } else {
+        periodoIdx = periodoDoDebito(dataISO(r.data));        // debito segue o intervalo do periodo
+      }
+      return {
+        ...r,
+        v: +r.valor || 0,                                                    // valor numerico seguro
+        inv: /^investimento$/i.test(String(r.categ || '').trim()),           // e da categoria Investimento?
+        periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
+      };
     });
-    return s;
+
+    return { periodosCrus, lancamentosCrus };   // devolve os crus tambem, usados so na montagem dos combos
   }
-  function th(id) {
-    const { k, d } = so(id); return COLS.map(([kk, t, tp]) => {
-      const ar = k == kk ? (d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
-      return `<th class="${tp == 'n' ? 'n' : ''}" onclick="sortCol('${id}','${kk}')">${t}${ar}`;
-    }).join('');
+
+  // ===================================================================
+  // ATUALIZAÇÃO DE UI — popula os <select> a partir do Estado já carregado
+  // ===================================================================
+  // Monta o combo de periodos (so os que tem algum lancamento, mais o periodo atual mesmo se vazio)
+  // e o combo "Agrupar por" (colunas disponiveis pra visao Comparar).
+  function atualizarCombos(lancamentosCrus) {
+    const selecaoAnterior = el('ciclo').value;
+    const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const idxAtual = Estado.periodos.findIndex(per => hoje >= per.ini && hoje <= dataISO(per.fat));
+    const usados = [...new Set(Estado.lancamentos.map(r => r.periodoIdx).filter(p => p != null))];
+    if (idxAtual >= 0 && !usados.includes(idxAtual)) usados.push(idxAtual);
+    usados.sort((a, b) => a - b);
+    el('ciclo').innerHTML = '<option value=-1>Backlog' +
+      usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
+
+    // preserva a selecao anterior se ainda for valida; senao cai no periodo atual (ou no mais recente usado)
+    const valorAnterior = selecaoAnterior === '' ? null : +selecaoAnterior;
+    el('ciclo').value = valorAnterior !== null && (valorAnterior < 0 || usados.includes(valorAnterior))
+      ? valorAnterior
+      : (idxAtual >= 0 ? idxAtual : usados.at(-1) ?? -1);
+
+    // combo "Agrupar por": todas as colunas do lancamento, com 'nome' pre-selecionado
+    el('grupo').innerHTML = Object.keys(lancamentosCrus[0] || {})
+      .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${capitaliza(c)}`).join('');
+
+    // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog
+    const opcoesPeriodo = usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
+    const deAnterior = el('compDe').value, ateAnterior = el('compAte').value;
+    el('compDe').innerHTML = opcoesPeriodo;
+    el('compAte').innerHTML = opcoesPeriodo;
+    el('compDe').value = usados.includes(+deAnterior) ? deAnterior : usados[0] ?? '';
+    el('compAte').value = usados.includes(+ateAnterior) ? ateAnterior : usados.at(-1) ?? '';
   }
-  window.sortCol = (id, k) => { const s = so(id); if (s.k != k) { s.k = k; s.d = 1 } else s.d = s.d == 1 ? 2 : 1; draw(); };
 
-  const sidOf = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
-  const cel = r => COLS.map(([k, , tp]) => k == 'valor' ? nu(r.v)
-    : tp == 'b' ? `<td>${r[k] == null ? '—' : r[k] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
-      : `<td class="${tp == 'n' ? 'n' : ''}">${k == 'data' ? br(r.data) : r[k] ?? ''}`).join('');
-  const tabela = (x, id, selavel) => x.length ? `<div class=wrap><table><thead><tr>${th(id)}</thead><tbody>` +
-    ordena(x, id).map(r => {
-      const sid = sidOf(r), on = selavel && sid && SEL.has(sid);
-      return `<tr class="${r._fat ? 'fat ' : ''}${on ? 'on' : ''}${selavel && sid ? ' pick' : ''}" data-sid="${selavel ? sid : ''}">` + cel(r);
-    }).join('') + '</tbody></table></div>'
-    : '<p class=empty>Vazio</p>';
+  // Fluxo completo de carga: busca dados, atualiza os combos, mostra o contador e desenha a tela.
+  // E a unica funcao chamada de fora (pelo botao de recarregar e pelo login).
+  async function load() {
+    if (API.includes('SEUPROJETO')) return el('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
+    el('st').textContent = 'Carregando…';
+    try {
+      const { lancamentosCrus } = await carregarDados();
+      atualizarCombos(lancamentosCrus);
 
-  const linha = (r, v) => `<div><span>${r}</span><span class="${cls(v)}">${brl(v)}</span></div>`;
-  const bloco = (t, valor, meta, x, id, resumo = '', selavel = false) =>
-    `<div class=blk><h3>${t} · <b class="${valor > 0 ? 'vd' : ''}">${brl(Math.abs(valor))}</b></h3><p class=meta>${meta}</p>${tabela(x, id, selavel)}${resumo}</div>`;
-
-  function vCiclo() {
-    const i = +$('ciclo').value;
-    if (i < 0) {
-      const x = filt().filter(r => r.p == null);
-      return bloco('Backlog', x.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', x, 'bk', '', true);
+      const totalBacklog = Estado.lancamentos.filter(r => r.periodoIdx == null).length;
+      el('st').innerHTML = `<b>${Estado.lancamentos.length}</b> Lançamentos · <b>${totalBacklog}</b> Itens no Backlog`;
+      desenhar();
+    } catch (e) {
+      el('st').textContent = '';
+      el('out').innerHTML = '<p class=empty>Falhou: ' + e.message + '</p>';
     }
-    const c = C[i]; if (!c) return '<p class=empty>Sem ciclos</p>';
-    const deb = filt().filter(r => r.p == i && !r.cred), fat = filt().filter(r => r.p == i && r.cred);
-    const sf = fat.reduce((s, r) => s + r.v, 0);
-    const linhaFat = {
-      data: c.ini || c.fat, nome: 'Fatura do cartão', categ: 'Fatura',
-      freq: '', id: 0, v: sf, _fat: 1, _sid: 'fat:' + i
-    };
-    CURFAT[linhaFat._sid] = sf;
-    const debT = [...deb, linhaFat];
-    const dbl = bloco('Débito', debT.reduce((s, r) => s + r.v, 0), `${c.ini ? br(c.ini) : 'inicio'} a ${br(c.fat)}`, debT, 'db', '', true);
-    return RESTRITO ? dbl : dbl + bloco('Crédito', sf, C[i - 1] ? nomePeriodo(C[i - 1].fat) : '—', fat, 'cr', '', true);
   }
 
-  function vComp() {
-    const g = $('grupo').value, d = filt().filter(r => r.p != null);
-    if (!d.length) return '<p class=empty>Vazio</p>';
-    const ms = [...new Set(d.map(r => r.p))].sort((a, b) => a - b), m = {};
-    d.forEach(r => { const k = r[g] ?? '—'; (m[k] = m[k] || {})[r.p] = (m[k][r.p] || 0) + r.v });
-    const sum = k => Object.values(m[k]).reduce((a, b) => a + b, 0);
-    return `<div class="wrap wx"><table><thead><tr><th class=c1>${Cap(g)}${ms.map(i => `<th class=n>${nomePeriodo(C[i].fat)}`).join('')}<th class=n>Total</thead><tbody>` +
-      Object.keys(m).sort((a, b) => sum(b) - sum(a)).map(k => `<tr><td class=c1>${k}` +
-        ms.map(i => m[k][i] == null ? '<td class=n>·' : nu(m[k][i])).join('') + nu(sum(k))).join('') +
-      '<tr class=tot><td class=c1>Total' + ms.map(i => nu(d.filter(r => r.p == i).reduce((s, r) => s + r.v, 0))).join('') +
-      nu(d.reduce((s, r) => s + r.v, 0)) + '</tbody></table></div>';
-  }
+  // ===================================================================
+  // FILTROS — os selects/checkboxes da barra de ferramentas
+  // ===================================================================
+  // le um select de 3 estados (Ambos/Sim/Não) e diz se um valor booleano passa no filtro
+  const passaFiltroTriEstado = (idSelect, valor) => {
+    const v = el(idSelect).value;
+    return v == 'B' || (v == 'S') == !!valor;
+  };
+  // aplica todos os filtros ativos (situacao, origem, titular) sobre a lista de lancamentos
+  const filtrarLancamentos = () => Estado.lancamentos.filter(r =>
+    passaFiltroTriEstado('fativo', r.ativo) &&
+    passaFiltroTriEstado('fpago', r.pago) &&
+    ({ A: 1, D: !r.cred, F: r.cred })[el('origem').value] &&
+    ({ T: 1, E: !r.isa, I: r.isa })[el('titular').value]
+  );
 
-  function vInv() {
-    const d = L.filter(r => okBool('fativo', r.ativo) && okBool('fpago', r.pago) && r.p != null);
-    if (!d.length) return '<p class=empty>Vazio</p>';
-    let ac = 0;
-    const corpo = [...new Set(d.map(r => r.p))].sort((a, b) => a - b).map(i => {
-      const x = d.filter(r => r.p == i), iv = x.filter(r => r.inv);
-      const ap = iv.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
-      const sq = iv.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
-      ac += ap - sq;
-      return `<tr><td>${nomePeriodo(C[i].fat)}` + nu(x.reduce((s, r) => s + r.v, 0)) + nu(ap) + nu(sq) + nu(ap - sq) + nu(ac);
+  // ===================================================================
+  // ORDENAÇÃO DE TABELAS — cada tabela (id) guarda seu proprio estado
+  // ===================================================================
+  function ordenarLinhas(linhas, idTabela) {
+    const { k: coluna, d: direcao } = estadoOrdenacao(idTabela);
+    const tipo = COLS.find(c => c[0] == coluna)[2];
+    const copia = [...linhas];
+    copia.sort((a, b) => {
+      const A = a[coluna], B = b[coluna];
+      const cmp = tipo == 'n' || tipo == 'b' ? ((+A || 0) - (+B || 0))
+        : tipo == 'd' ? (timestamp(A) - timestamp(B))
+        : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
+      return direcao == 1 ? cmp : -cmp;
+    });
+    return copia;
+  }
+  // monta o <tr> de cabecalho de uma tabela, com a setinha de ordenacao na coluna ativa
+  function cabecalhoTabela(idTabela) {
+    const { k: colunaAtiva, d: direcao } = estadoOrdenacao(idTabela);
+    const linhaTitulos = COLS.map(([chave, rotulo, tipo]) => {
+      const seta = colunaAtiva == chave ? (direcao == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
+      return `<th class="${tipo == 'n' ? 'n' : ''}" onclick="sortCol('${idTabela}','${chave}')">${rotulo}${seta}`;
     }).join('');
-    return '<div class=wrap><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Sacado'
-      + '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
+    // 2a linha do header: campo de busca por coluna, so nas colunas de texto (tipo 't')
+    const filtroAtual = estadoFiltroTexto(idTabela);
+    const linhaBusca = '<tr class=filtros>' + COLS.map(([chave, rotulo, tipo]) => tipo == 't'
+      ? `<th><input type=text placeholder="Filtrar ${rotulo.toLowerCase()}…" value="${filtroAtual[chave] ?? ''}" oninput="filtrarColuna('${idTabela}','${chave}',this.value)"></th>`
+      : '<th>'
+    ).join('');
+    return linhaTitulos + linhaBusca;
   }
+  // chamado a cada tecla digitada num campo de busca de coluna.
+  // desenhar() reescreve o innerHTML inteiro, o que tiraria o foco do campo a cada letra —
+  // por isso guarda qual input estava focado (e onde estava o cursor) e restaura depois.
+  window.filtrarColuna = (idTabela, coluna, texto) => {
+    estadoFiltroTexto(idTabela)[coluna] = texto;
+    const ativo = document.activeElement;
+    const posicaoCursor = ativo && ativo.selectionStart;
+    desenhar();
+    const novoInput = document.querySelector(`[oninput*="filtrarColuna('${idTabela}','${coluna}'"]`);
+    if (novoInput) { novoInput.focus(); if (posicaoCursor != null) novoInput.setSelectionRange(posicaoCursor, posicaoCursor); }
+  };
+  // remove acentos e caixa: "Café" e "cafe" viram a mesma coisa pra comparar
+  const semAcento = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  // uma linha passa no filtro de texto da tabela se contem (ignorando acento e maiuscula) todos os termos digitados
+  function passaFiltroTexto(r, idTabela) {
+    const filtro = estadoFiltroTexto(idTabela);
+    return Object.entries(filtro).every(([coluna, termo]) =>
+      !termo || semAcento(r[coluna]).includes(semAcento(termo))
+    );
+  }
+  // clique no header: 1o clique ordena asc, 2o desc, alternando (sem 3o estado "original")
+  window.sortCol = (idTabela, coluna) => {
+    const estado = estadoOrdenacao(idTabela);
+    if (estado.k != coluna) { estado.k = coluna; estado.d = 1; }
+    else estado.d = estado.d == 1 ? 2 : 1;
+    desenhar();
+  };
 
-  function aplicaPerfil() {
-    if (!RESTRITO) return;
-    $('visao').value = 'c';
-    $('fvisao').hidden = true;
-    $('fsit').hidden = true;
-    $('fpago').value = 'B'; $('fativo').value = 'S';
-  }
-  function draw() {
+  // ===================================================================
+  // RENDERIZAÇÃO DE TABELAS
+  // ===================================================================
+  // chave de selecao de uma linha: usa o _sid sintetico (linha de fatura) ou o id real
+  const chaveSelecao = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
+  // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
+  const celulasDaLinha = r => COLS.map(([chave, , tipo]) => chave == 'valor' ? celValor(r.v)
+    : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
+      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? dataBR(r.data) : r[chave] ?? ''}`
+  ).join('');
+  // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
+  const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
+    const linhas = linhasBrutas.filter(r => passaFiltroTexto(r, idTabela));
+    if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
+    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
+    return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
+      ordenarLinhas(linhas, idTabela).map(r => {
+        const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
+        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
+      }).join('') + '</tbody></table></div>';
+  };
+
+  // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo
+  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false) =>
+    `<div class=blk><h3>${titulo} · <b class="${total > 0 ? 'vd' : ''}">${brl(Math.abs(total))}</b></h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+
+  // ===================================================================
+  // AS TRÊS VISÕES: Ciclo, Comparar, Investimento
+  // ===================================================================
+
+  // Visão "Ciclo": mostra um periodo por vez, com os blocos Debito e Credito (ou o Backlog).
+  function vCiclo() {
+    const i = +el('ciclo').value;
+
+    if (i < 0) {   // Backlog: lancamentos sem data ou fora de qualquer periodo
+      const linhas = filtrarLancamentos().filter(r => r.periodoIdx == null);
+      return renderBloco('Backlog', linhas.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', linhas, 'bk', true);
+    }
+
+    const periodo = Estado.periodos[i];
+    if (!periodo) return '<p class=empty>Sem ciclos</p>';
+
+    const debitos = filtrarLancamentos().filter(r => r.periodoIdx == i && !r.cred);
+    const creditos = filtrarLancamentos().filter(r => r.periodoIdx == i && r.cred);
+    const totalCredito = creditos.reduce((s, r) => s + r.v, 0);
+
+    // a fatura entra como UMA linha sintetica dentro do bloco Debito (ela sai da conta nesse periodo)
+    const linhaFatura = {
+      data: periodo.ini || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
+      freq: '', id: 0, v: totalCredito, _fat: 1, _sid: 'fat:' + i,
+    };
+    Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalCredito;
+
+    const debitosComFatura = [...debitos, linhaFatura];
+    const blocoDebito = renderBloco(
+      'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
+      `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
+      debitosComFatura, 'db', true
+    );
+
+    // perfil restrito da Isabella E mobile: so o Debito (com a fatura embutida), sem o detalhe do credito
     const isMobile = matchMedia('(max-width: 640px)').matches;
-    const v = (RESTRITO || isMobile) ? 'c' : $('visao').value;
-    $('fciclo').hidden = v != 'c';
-    $('forigem').hidden = $('fgrupo').hidden = v != 'k' || RESTRITO;
-    $('ftit').hidden = v == 'p' || RESTRITO;
-    if (RESTRITO) { $('fsit').hidden = $('fvisao').hidden = true; }
-    if (v != 'k') $('origem').value = 'A';
-    if (v == 'p') $('titular').value = 'T';
-    $('out').innerHTML = v == 'c' ? vCiclo() : v == 'k' ? vComp() : vInv();
-    if (v != 'c') { SEL.clear(); }
-    if (typeof atualizaSelbar == 'function') atualizaSelbar();
+    if (Estado.restrito || isMobile) return blocoDebito;
+
+    const blocoCredito = renderBloco(
+      'Crédito', totalCredito,
+      Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
+      creditos, 'cr', true
+    );
+    return blocoDebito + blocoCredito;
   }
 
-  function atualizaSelbar() {
-    if (!SEL.size) { $('selbar').style.display = 'none'; return; }
-    let soma = 0; for (const v of SEL.values()) soma += v;
-    $('selinfo').innerHTML = `<span class=cnt>${SEL.size} ${SEL.size == 1 ? 'selecionado' : 'selecionados'}</span><span class="val ${cls(soma)}">${brl(soma)}</span>`;
-    $('selbar').style.display = 'flex';
+  // Visão "Comparar": uma matriz [categoria/nome/etc × periodo], com totais por linha e coluna.
+  function vComp() {
+    const coluna = el('grupo').value;
+    const linhas = filtrarLancamentos().filter(r => r.periodoIdx != null);
+    if (!linhas.length) return '<p class=empty>Vazio</p>';
+
+    // recorta pelo intervalo De/Até escolhido (se vazio, mostra tudo)
+    const de = +el('compDe').value, ate = +el('compAte').value;
+    const dentroDoIntervalo = i => (isNaN(de) || i >= de) && (isNaN(ate) || i <= ate);
+    const periodosUsados = [...new Set(linhas.map(r => r.periodoIdx))].filter(dentroDoIntervalo).sort((a, b) => a - b);
+    const matriz = {};
+    linhas.filter(r => dentroDoIntervalo(r.periodoIdx)).forEach(r => {
+      const chave = r[coluna] ?? '—';
+      (matriz[chave] = matriz[chave] || {})[r.periodoIdx] = (matriz[chave][r.periodoIdx] || 0) + r.v;
+    });
+    const totalDaChave = chave => Object.values(matriz[chave]).reduce((a, b) => a + b, 0);
+
+    const cabecalho = `<tr><th class=c1>${capitaliza(coluna)}` +
+      periodosUsados.map(i => `<th class=n>${nomePeriodo(Estado.periodos[i].fat)}`).join('') + '<th class=n>Total</thead>';
+
+    const corpo = Object.keys(matriz).sort((a, b) => totalDaChave(b) - totalDaChave(a)).map(chave =>
+      `<tr><td class=c1>${chave}` +
+      periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celValor(matriz[chave][i])).join('') +
+      celValor(totalDaChave(chave))
+    ).join('');
+
+    const linhasNoIntervalo = linhas.filter(r => dentroDoIntervalo(r.periodoIdx));
+    const totalPorPeriodo = i => linhasNoIntervalo.filter(r => r.periodoIdx == i).reduce((s, r) => s + r.v, 0);
+    const linhaTotal = '<tr class=tot><td class=c1>Total' +
+      periodosUsados.map(i => celValor(totalPorPeriodo(i))).join('') +
+      celValor(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
+
+    return `<div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
   }
-  function valorDe(sid) {
-    if (sid.startsWith('fat:')) return CURFAT[sid] || 0;
-    const r = L.find(x => String(x.id) == sid); return r ? r.v : 0;
+
+  // Visão "Investimento": por periodo, quanto sobrou, quanto foi aportado/sacado na categoria
+  // "Investimento" e o saldo acumulado ao longo do tempo.
+  function vInv() {
+    const linhas = Estado.lancamentos.filter(r =>
+      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago) && r.periodoIdx != null
+    );
+    if (!linhas.length) return '<p class=empty>Vazio</p>';
+
+    let acumulado = 0;
+    const corpo = [...new Set(linhas.map(r => r.periodoIdx))].sort((a, b) => a - b).map(i => {
+      const doPeriodo = linhas.filter(r => r.periodoIdx == i);
+      const investimentos = doPeriodo.filter(r => r.inv);
+      const aportado = investimentos.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
+      const sacado = investimentos.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+      acumulado += aportado - sacado;
+      return `<tr><td>${nomePeriodo(Estado.periodos[i].fat)}` +
+        celValor(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
+        celValor(aportado) + celValor(sacado) + celValor(aportado - sacado) + celValor(acumulado);
+    }).join('');
+
+    return '<div class=wrap><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Sacado' +
+      '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
   }
-  function toggleSel(sid) {
-    if (!sid) return;
-    SEL.has(sid) ? SEL.delete(sid) : SEL.set(sid, valorDe(sid));
-    document.querySelectorAll(`tr[data-sid="${sid}"]`).forEach(tr => tr.classList.toggle('on', SEL.has(sid)));
-    atualizaSelbar();
+
+  // ===================================================================
+  // PERFIL RESTRITO (Isabella) e DESENHO GERAL DA TELA
+  // ===================================================================
+  // aplicado uma vez, logo apos o login: trava a visao em Ciclo e some com os demais filtros
+  function aplicaPerfil() {
+    if (!Estado.restrito) return;
+    el('visao').value = 'c';   // o resto (esconder filtros, forcar Pago/Ativo) e' feito em desenhar()
   }
-  $('out').addEventListener('click', e => {
-    const tr = e.target.closest('tr[data-sid]');
-    if (tr && tr.dataset.sid && !e.target.closest('th')) toggleSel(tr.dataset.sid);
+
+  // redesenha a tela conforme a visao ativa, escondendo/mostrando os filtros que fazem sentido nela
+  function desenhar() {
+    const isMobile = matchMedia('(max-width: 640px)').matches;
+    const visao = (Estado.restrito || isMobile) ? 'c' : el('visao').value;   // mobile so mostra Ciclo
+
+    el('fciclo').hidden = visao != 'c';
+    el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || Estado.restrito || isMobile;
+    el('ftit').hidden = visao == 'p' || Estado.restrito || isMobile;
+    if (Estado.restrito || isMobile) {
+      el('fsit').hidden = el('fvisao').hidden = true;
+      el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
+    }
+    if (visao != 'k') el('origem').value = 'A';
+    if (visao == 'p') el('titular').value = 'T';
+
+    el('out').innerHTML = visao == 'c' ? vCiclo() : visao == 'k' ? vComp() : vInv();
+    if (visao != 'c') Estado.selecionados.clear();   // troca de aba limpa a selecao (evita soma "fantasma")
+    if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
+  }
+
+  // ===================================================================
+  // SELEÇÃO DE LINHAS (barra flutuante de soma)
+  // ===================================================================
+  function atualizaBarraSelecao() {
+    if (!Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
+    let soma = 0;
+    for (const v of Estado.selecionados.values()) soma += v;
+    el('selinfo').innerHTML =
+      `<span class=cnt>${Estado.selecionados.size} ${Estado.selecionados.size == 1 ? 'selecionado' : 'selecionados'}</span>` +
+      `<span class="val ${corValor(soma)}">${brl(soma)}</span>`;
+    el('selbar').style.display = 'flex';
+  }
+  // valor de uma linha a partir da sua chave de selecao (linha real ou fatura sintetica)
+  function valorDaChave(chave) {
+    if (chave.startsWith('fat:')) return Estado.valorFaturaPorCiclo[chave] || 0;
+    const r = Estado.lancamentos.find(x => String(x.id) == chave);
+    return r ? r.v : 0;
+  }
+  function alternarSelecao(chave) {
+    if (!chave) return;
+    Estado.selecionados.has(chave) ? Estado.selecionados.delete(chave) : Estado.selecionados.set(chave, valorDaChave(chave));
+    document.querySelectorAll(`tr[data-sid="${chave}"]`).forEach(tr => tr.classList.toggle('on', Estado.selecionados.has(chave)));
+    atualizaBarraSelecao();
+  }
+  el('out').addEventListener('click', e => {
+    const linha = e.target.closest('tr[data-sid]');
+    if (linha && linha.dataset.sid && !e.target.closest('th')) alternarSelecao(linha.dataset.sid);
   });
-  $('selclear').onclick = () => { SEL.clear(); document.querySelectorAll('tr.on').forEach(tr => tr.classList.remove('on')); atualizaSelbar(); };
-  $('ciclo').addEventListener('change', () => { SEL.clear(); atualizaSelbar(); });
+  el('selclear').onclick = () => {
+    Estado.selecionados.clear();
+    document.querySelectorAll('tr.on').forEach(tr => tr.classList.remove('on'));
+    atualizaBarraSelecao();
+  };
+  el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
 
-  document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = draw);
+  // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
+  document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);
 
-  // gaveta de filtros (mobile)
-  const tool = document.querySelector('.tool');
-  $('abreFiltros').onclick = () => tool.classList.add('open');
-  $('fechaFiltros').onclick = () => tool.classList.remove('open');
-  // no mobile, mudar filtro fecha a gaveta pra ver o resultado
+  // ===================================================================
+  // GAVETA DE FILTROS (mobile)
+  // ===================================================================
+  const painelFiltros = document.querySelector('.tool');
+  el('abreFiltros').onclick = () => painelFiltros.classList.add('open');
+  el('fechaFiltros').onclick = () => painelFiltros.classList.remove('open');
+  // no mobile, mudar um filtro ja fecha a gaveta pra mostrar o resultado
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.addEventListener('change', () => {
-    if (matchMedia('(max-width: 640px)').matches) tool.classList.remove('open');
+    if (matchMedia('(max-width: 640px)').matches) painelFiltros.classList.remove('open');
   }));
 
+  // ===================================================================
+  // LOGIN (Supabase Auth)
+  // ===================================================================
   const sb = supabase.createClient(API, KEY);
-  const mostra = s => { $('login').style.display = s ? 'none' : 'flex'; $('app').style.display = s ? 'block' : 'none'; };
+  const mostraTela = logado => {
+    el('login').style.display = logado ? 'none' : 'flex';
+    el('app').style.display = logado ? 'block' : 'none';
+  };
 
+  // ao abrir a pagina: se ja existe sessao salva, entra direto; senao mostra o login
   async function boot() {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) { TOKEN = session.access_token; RESTRITO = (session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase(); aplicaPerfil(); mostra(1); load(); }
-    else mostra(0);
+    if (session) {
+      Estado.token = session.access_token;
+      Estado.restrito = (session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase();
+      aplicaPerfil(); mostraTela(1); load();
+    } else {
+      mostraTela(0);
+    }
   }
-  $('entrar').onclick = async () => {
-    $('lerr').textContent = '';
+  el('entrar').onclick = async () => {
+    el('lerr').textContent = '';
     const { data, error } = await sb.auth.signInWithPassword(
-      { email: $('email').value.trim(), password: $('senha').value });
-    if (error) return $('lerr').textContent = 'E-mail ou senha inválidos.';
-    TOKEN = data.session.access_token; RESTRITO = (data.session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase(); aplicaPerfil(); mostra(1); load();
+      { email: el('email').value.trim(), password: el('senha').value });
+    if (error) return el('lerr').textContent = 'E-mail ou senha inválidos.';
+    Estado.token = data.session.access_token;
+    Estado.restrito = (data.session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase();
+    aplicaPerfil(); mostraTela(1); load();
   };
-  $('senha').onkeydown = e => { if (e.key == 'Enter') $('entrar').click(); };
-  $('sair').onclick = async () => { await sb.auth.signOut(); TOKEN = KEY; $('senha').value = ''; mostra(0); };
+  el('senha').onkeydown = e => { if (e.key == 'Enter') el('entrar').click(); };
+  el('sair').onclick = async () => { await sb.auth.signOut(); Estado.token = KEY; el('senha').value = ''; mostraTela(0); };
 
-  if (API.includes('SEUPROJETO')) { mostra(1); load(); }
+  if (API.includes('SEUPROJETO')) { mostraTela(1); load(); }   // sem chaves configuradas: pula o login (modo dev)
   else boot();
+
+
+
+
 </script>

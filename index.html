@@ -885,9 +885,14 @@
     // combos do formulario "Novo lancamento": categorias e frequencias ja usadas no banco, sem repetir
     // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
     const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // filtra valores vazios de verdade (null/undefined/"") E as strings literais "null"/"undefined"
-    // que podem ter ficado salvas no banco de alguma insercao anterior
-    const valorValido = v => v && !['null', 'undefined'].includes(String(v).trim().toLowerCase());
+    // filtra valores vazios de verdade (null/undefined/"") E variacoes textuais de "vazio" que
+    // podem ter ficado salvas no banco por engano: "null", "<null>", "undefined", "n/a" etc.
+    // remove os simbolos < > antes de comparar, pra pegar tanto "null" quanto "<null>".
+    const valorValido = v => {
+      if (!v) return false;
+      const limpo = String(v).trim().toLowerCase().replace(/^<|>$/g, '');
+      return !['null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
+    };
     const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
     const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
     el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
@@ -1011,7 +1016,13 @@
   const celValorMobile = r => `<td class="n ${r.pago ? 'vd' : 'vm'}">${brl(r.v)}`;
   // texto de uma celula "vazia": trata null/undefined/"" E a string literal "null"/"undefined"
   // que pode ter ficado gravada no banco por engano em alguma insercao anterior
-  const textoOuTraco = v => (v == null || ['null', 'undefined'].includes(String(v).trim().toLowerCase())) ? '—' : v;
+  // mesma logica de limpeza do valorValido: reconhece "null", "<null>", "n/a" etc como vazio
+  const ehVazioTextual = v => {
+    if (v == null) return true;
+    const limpo = String(v).trim().toLowerCase().replace(/^<|>$/g, '');
+    return ['', 'null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
+  };
+  const textoOuTraco = v => ehVazioTextual(v) ? '—' : v;
   // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
   const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
     ? (isMobile() ? celValorMobile(r) : celValor(r.v))
@@ -1303,13 +1314,14 @@
     e.preventDefault();
     el('erroNovo').textContent = '';
 
-    // so Nome e' obrigatorio. Todos os outros vao null quando vazios, nunca string vazia
+    // Nome e Categoria sao obrigatorios. O resto vai null quando vazio, nunca string vazia
     // (string vazia salva no banco reaparece depois como um valor "fantasma" na tela).
     const nome = el('fNome').value.trim();
     if (!nome) return el('erroNovo').textContent = 'Preencha o nome.';
+    const categ = el('fCateg').value || null;
+    if (!categ) return el('erroNovo').textContent = 'Escolha uma categoria.';
 
     const data = el('fData').value || null;
-    const categ = el('fCateg').value || null;
     const freq = el('fFreq').value || null;
     const valorDigitado = el('fValor').value.trim();
     const valorNum = valorDigitado ? valorMascaraParaNumero(valorDigitado) * (sinalPositivo ? 1 : -1) : null;

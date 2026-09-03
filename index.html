@@ -168,6 +168,13 @@
     font-weight: 700
   }
 
+  .selTudoBt {
+    font: 400 .78rem/1 inherit; vertical-align: middle;
+    color: var(--mu); background: var(--pa); border: 1px solid var(--ln);
+    border-radius: 7px; padding: .25rem .55rem; cursor: pointer; margin-left: .3rem
+  }
+  .selTudoBt:hover { color: var(--fg); border-color: var(--fg) }
+
   .blk .meta {
     font-size: .85rem;
     color: var(--mu);
@@ -710,6 +717,7 @@
     selecionados: new Map(),   // chave de selecao -> valor da linha (soma da barra flutuante)
     ordenacaoPorTabela: {},    // id da tabela -> { k: coluna, d: direcao (1 asc, 2 desc) }
     filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
+    linhasVisiveis: {},         // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
     token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
   };
@@ -1006,6 +1014,7 @@
   // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
   const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
     const linhas = linhasBrutas.filter(r => passaFiltroTexto(r, idTabela));
+    Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
     if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
     if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
     return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
@@ -1015,9 +1024,15 @@
       }).join('') + '</tbody></table></div>';
   };
 
-  // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo
-  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false) =>
-    `<div class=blk><h3>${titulo} · <b class="${corValor(total)}">${brl(Math.abs(total))}</b></h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+  // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
+  // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
+  // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
+  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false) => {
+    const btnTudo = selecionavel && linhas.length
+      ? `<button type=button class=selTudoBt onclick="selecionarTudo('${idTabela}')">Selecionar tudo</button>`
+      : '';
+    return `<div class=blk><h3>${titulo} · <b class="${corValor(total)}">${brl(Math.abs(total))}</b> ${btnTudo}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+  };
 
   // ===================================================================
   // AS TRÊS VISÕES: Ciclo, Comparar, Investimento
@@ -1039,9 +1054,15 @@
     const creditos = filtrarLancamentos().filter(r => r.periodoIdx == i && r.cred);
     const totalCredito = creditos.reduce((s, r) => s + r.v, 0);
 
-    // a fatura entra como UMA linha sintetica dentro do bloco Debito (ela sai da conta nesse periodo)
+    // a fatura entra como UMA linha sintetica dentro do bloco Debito (ela sai da conta nesse periodo).
+    // a data dessa linha e' o VENCIMENTO real (do banco), nao o inicio do ciclo. Como o bloco pode
+    // misturar credito seu e da Isabella, o desempate e': Titular=Isabella usa venc_isa, qualquer
+    // outro caso (Eu ou Todos) usa o seu venc.
+    const dataVencimentoFatura = el('titular').value == 'I'
+      ? (periodo.venc_isa || periodo.venc)
+      : (periodo.venc || periodo.venc_isa);
     const linhaFatura = {
-      data: periodo.ini || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
+      data: dataVencimentoFatura || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
       freq: '', id: 0, v: totalCredito, _fat: 1, _sid: 'fat:' + i,
     };
     Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalCredito;
@@ -1177,6 +1198,17 @@
     document.querySelectorAll(`tr[data-sid="${chave}"]`).forEach(tr => tr.classList.toggle('on', Estado.selecionados.has(chave)));
     atualizaBarraSelecao();
   }
+  // marca/desmarca de uma vez todas as linhas visiveis de uma tabela (respeita filtro de texto ativo).
+  // se todas ja estao marcadas, desmarca tudo (toggle); senao, marca as que faltam.
+  window.selecionarTudo = idTabela => {
+    const chaves = (Estado.linhasVisiveis[idTabela] || []).map(chaveSelecao).filter(Boolean);
+    const todasMarcadas = chaves.length > 0 && chaves.every(c => Estado.selecionados.has(c));
+    chaves.forEach(chave => {
+      if (todasMarcadas) Estado.selecionados.delete(chave);
+      else if (!Estado.selecionados.has(chave)) Estado.selecionados.set(chave, valorDaChave(chave));
+    });
+    desenhar();   // redesenha pra refletir o novo estado 'on' em todas as linhas de uma vez
+  };
   el('out').addEventListener('click', e => {
     const linha = e.target.closest('tr[data-sid]');
     if (linha && linha.dataset.sid && !e.target.closest('th')) alternarSelecao(linha.dataset.sid);

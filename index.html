@@ -661,8 +661,8 @@
         </div>
       </label>
 
-      <label class=fm><span>Categoria</span>
-        <select id=fCateg></select></label>
+      <label class=fm><span>Categoria <b class=req>*</b></span>
+        <select id=fCateg required></select></label>
 
       <label class=fm><span>Frequência</span>
         <select id=fFreq><option value="">—</option></select></label>
@@ -890,7 +890,7 @@
     const valorValido = v => v && !['null', 'undefined'].includes(String(v).trim().toLowerCase());
     const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
     const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
-    el('fCateg').innerHTML = '<option value="">— Nenhuma —</option>' +
+    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
       categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     el('fFreq').innerHTML = '<option value="">—</option>' +
       frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');

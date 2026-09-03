@@ -638,23 +638,23 @@
         <button type=button id=fechaNovo aria-label="Fechar">×</button>
       </div>
 
-      <label class=fm><span>Data <b class=req>*</b></span>
-        <input type=date id=fData required></label>
+      <label class=fm><span>Data</span>
+        <input type=date id=fData></label>
 
       <label class=fm><span>Nome <b class=req>*</b></span>
         <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
 
-      <label class=fm><span>Valor <b class=req>*</b></span>
+      <label class=fm><span>Valor</span>
         <div class=moneyWrap>
           <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
           <span class=moneyPrefix>R$</span>
-          <input type=text inputmode=numeric id=fValor required placeholder="0,00" autocomplete=off>
+          <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
         </div>
         <small class=hintNeg id=hintSinal>Saída (desconta do saldo)</small>
       </label>
 
-      <label class=fm><span>Categoria <b class=req>*</b></span>
-        <select id=fCateg required></select></label>
+      <label class=fm><span>Categoria</span>
+        <select id=fCateg></select></label>
 
       <label class=fm><span>Frequência</span>
         <select id=fFreq><option value="">—</option></select></label>
@@ -878,7 +878,7 @@
     const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
     const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
-    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
+    el('fCateg').innerHTML = '<option value="">— Nenhuma —</option>' +
       categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     el('fFreq').innerHTML = '<option value="">—</option>' +
       frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
@@ -1001,7 +1001,7 @@
   const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
     ? (isMobile() ? celValorMobile(r) : celValor(r.v))
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
-      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? dataBR(r.data) : r[chave] ?? ''}`
+      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : (r[chave] ?? '—')}`
   ).join('');
   // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
   const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
@@ -1259,19 +1259,19 @@
     e.preventDefault();
     el('erroNovo').textContent = '';
 
-    const data = el('fData').value;
+    // so Nome e' obrigatorio. Todos os outros vao null quando vazios, nunca string vazia
+    // (string vazia salva no banco reaparece depois como um valor "fantasma" na tela).
     const nome = el('fNome').value.trim();
-    const valorNum = valorMascaraParaNumero(el('fValor').value) * (sinalPositivo ? 1 : -1);
-    const categ = el('fCateg').value;
-
-    if (!data) return el('erroNovo').textContent = 'Preencha a data.';
     if (!nome) return el('erroNovo').textContent = 'Preencha o nome.';
-    if (!categ) return el('erroNovo').textContent = 'Escolha uma categoria.';
-    if (!valorNum) return el('erroNovo').textContent = 'O valor não pode ser zero.';
+
+    const data = el('fData').value || null;
+    const categ = el('fCateg').value || null;
+    const freq = el('fFreq').value || null;
+    const valorDigitado = el('fValor').value.trim();
+    const valorNum = valorDigitado ? valorMascaraParaNumero(valorDigitado) * (sinalPositivo ? 1 : -1) : null;
 
     const payload = {
-      data, nome, categ, valor: valorNum,
-      freq: el('fFreq').value || null,
+      data, nome, categ, freq, valor: valorNum,
       cred: el('fCred').checked,
       isa: el('fIsa').checked,
       pago: el('fPago').checked,

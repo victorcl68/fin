@@ -506,6 +506,85 @@
     #selbar { left: .8rem; right: .8rem; bottom: .8rem; padding: .7rem 1rem }
     #selbar .val { font-size: 1.2rem }
   }
+
+  /* --- botao "Novo" no cabecalho --- */
+  #abreNovo {
+    display: flex; align-items: center; gap: .35rem;
+    margin-left: auto; padding: .4rem .8rem;
+    color: var(--pa); background: var(--fg); border: 0;
+    border-radius: 9px; cursor: pointer; font: inherit; font-weight: 600; font-size: .88rem
+  }
+  #abreNovo:hover { opacity: .85 }
+  #abreFiltros { margin-left: .5rem }
+
+  /* --- modal --- */
+  dialog#modalNovo {
+    border: 0; border-radius: 16px; padding: 0;
+    width: min(30rem, 92vw); max-height: 88vh;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    color: var(--fg)
+  }
+  dialog#modalNovo::backdrop { background: rgba(26,25,23,.45) }
+  #formNovo { display: flex; flex-direction: column; padding: 1.3rem; gap: 1rem; overflow-y: auto; max-height: 88vh }
+
+  .modalHead { display: flex; align-items: center; justify-content: space-between }
+  .modalHead h2 { font: 700 1.1rem/1 inherit; margin: 0 }
+  #fechaNovo {
+    font-size: 1.5rem; line-height: 1; background: transparent; border: 0;
+    color: var(--mu); cursor: pointer; padding: .2rem .4rem
+  }
+
+  .fm { display: flex; flex-direction: column; gap: .35rem }
+  .fm > span { font-size: .8rem; font-weight: 600; color: var(--mu) }
+  .fm .req { color: var(--vm); font-weight: 700 }
+  .fm input[type=text], .fm input[type=date], .fm select {
+    font: 16px inherit; /* 16px evita zoom automatico no iOS ao focar */
+    padding: .65rem .8rem; border: 1px solid var(--ln); border-radius: 10px;
+    background: var(--pa); color: var(--fg); width: 100%
+  }
+  .fm select { appearance: none; cursor: pointer;
+    background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .8rem center;
+    padding-right: 2rem
+  }
+
+  .moneyWrap { display: flex; align-items: stretch; border: 1px solid var(--ln); border-radius: 10px; overflow: hidden }
+  .sinalBt {
+    width: 2.4rem; border: 0; border-right: 1px solid var(--ln); background: var(--bg);
+    color: var(--vm); font-size: 1.15rem; font-weight: 700; cursor: pointer
+  }
+  .sinalBt.pos { color: var(--vd) }
+  .moneyPrefix { display: flex; align-items: center; padding: 0 .5rem; background: var(--bg); color: var(--mu); font-weight: 600; font-size: .9rem }
+  .moneyWrap input { border: 0; border-radius: 0; text-align: right; font-variant-numeric: tabular-nums; flex: 1; min-width: 0 }
+  .moneyWrap input:focus { outline: none }
+  .hintNeg { color: var(--mu); font-size: .74rem }
+
+  .fmChecks { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem }
+  .fmChk {
+    display: flex; align-items: center; gap: .5rem; padding: .6rem .7rem;
+    border: 1px solid var(--ln); border-radius: 10px; cursor: pointer; font-size: .92rem; user-select: none
+  }
+  .fmChk input { width: 1.15rem; height: 1.15rem; accent-color: var(--fg) }
+
+  .erroNovo { color: var(--vm); font-size: .85rem; margin: 0; min-height: 1.1rem }
+
+  .modalActs { display: flex; gap: .7rem; margin-top: .2rem }
+  .btSec, .btPri {
+    flex: 1; padding: .75rem; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; border: 0
+  }
+  .btSec { background: var(--bg); color: var(--fg); border: 1px solid var(--ln) }
+  .btPri { background: var(--fg); color: var(--pa) }
+  .btPri:disabled { opacity: .5; cursor: default }
+
+  @media (max-width: 640px) {
+    #abreNovo .lbl { display: none }             /* so o icone no mobile, economiza espaco */
+    #abreNovo { padding: .5rem; width: 2rem; height: 2rem; justify-content: center }
+    dialog#modalNovo {
+      width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh;
+      border-radius: 0; margin: 0
+    }
+    #formNovo { max-height: 100vh; padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom)) }
+    .fmChecks { grid-template-columns: 1fr 1fr }
+  }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -526,6 +605,10 @@
         <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
       </svg></button>
     <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
+    <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
+      <svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round><line x1=12 y1=5 x2=12 y2=19/><line x1=5 y1=12 x2=19 y2=12/></svg>
+      <span class=lbl>Novo</span>
+    </button>
     <button id=abreFiltros title="Filtros" aria-label="Filtros"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><line x1=4 y1=6 x2=20 y2=6/><line x1=7 y1=12 x2=17 y2=12/><line x1=10 y1=18 x2=14 y2=18/></svg></button>
   </div>
   <p class=sub><span id=st></span></p>
@@ -573,10 +656,54 @@
   </div>
   <div id=out></div>
   <div id=selbar><span id=selinfo class=info></span><button id=selclear>Limpar</button></div>
+
+  <dialog id=modalNovo>
+    <form id=formNovo method=dialog>
+      <div class=modalHead>
+        <h2>Novo lançamento</h2>
+        <button type=button id=fechaNovo aria-label="Fechar">×</button>
+      </div>
+
+      <label class=fm><span>Data <b class=req>*</b></span>
+        <input type=date id=fData required></label>
+
+      <label class=fm><span>Nome <b class=req>*</b></span>
+        <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
+
+      <label class=fm><span>Valor <b class=req>*</b></span>
+        <div class=moneyWrap>
+          <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
+          <span class=moneyPrefix>R$</span>
+          <input type=text inputmode=numeric id=fValor required placeholder="0,00" autocomplete=off>
+        </div>
+        <small class=hintNeg id=hintSinal>Saída (desconta do saldo)</small>
+      </label>
+
+      <label class=fm><span>Categoria <b class=req>*</b></span>
+        <select id=fCateg required></select></label>
+
+      <label class=fm><span>Frequência</span>
+        <select id=fFreq><option value="">—</option></select></label>
+
+      <div class=fmChecks>
+        <label class=fmChk><input type=checkbox id=fCred><span>Crédito</span></label>
+        <label class=fmChk><input type=checkbox id=fIsa><span>Isabella</span></label>
+        <label class=fmChk><input type=checkbox id=fPago><span>Pago</span></label>
+        <label class=fmChk><input type=checkbox id=fAtivo checked><span>Ativo</span></label>
+      </div>
+
+      <p class=erroNovo id=erroNovo></p>
+
+      <div class=modalActs>
+        <button type=button id=cancelaNovo class=btSec>Cancelar</button>
+        <button type=submit id=salvaNovo class=btPri>Salvar</button>
+      </div>
+    </form>
+  </dialog>
 </div>
 
 <script>
-    // ===================================================================
+        // ===================================================================
   // CONFIG — credenciais do Supabase, e-mail do perfil restrito, e as
   // definicoes que moldam a interface (meses, colunas das tabelas)
   // ===================================================================
@@ -592,6 +719,10 @@
     ['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
     ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n'],
   ];
+  // no mobile a tabela mostra so o essencial: Data, Nome e Valor
+  const COLS_MOBILE = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['valor', 'Valor', 'n']];
+  const isMobile = () => matchMedia('(max-width: 640px)').matches;
+  const colunasAtivas = () => isMobile() ? COLS_MOBILE : COLS;
 
   // ===================================================================
   // ESTADO — tudo que muda durante o uso do app fica junto aqui, num
@@ -691,6 +822,22 @@
     return r.json();
   };
 
+  // insere uma linha em 'lancamentos' e devolve ela ja com o id gerado pelo banco
+  // (Prefer: return=representation faz o Supabase devolver a linha criada, nao so 201 vazio)
+  const inserirLancamento = async payload => {
+    const r = await fetch(`${API}/rest/v1/lancamentos`, {
+      method: 'POST',
+      headers: {
+        apikey: KEY, Authorization: 'Bearer ' + Estado.token,
+        'Content-Type': 'application/json', Prefer: 'return=representation',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw Error(`inserir: ${r.status} ${await r.text()}`);
+    const linhas = await r.json();
+    return linhas[0];
+  };
+
   // Busca periodos + lancamentos no Supabase e monta Estado.periodos / Estado.lancamentos,
   // ja com a competencia (periodoIdx) de cada lancamento calculada. Nao mexe na tela.
   async function carregarDados() {
@@ -747,6 +894,14 @@
     // combo "Agrupar por": todas as colunas do lancamento, com 'nome' pre-selecionado
     el('grupo').innerHTML = Object.keys(lancamentosCrus[0] || {})
       .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${capitaliza(c)}`).join('');
+
+    // combos do formulario "Novo lancamento": categorias e frequencias ja usadas no banco, sem repetir
+    const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+    const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
+      categoriasExistentes.map(c => `<option value="${c}">${c}`).join('');
+    el('fFreq').innerHTML = '<option value="">—</option>' +
+      frequenciasExistentes.map(f => `<option value="${f}">${f}`).join('');
 
     // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog
     const opcoesPeriodo = usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
@@ -809,14 +964,16 @@
   }
   // monta o <tr> de cabecalho de uma tabela, com a setinha de ordenacao na coluna ativa
   function cabecalhoTabela(idTabela) {
+    const cols = colunasAtivas();
     const { k: colunaAtiva, d: direcao } = estadoOrdenacao(idTabela);
-    const linhaTitulos = COLS.map(([chave, rotulo, tipo]) => {
+    const linhaTitulos = cols.map(([chave, rotulo, tipo]) => {
       const seta = colunaAtiva == chave ? (direcao == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
       return `<th class="${tipo == 'n' ? 'n' : ''}" onclick="sortCol('${idTabela}','${chave}')">${rotulo}${seta}`;
     }).join('');
     // 2a linha do header: campo de busca por coluna, so nas colunas de texto (tipo 't')
+    // no mobile nao ha coluna de texto na lista reduzida, entao essa linha fica vazia sozinha
     const filtroAtual = estadoFiltroTexto(idTabela);
-    const linhaBusca = '<tr class=filtros>' + COLS.map(([chave, rotulo, tipo]) => tipo == 't'
+    const linhaBusca = '<tr class=filtros>' + cols.map(([chave, rotulo, tipo]) => tipo == 't'
       ? `<th><input type=text placeholder="Filtrar ${rotulo.toLowerCase()}…" value="${filtroAtual[chave] ?? ''}" oninput="filtrarColuna('${idTabela}','${chave}',this.value)"></th>`
       : '<th>'
     ).join('');
@@ -855,8 +1012,14 @@
   // ===================================================================
   // chave de selecao de uma linha: usa o _sid sintetico (linha de fatura) ou o id real
   const chaveSelecao = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
+  // no mobile a cor do Valor muda de sentido: nao e' mais sinal (saida/entrada), e' status de
+  // pagamento (pago = verde, em aberto = vermelho). No desktop continua sendo o sinal (celValor).
+  // a linha sintetica "Fatura do cartao" nao tem 'pago' (nao vem do banco) -> cai em vermelho
+  // por padrao, o que e' aceitavel: ela representa uma saida que ainda vai vencer
+  const celValorMobile = r => `<td class="n ${r.pago ? 'vd' : 'vm'}">${brl(r.v)}`;
   // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
-  const celulasDaLinha = r => COLS.map(([chave, , tipo]) => chave == 'valor' ? celValor(r.v)
+  const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
+    ? (isMobile() ? celValorMobile(r) : celValor(r.v))
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
       : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? dataBR(r.data) : r[chave] ?? ''}`
   ).join('');
@@ -1060,6 +1223,111 @@
   }));
 
   // ===================================================================
+  // NOVO LANÇAMENTO (modal de insercao)
+  // ===================================================================
+  const modalNovo = el('modalNovo');
+
+  // mascara de dinheiro: mantem so digitos e desloca 2 casas decimais, tipo caixa eletronico.
+  // digitar "1","2","3","4" produz "0,01" -> "0,12" -> "1,23" -> "12,34"
+  function formataMascaraDinheiro(valorDigitado) {
+    const digitos = valorDigitado.replace(/\D/g, '');
+    const numero = parseInt(digitos || '0', 10) / 100;
+    return numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // converte o texto mascarado de volta pro numero puro que vai pro banco
+  function valorMascaraParaNumero(textoMascarado) {
+    const digitos = textoMascarado.replace(/\D/g, '');
+    return parseInt(digitos || '0', 10) / 100;
+  }
+  el('fValor').addEventListener('input', e => {
+    const cursorNoFim = e.target.selectionEnd == e.target.value.length;
+    e.target.value = formataMascaraDinheiro(e.target.value);
+    if (cursorNoFim) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+  });
+
+  // toggle de sinal: saida (negativo, padrao) <-> entrada (positivo). Existe pra nao depender
+  // de o teclado numerico do celular ter tecla de "-".
+  let sinalPositivo = false;
+  function atualizaSinalUI() {
+    el('fSinal').textContent = sinalPositivo ? '+' : '−';
+    el('fSinal').classList.toggle('pos', sinalPositivo);
+    el('hintSinal').textContent = sinalPositivo ? 'Entrada (soma no saldo)' : 'Saída (desconta do saldo)';
+  }
+  el('fSinal').onclick = () => { sinalPositivo = !sinalPositivo; atualizaSinalUI(); };
+
+  // abre o modal: reseta o formulario pro estado padrao (data vazia, sinal negativo,
+  // Pago desmarcado, Ativo marcado) e da foco no primeiro campo
+  el('abreNovo').onclick = () => {
+    el('formNovo').reset();
+    el('fCateg').selectedIndex = 0;
+    el('fFreq').value = '';
+    sinalPositivo = false; atualizaSinalUI();
+    el('erroNovo').textContent = '';
+    el('fAtivo').checked = true;
+    el('fPago').checked = false;   // padrao desabilitado, como pedido
+    modalNovo.showModal();
+    setTimeout(() => el('fData').focus(), 50);
+  };
+  el('fechaNovo').onclick = () => modalNovo.close();
+  el('cancelaNovo').onclick = () => modalNovo.close();
+  // clique no backdrop (fora do <form>) fecha o modal
+  modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
+
+  // envia o novo lancamento: valida, insere no Supabase, atualiza o Estado local
+  // (sem precisar de um load() completo) e fecha o modal.
+  el('formNovo').addEventListener('submit', async e => {
+    e.preventDefault();
+    el('erroNovo').textContent = '';
+
+    const data = el('fData').value;
+    const nome = el('fNome').value.trim();
+    const valorNum = valorMascaraParaNumero(el('fValor').value) * (sinalPositivo ? 1 : -1);
+    const categ = el('fCateg').value;
+
+    if (!data) return el('erroNovo').textContent = 'Preencha a data.';
+    if (!nome) return el('erroNovo').textContent = 'Preencha o nome.';
+    if (!categ) return el('erroNovo').textContent = 'Escolha uma categoria.';
+    if (!valorNum) return el('erroNovo').textContent = 'O valor não pode ser zero.';
+
+    const payload = {
+      data, nome, categ, valor: valorNum,
+      freq: el('fFreq').value || null,
+      cred: el('fCred').checked,
+      isa: el('fIsa').checked,
+      pago: el('fPago').checked,
+      ativo: el('fAtivo').checked,
+    };
+
+    el('salvaNovo').disabled = true;
+    el('salvaNovo').textContent = 'Salvando…';
+    try {
+      const linhaCriada = await inserirLancamento(payload);
+
+      // classifica a linha nova exatamente como carregarDados() faz, e insere no Estado local
+      // (evita ter que recarregar tudo do banco so pra ver o lancamento que acabou de entrar)
+      let periodoIdx;
+      if (!linhaCriada.data) periodoIdx = null;
+      else if (linhaCriada.cred) periodoIdx = periodoDoCredito(linhaCriada.data, linhaCriada.isa);
+      else periodoIdx = periodoDoDebito(dataISO(linhaCriada.data));
+      Estado.lancamentos.push({
+        ...linhaCriada,
+        v: +linhaCriada.valor || 0,
+        inv: /^investimento$/i.test(String(linhaCriada.categ || '').trim()),
+        periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
+      });
+
+      modalNovo.close();
+      desenhar();
+    } catch (err) {
+      // erro: nada e' perdido, os campos continuam preenchidos pro usuario tentar de novo
+      el('erroNovo').textContent = 'Falhou ao salvar: ' + err.message;
+    } finally {
+      el('salvaNovo').disabled = false;
+      el('salvaNovo').textContent = 'Salvar';
+    }
+  });
+
+  // ===================================================================
   // LOGIN (Supabase Auth)
   // ===================================================================
   const sb = supabase.createClient(API, KEY);
@@ -1093,6 +1361,10 @@
 
   if (API.includes('SEUPROJETO')) { mostraTela(1); load(); }   // sem chaves configuradas: pula o login (modo dev)
   else boot();
+
+
+
+
 
 
 

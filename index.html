@@ -514,11 +514,12 @@
 
   /* --- botao "Novo" no cabecalho --- */
   #abreNovo {
-    display: flex; align-items: center; gap: .35rem;
+    display: flex; align-items: center; justify-content: center; gap: .35rem;
     margin-left: auto; padding: .4rem .8rem;
     color: var(--pa); background: var(--fg); border: 0;
     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 600; font-size: .88rem
   }
+  #abreNovo svg { flex-shrink: 0 }   /* sem isso o flex espreme o SVG e corta a linha horizontal do "+" */
   #abreNovo:hover { opacity: .85 }
   #abreFiltros { margin-left: .5rem }
 
@@ -907,12 +908,14 @@
       .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${capitaliza(c)}`).join('');
 
     // combos do formulario "Novo lancamento": categorias e frequencias ja usadas no banco, sem repetir
+    // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
+    const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
     const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
     el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
-      categoriasExistentes.map(c => `<option value="${c}">${c}`).join('');
+      categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     el('fFreq').innerHTML = '<option value="">—</option>' +
-      frequenciasExistentes.map(f => `<option value="${f}">${f}`).join('');
+      frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
 
     // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog
     const opcoesPeriodo = usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');

@@ -533,6 +533,8 @@
     color: var(--vm); font-size: 1.15rem; font-weight: 700; cursor: pointer
   }
   .sinalBt.pos { color: var(--vd) }
+  .sinalBt.neutro { color: var(--mu); cursor: default }
+  .sinalBt:disabled { opacity: .6 }
   .moneyPrefix { display: flex; align-items: center; padding: 0 .5rem; background: var(--bg); color: var(--mu); font-weight: 600; font-size: .9rem }
   .moneyWrap input { border: 0; border-radius: 0; text-align: right; font-variant-numeric: tabular-nums; flex: 1; min-width: 0 }
   .moneyWrap input:focus { outline: none }
@@ -657,7 +659,6 @@
           <span class=moneyPrefix>R$</span>
           <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
         </div>
-        <small class=hintNeg id=hintSinal>Saída (desconta do saldo)</small>
       </label>
 
       <label class=fm><span>Categoria</span>
@@ -884,8 +885,11 @@
     // combos do formulario "Novo lancamento": categorias e frequencias ja usadas no banco, sem repetir
     // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
     const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
-    const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+    // filtra valores vazios de verdade (null/undefined/"") E as strings literais "null"/"undefined"
+    // que podem ter ficado salvas no banco de alguma insercao anterior
+    const valorValido = v => v && !['null', 'undefined'].includes(String(v).trim().toLowerCase());
+    const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
+    const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
     el('fCateg').innerHTML = '<option value="">— Nenhuma —</option>' +
       categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     el('fFreq').innerHTML = '<option value="">—</option>' +
@@ -1005,11 +1009,14 @@
   // a linha sintetica "Fatura do cartao" nao tem 'pago' (nao vem do banco) -> cai em vermelho
   // por padrao, o que e' aceitavel: ela representa uma saida que ainda vai vencer
   const celValorMobile = r => `<td class="n ${r.pago ? 'vd' : 'vm'}">${brl(r.v)}`;
+  // texto de uma celula "vazia": trata null/undefined/"" E a string literal "null"/"undefined"
+  // que pode ter ficado gravada no banco por engano em alguma insercao anterior
+  const textoOuTraco = v => (v == null || ['null', 'undefined'].includes(String(v).trim().toLowerCase())) ? '—' : v;
   // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
   const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
     ? (isMobile() ? celValorMobile(r) : celValor(r.v))
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
-      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : (r[chave] ?? '—')}`
+      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : textoOuTraco(r[chave])}`
   ).join('');
   // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
   const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
@@ -1098,7 +1105,7 @@
     const periodosUsados = [...new Set(linhas.map(r => r.periodoIdx))].filter(dentroDoIntervalo).sort((a, b) => a - b);
     const matriz = {};
     linhas.filter(r => dentroDoIntervalo(r.periodoIdx)).forEach(r => {
-      const chave = r[coluna] ?? '—';
+      const chave = textoOuTraco(r[coluna]);
       (matriz[chave] = matriz[chave] || {})[r.periodoIdx] = (matriz[chave][r.periodoIdx] || 0) + r.v;
     });
     const totalDaChave = chave => Object.values(matriz[chave]).reduce((a, b) => a + b, 0);
@@ -1255,15 +1262,20 @@
     const cursorNoFim = e.target.selectionEnd == e.target.value.length;
     e.target.value = formataMascaraDinheiro(e.target.value);
     if (cursorNoFim) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+    atualizaSinalUI();   // valor pode ter zerado (ou saido de zero) -> botao de sinal reflete isso
   });
 
   // toggle de sinal: saida (negativo, padrao) <-> entrada (positivo). Existe pra nao depender
   // de o teclado numerico do celular ter tecla de "-".
   let sinalPositivo = false;
+  // com o campo vazio ou zerado nao faz sentido dizer "negativo" ou "positivo" — o botao vira
+  // um simbolo neutro e fica desabilitado ate' haver um valor de verdade digitado
   function atualizaSinalUI() {
-    el('fSinal').textContent = sinalPositivo ? '+' : '−';
-    el('fSinal').classList.toggle('pos', sinalPositivo);
-    el('hintSinal').textContent = sinalPositivo ? 'Entrada (soma no saldo)' : 'Saída (desconta do saldo)';
+    const semValor = valorMascaraParaNumero(el('fValor').value || '0') === 0;
+    el('fSinal').disabled = semValor;
+    el('fSinal').classList.toggle('pos', sinalPositivo && !semValor);
+    el('fSinal').classList.toggle('neutro', semValor);
+    el('fSinal').textContent = semValor ? '±' : (sinalPositivo ? '+' : '−');
   }
   el('fSinal').onclick = () => { sinalPositivo = !sinalPositivo; atualizaSinalUI(); };
 

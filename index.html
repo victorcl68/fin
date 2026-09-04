@@ -708,8 +708,8 @@
       <label class=fm><span>Nome <b class=req>*</b></span>
         <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
 
-      <label class=fm><span>Categoria <b class=req>*</b></span>
-        <select id=fCateg required></select></label>
+      <label class=fm><span>Data</span>
+        <input type=date id=fData></label>
 
       <label class=fm><span>Valor</span>
         <div class=moneyWrap>
@@ -719,11 +719,8 @@
         </div>
       </label>
 
-      <label class=fm><span>Data</span>
-        <input type=date id=fData></label>
-
-      <label class=fm><span>Frequência</span>
-        <select id=fFreq><option value="">—</option></select></label>
+      <label class=fm><span>Categoria <b class=req>*</b></span>
+        <select id=fCateg required></select></label>
 
       <p class="erroNovo okNovo" id=erroNovo></p>
 
@@ -986,9 +983,6 @@
 
     // Categoria do formulario e' populada por popularCategoriasNoForm() (ordenada por uso
     // recente), chamada toda vez que o modal abre — nao precisa duplicar aqui.
-    const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
-    el('fFreq').innerHTML = '<option value="">—</option>' +
-      frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
 
     // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog.
     // "Todos" (value vazio) e' a opcao padrao — a matriz so recorta quando o usuario escolhe
@@ -1197,7 +1191,7 @@
     const blocoCredito = renderBloco(
       'Crédito', totalCredito,
       Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
-      creditos, 'cr', true
+      creditos, 'cr', !simples
     );
     return blocoDebito + blocoCredito;
   }
@@ -1628,14 +1622,23 @@
     if (categ && categoriasPorPopularidade().includes(categ)) el('fCateg').value = categ;
   });
 
-  // ---- navegacao por Enter, campo a campo, pulando Categoria quando ja foi achada ----
+  // atalhos de Enter nos dois campos de texto: Nome -> foca Valor; Valor -> salva
+  el('fNome').addEventListener('keydown', e => {
+    if (e.key == 'Enter') { e.preventDefault(); el('fValor').focus(); }
+  });
+  el('fValor').addEventListener('keydown', e => {
+    if (e.key != 'Enter') return;
+    e.preventDefault();
+    // so salva por Enter se os obrigatorios (Nome e Categoria) ja estao preenchidos.
+    // senao, ignora em silencio (sem aviso, sem mover foco).
+    if (el('fNome').value.trim() && el('fCateg').value) submeteNovoLancamento();
+  });
 
   // ---- abrir modal: foco no Nome, categorias populares, Isa so pra quem nao e' a Isabella ----
   function abreModalNovo() {
     el('formNovo').reset();
     popularCategoriasNoForm();
     el('fCateg').selectedIndex = 0;
-    el('fFreq').value = '';
     sinalPositivo = false; atualizaSinalUI();
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
     el('fIsaWrap').hidden = Estado.restrito;   // Isabella nao lanca "pra" Isabella, ja e' o padrao dela
@@ -1658,7 +1661,7 @@
     if (!categ) { el('erroNovo').textContent = 'Escolha uma categoria.'; el('fCateg').focus(); return; }
 
     const data = el('fData').value || null;
-    const freq = el('fFreq').value || null;
+    const freq = null;   // frequencia sempre nula (campo removido do formulario)
     const valorDigitado = el('fValor').value.trim();
     const valorNum = valorDigitado ? valorMascaraParaNumero(valorDigitado) * (sinalPositivo ? 1 : -1) : null;
 

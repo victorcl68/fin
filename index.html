@@ -494,7 +494,7 @@
 
   /* navegador anterior/atual/proximo: aparece tanto pro perfil restrito (Isabella)
      quanto no mobile — os dois usam o mesmo "modo simples" */
-  #fciclNav { display: none; align-items: center; justify-content: space-between; gap: .8rem;
+  #fciclNav { display: flex; align-items: center; justify-content: space-between; gap: .8rem;
     margin: 0 0 1.2rem; padding: .3rem 0 }
   #nomeCicloNav { font: 700 1.05rem/1 inherit }
   .cicloNav { display: flex; gap: .4rem }
@@ -1290,6 +1290,7 @@
     el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
     el('ftit').hidden = visao == 'p' || simples;
     el('fciclNav').hidden = !simples;   // navegador anterior/atual/proximo, so no modo simples
+    if (simples) atualizaNavegadorCiclo();   // mantem rotulo e disabled dos botoes em dia
     if (simples) {
       el('fsit').hidden = el('fvisao').hidden = true;
       el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos

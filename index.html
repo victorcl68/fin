@@ -625,8 +625,15 @@
         <select id=visao>
           <option value=c>Ciclo
           <option value=k>Comparar
-          <option value=p>Investimento
+          <option value=p>Balanço
         </select></label>
+      <div class=f id=fcatInv>
+        <span>Categorias</span>
+        <div class=multiSel id=multiCatWrap>
+          <button type=button id=multiCatBtn class=multiSelBtn>Nenhuma selecionada</button>
+          <div class=multiSelDrop id=multiCatDrop></div>
+        </div>
+      </div>
       <label class=f id=fciclo><span>Ciclo</span><select id=ciclo></select></label>
       <label class=f id=forigem><span>Origem</span>
         <select id=origem>
@@ -643,13 +650,6 @@
       <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
       <label class=f id=fde><span>De</span><select id=compDe></select></label>
       <label class=f id=fate><span>Até</span><select id=compAte></select></label>
-      <div class=f id=fcatInv>
-        <span>Categorias</span>
-        <div class=multiSel id=multiCatWrap>
-          <button type=button id=multiCatBtn class=multiSelBtn>Nenhuma selecionada</button>
-          <div class=multiSelDrop id=multiCatDrop></div>
-        </div>
-      </div>
     </div>
     <div class=row id=fsit>
       <label class=f><span>Pago</span>

@@ -1493,7 +1493,14 @@
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${brl(ctx.parsed.y)}` } },
+          tooltip: { callbacks: { label: ctx => {
+            const renda = dados[ctx.dataIndex].ganho;
+            const valor = ctx.parsed.y;
+            // % da renda: so faz sentido pra Gasto e Aportado (Ganho e' a propria renda, sempre 100%)
+            if (ctx.dataset.label == 'Ganho') return `Ganho: ${brl(valor)}`;
+            const pct = renda ? (valor / renda * 100).toFixed(1) : '—';
+            return `${ctx.dataset.label}: ${brl(valor)} · ${pct}% da renda`;
+          } } },
         },
         scales: { y: { ticks: { callback: v => brl(v) } } },
       },

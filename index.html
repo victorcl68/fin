@@ -900,13 +900,16 @@
     el('fFreq').innerHTML = '<option value="">—</option>' +
       frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
 
-    // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog
-    const opcoesPeriodo = usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
+    // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog.
+    // "Todos" (value vazio) e' a opcao padrao — a matriz so recorta quando o usuario escolhe
+    // explicitamente um De ou Ate, nunca vem pre-preenchida sozinha.
+    const opcoesPeriodo = '<option value="">Todos</option>' +
+      usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
     const deAnterior = el('compDe').value, ateAnterior = el('compAte').value;
     el('compDe').innerHTML = opcoesPeriodo;
     el('compAte').innerHTML = opcoesPeriodo;
-    el('compDe').value = usados.includes(+deAnterior) ? deAnterior : usados[0] ?? '';
-    el('compAte').value = usados.includes(+ateAnterior) ? ateAnterior : usados.at(-1) ?? '';
+    el('compDe').value = usados.includes(+deAnterior) ? deAnterior : '';
+    el('compAte').value = usados.includes(+ateAnterior) ? ateAnterior : '';
   }
 
   // Fluxo completo de carga: busca dados, atualiza os combos, mostra o contador e desenha a tela.
@@ -1107,12 +1110,15 @@
   // Visão "Comparar": uma matriz [categoria/nome/etc × periodo], com totais por linha e coluna.
   function vComp() {
     const coluna = el('grupo').value;
+    // so mostra a matriz depois que o usuario escolhe De E Ate — nunca vem preenchida sozinha
+    const deTexto = el('compDe').value, ateTexto = el('compAte').value;
+    if (!deTexto || !ateTexto) return '<p class=empty>Escolha o período (De / Até) para comparar.</p>';
+
     const linhas = filtrarLancamentos().filter(r => r.periodoIdx != null);
     if (!linhas.length) return '<p class=empty>Vazio</p>';
 
-    // recorta pelo intervalo De/Até escolhido (se vazio, mostra tudo)
-    const de = +el('compDe').value, ate = +el('compAte').value;
-    const dentroDoIntervalo = i => (isNaN(de) || i >= de) && (isNaN(ate) || i <= ate);
+    const de = +deTexto, ate = +ateTexto;
+    const dentroDoIntervalo = i => i >= de && i <= ate;
     const periodosUsados = [...new Set(linhas.map(r => r.periodoIdx))].filter(dentroDoIntervalo).sort((a, b) => a - b);
     const matriz = {};
     linhas.filter(r => dentroDoIntervalo(r.periodoIdx)).forEach(r => {

@@ -492,16 +492,24 @@
     border-right: 1px solid var(--ln)
   }
 
-  #fcicloFixo { display: none }   /* so aparece no mobile (ver media query abaixo) */
+  /* navegador anterior/atual/proximo: aparece tanto pro perfil restrito (Isabella)
+     quanto no mobile — os dois usam o mesmo "modo simples" */
+  #fciclNav { display: none; align-items: center; justify-content: space-between; gap: .8rem;
+    margin: 0 0 1.2rem; padding: .3rem 0 }
+  #nomeCicloNav { font: 700 1.05rem/1 inherit }
+  .cicloNav { display: flex; gap: .4rem }
+  .cicloNav button {
+    width: 2.2rem; height: 2.2rem; font-size: 1.2rem; line-height: 1;
+    color: var(--fg); background: var(--pa); border: 1px solid var(--ln);
+    border-radius: 9px; cursor: pointer
+  }
+  .cicloNav button:hover { border-color: var(--fg) }
+  .cicloNav button:disabled { opacity: .35; cursor: default }
 
   @media (max-width: 640px) {
     body { padding: 1.2rem .9rem }
     h1 { font-size: 1.15rem }
     .head { gap: .5rem }
-
-    /* seletor de Ciclo sempre visivel no mobile — e' o unico filtro que existe la */
-    #fcicloFixo { display: flex; margin: 0 0 1rem }
-    #fcicloFixo select { width: 100% }
 
     /* mobile nao usa gaveta: a barra de filtros (.tool) simplesmente nao aparece */
     .tool { display: none }
@@ -632,7 +640,13 @@
   </div>
   <p class=sub><span id=st></span></p>
 
-  <label class=f id=fcicloFixo><span>Ciclo</span><select id=cicloFixo></select></label>
+  <div class=f id=fciclNav>
+    <span id=nomeCicloNav>—</span>
+    <div class=cicloNav>
+      <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
+      <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
+    </div>
+  </div>
 
   <div class=tool>
     <div class=row>
@@ -789,7 +803,13 @@
     linhasVisiveis: {},         // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
     token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
+    usados: [],                 // indices de periodos com movimento, na ordem — usado pelo navegador anterior/proximo
   };
+
+  // "modo simples": mobile funciona identico ao perfil restrito da Isabella — so ciclo
+  // atual/anterior/proximo, so debito com a fatura embutida, sem grafico, sem selecao,
+  // sem filtro de texto. Calculado sempre na hora (matchMedia muda se a tela redimensiona).
+  const modoSimples = () => Estado.restrito || matchMedia('(max-width: 640px)').matches;
 
   // le (ou cria) o estado de ordenacao de uma tabela especifica
   const estadoOrdenacao = id => Estado.ordenacaoPorTabela[id] || (Estado.ordenacaoPorTabela[id] = { k: 'data', d: 1 });
@@ -936,7 +956,6 @@
     const opcoesCiclo = '<option value=-1>Backlog' +
       usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
     el('ciclo').innerHTML = opcoesCiclo;
-    el('cicloFixo').innerHTML = opcoesCiclo;   // espelho do mesmo combo, visivel fixo no mobile
 
     // preserva a selecao anterior se ainda for valida; senao cai no periodo atual (ou no mais recente usado)
     const valorAnterior = selecaoAnterior === '' ? null : +selecaoAnterior;
@@ -944,7 +963,8 @@
       ? valorAnterior
       : (idxAtual >= 0 ? idxAtual : usados.at(-1) ?? -1);
     el('ciclo').value = valorEscolhido;
-    el('cicloFixo').value = valorEscolhido;
+    Estado.usados = usados;   // lista de indices navegaveis, usada pelo navegador anterior/proximo
+    atualizaNavegadorCiclo();
 
     // combo "Agrupar por": todas as colunas do lancamento, com 'nome' pre-selecionado
     el('grupo').innerHTML = Object.keys(lancamentosCrus[0] || {})
@@ -1038,8 +1058,9 @@
       const seta = colunaAtiva == chave ? (direcao == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
       return `<th class="${tipo == 'n' ? 'n' : ''}" onclick="sortCol('${idTabela}','${chave}')">${rotulo}${seta}`;
     }).join('');
-    // 2a linha do header: campo de busca por coluna, so nas colunas de texto (tipo 't')
-    // no mobile nao ha coluna de texto na lista reduzida, entao essa linha fica vazia sozinha
+    // 2a linha do header: campo de busca por coluna, so nas colunas de texto (tipo 't').
+    // Modo simples (Isabella / mobile) nao tem busca nenhuma — so ordenar pelo header.
+    if (modoSimples()) return linhaTitulos;
     const filtroAtual = estadoFiltroTexto(idTabela);
     const linhaBusca = '<tr class=filtros>' + cols.map(([chave, rotulo, tipo]) => tipo == 't'
       ? `<th><input type=text placeholder="Filtrar ${rotulo.toLowerCase()}…" value="${filtroAtual[chave] ?? ''}" oninput="filtrarColuna('${idTabela}','${chave}',this.value)"></th>`
@@ -1159,16 +1180,18 @@
     };
     Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalCredito;
 
+    const simples = modoSimples();
     const debitosComFatura = [...debitos, linhaFatura];
+    // modo simples: sem selecao de linha, sem botao de grafico — so a tabela, ordenavel
     const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
       `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-      debitosComFatura, 'db', true, i
+      debitosComFatura, 'db', !simples, simples ? null : i
     );
 
-    // perfil restrito da Isabella E mobile: so o Debito (com a fatura embutida), sem o detalhe do credito
-    const isMobile = matchMedia('(max-width: 640px)').matches;
-    if (Estado.restrito || isMobile) return blocoDebito;
+    // perfil restrito da Isabella E mobile ("modo simples"): so o Debito (com a fatura
+    // embutida), sem o detalhe do credito
+    if (simples) return blocoDebito;
 
     const blocoCredito = renderBloco(
       'Crédito', totalCredito,
@@ -1254,13 +1277,14 @@
 
   // redesenha a tela conforme a visao ativa, escondendo/mostrando os filtros que fazem sentido nela
   function desenhar() {
-    const isMobile = matchMedia('(max-width: 640px)').matches;
-    const visao = (Estado.restrito || isMobile) ? 'c' : el('visao').value;   // mobile so mostra Ciclo
+    const simples = modoSimples();
+    const visao = simples ? 'c' : el('visao').value;   // modo simples so mostra Ciclo
 
-    el('fciclo').hidden = visao != 'c';
-    el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || Estado.restrito || isMobile;
-    el('ftit').hidden = visao == 'p' || Estado.restrito || isMobile;
-    if (Estado.restrito || isMobile) {
+    el('fciclo').hidden = visao != 'c' || simples;   // modo simples usa o navegador anterior/proximo, nao o combo
+    el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
+    el('ftit').hidden = visao == 'p' || simples;
+    el('fciclNav').hidden = !simples;   // navegador anterior/atual/proximo, so no modo simples
+    if (simples) {
       el('fsit').hidden = el('fvisao').hidden = true;
       el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
     }
@@ -1268,7 +1292,7 @@
     if (visao == 'p') el('titular').value = 'T';
 
     el('out').innerHTML = visao == 'c' ? vCiclo() : visao == 'k' ? vComp() : vInv();
-    if (visao != 'c') Estado.selecionados.clear();   // troca de aba limpa a selecao (evita soma "fantasma")
+    if (visao != 'c' || simples) Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
   }
 
@@ -1276,7 +1300,7 @@
   // SELEÇÃO DE LINHAS (barra flutuante de soma)
   // ===================================================================
   function atualizaBarraSelecao() {
-    if (!Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
+    if (modoSimples() || !Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
     let soma = 0;
     for (const v of Estado.selecionados.values()) soma += v;
     el('selinfo').innerHTML =
@@ -1318,16 +1342,27 @@
   };
   el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
 
-  // sincroniza o combo de ciclo fixo (mobile) com o de dentro da gaveta (desktop/gaveta):
-  // mudar um propaga pro outro e redesenha, como se fossem o mesmo campo em dois lugares
-  el('cicloFixo').addEventListener('change', () => {
-    el('ciclo').value = el('cicloFixo').value;
+  // navegador anterior/atual/proximo (modo simples): anda pela lista Estado.usados,
+  // que sao os indices de periodo com algum movimento, na ordem cronologica
+  function atualizaNavegadorCiclo() {
+    const idxAtual = +el('ciclo').value;
+    const pos = Estado.usados.indexOf(idxAtual);
+    el('nomeCicloNav').textContent = idxAtual >= 0 && Estado.periodos[idxAtual]
+      ? nomePeriodo(Estado.periodos[idxAtual].fat) : 'Backlog';
+    el('cicloAnterior').disabled = pos <= 0;
+    el('cicloProximo').disabled = pos < 0 || pos >= Estado.usados.length - 1;
+  }
+  function navegaCiclo(direcao) {
+    const idxAtual = +el('ciclo').value;
+    const pos = Estado.usados.indexOf(idxAtual);
+    const novaPos = pos + direcao;
+    if (novaPos < 0 || novaPos >= Estado.usados.length) return;
+    el('ciclo').value = Estado.usados[novaPos];
     Estado.selecionados.clear();
     desenhar();
-  });
-  el('ciclo').addEventListener('change', () => {
-    el('cicloFixo').value = el('ciclo').value;
-  });
+  }
+  el('cicloAnterior').onclick = () => navegaCiclo(-1);
+  el('cicloProximo').onclick = () => navegaCiclo(1);
 
   // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);

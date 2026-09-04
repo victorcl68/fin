@@ -38,12 +38,25 @@
     display: inline-block
   }
 
-  .head {
-    display: flex;
-    align-items: center;
-    gap: .7rem;
-    margin: 0 0 .3rem
-  }
+.head {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  margin: 0 0 1.8rem
+}
+
+.head .sub {
+  margin: 0;
+  flex: 1;
+  font-size: .85rem;
+  color: var(--mu);
+  font-style: italic;
+}
+
+.head .sub b {
+  font-style: normal;
+  color: var(--fg);
+}
 
   #sair {
     display: flex;
@@ -619,23 +632,32 @@
 <div id=login>
   <input id=email type=email autocomplete=username>
   <input id=senha type=password autocomplete=current-password>
-  <button id=entrar>Entrar</button>
+  <div id=login>
+  <input id=email type=email autocomplete=username placeholder="E-mail">
+  <input id=senha type=password autocomplete=current-password placeholder="Senha">
+  <div class=err id=lerr></div>
+</div>
   <div class=err id=lerr></div>
 </div>
 
 <div id=app>
-  <div class=head>
-    <button id=sair title="Encerrar" aria-label="Encerrar"><svg viewBox="0 0 24 24" width=17 height=17 fill=none
-        stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-        <path d="M12 3v9" />
-        <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
-      </svg></button>
-    <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento"><svg viewBox="0 0 24 24" width=17 height=17 fill=none
-        stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-        <line x1=12 y1=5 x2=12 y2=19 />
-        <line x1=5 y1=12 x2=19 y2=12 />
-      </svg></button>
-  </div>
+ <div class=head>
+  <button id=sair title="Encerrar" aria-label="Encerrar">
+    <svg viewBox="0 0 24 24" width=17 height=17 fill=none
+      stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+      <path d="M12 3v9" />
+      <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+    </svg>
+  </button>
+
+  <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
+    <svg viewBox="0 0 24 24" width=17 height=17 fill=none
+      stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+      <line x1=12 y1=5 x2=12 y2=19 />
+      <line x1=5 y1=12 x2=19 y2=12 />
+    </svg>
+  </button>
+</div>
   <p class=sub><span id=st></span></p>
 
   <div class=f id=fciclNav>
@@ -1719,16 +1741,37 @@
       mostraTela(0);
     }
   }
-  el('entrar').onclick = async () => {
-    el('lerr').textContent = '';
-    const { data, error } = await sb.auth.signInWithPassword(
-      { email: el('email').value.trim(), password: el('senha').value });
-    if (error) return el('lerr').textContent = 'E-mail ou senha inválidos.';
-    Estado.token = data.session.access_token;
-    Estado.restrito = (data.session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase();
-    aplicaPerfil(); mostraTela(1); load();
-  };
-  el('senha').onkeydown = e => { if (e.key == 'Enter') el('entrar').click(); };
+async function entrar() {
+  el('lerr').textContent = '';
+
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: el('email').value.trim(),
+    password: el('senha').value
+  });
+
+  if (error) {
+    el('lerr').textContent = 'E-mail ou senha inválidos.';
+    return;
+  }
+
+  Estado.token = data.session.access_token;
+  Estado.restrito =
+    (data.session.user.email || '').toLowerCase() ==
+    EMAIL_ISABELLA.toLowerCase();
+
+  aplicaPerfil();
+  mostraTela(1);
+  load();
+}
+
+el('email').onkeydown = e => {
+  if (e.key == 'Enter') el('senha').focus();
+};
+
+el('senha').onkeydown = e => {
+  if (e.key == 'Enter') entrar();
+};
+
   el('sair').onclick = async () => { await sb.auth.signOut(); Estado.token = KEY; el('senha').value = ''; mostraTela(0); };
 
   if (API.includes('SEUPROJETO')) { mostraTela(1); load(); }   // sem chaves configuradas: pula o login (modo dev)

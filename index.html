@@ -203,6 +203,12 @@
     border-radius: 7px; padding: .25rem .55rem; cursor: pointer; margin-left: .3rem
   }
   .selTudoBt:hover { color: var(--fg); border-color: var(--fg) }
+  .colAcao { width: 1.6rem; padding: 0 !important; text-align: center }
+  .dupBt {
+    width: 1.6rem; height: 1.6rem; font-size: .85rem; line-height: 1;
+    color: var(--mu); background: transparent; border: 0; border-radius: 6px; cursor: pointer
+  }
+  .dupBt:hover { color: var(--fg); background: var(--bg) }
 
   .blk .meta {
     font-size: .85rem;
@@ -585,6 +591,8 @@
   .fmChk input { width: 1.15rem; height: 1.15rem; accent-color: var(--fg) }
 
   .erroNovo { color: var(--vm); font-size: .85rem; margin: 0; min-height: 1.1rem }
+  .erroNovo.okNovo.ok { color: var(--vd) }
+  #fIsaWrap[hidden] { display: none }
 
   .modalActs { display: flex; gap: .7rem; margin-top: .2rem }
   .btSec, .btPri {
@@ -694,15 +702,15 @@
   <dialog id=modalNovo>
     <form id=formNovo method=dialog>
       <div class=modalHead>
-        <h2>Novo lançamento</h2>
+        <h2 id=tituloModalNovo>Novo lançamento</h2>
         <button type=button id=fechaNovo aria-label="Fechar">×</button>
       </div>
 
-      <label class=fm><span>Data</span>
-        <input type=date id=fData></label>
-
       <label class=fm><span>Nome <b class=req>*</b></span>
         <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
+
+      <label class=fm><span>Categoria <b class=req>*</b></span>
+        <select id=fCateg required></select></label>
 
       <label class=fm><span>Valor</span>
         <div class=moneyWrap>
@@ -712,25 +720,18 @@
         </div>
       </label>
 
-      <label class=fm><span>Categoria <b class=req>*</b></span>
-        <select id=fCateg required></select></label>
+      <label class=fm><span>Data</span>
+        <input type=date id=fData></label>
 
       <label class=fm><span>Frequência</span>
         <select id=fFreq><option value="">—</option></select></label>
 
       <div class=fmChecks>
         <label class=fmChk><input type=checkbox id=fCred><span>Crédito</span></label>
-        <label class=fmChk><input type=checkbox id=fIsa><span>Isabella</span></label>
-        <label class=fmChk><input type=checkbox id=fPago><span>Pago</span></label>
-        <label class=fmChk><input type=checkbox id=fAtivo checked><span>Ativo</span></label>
+        <label class=fmChk id=fIsaWrap><input type=checkbox id=fIsa><span>Isabella</span></label>
       </div>
 
-      <p class=erroNovo id=erroNovo></p>
-
-      <div class=modalActs>
-        <button type=button id=cancelaNovo class=btSec>Cancelar</button>
-        <button type=submit id=salvaNovo class=btPri>Salvar</button>
-      </div>
+      <p class="erroNovo okNovo" id=erroNovo></p>
     </form>
   </dialog>
 
@@ -832,6 +833,16 @@
   const timestamp = s => Date.parse(dataISO(s)) || 0;                   // 'YYYY-MM-DD' -> numero, pra comparar/ordenar
   const dataBR = s => { const p = dataISO(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s }; // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
   const capitaliza = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+  // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
+  const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // filtra valores vazios de verdade (null/undefined/"") E variacoes textuais de "vazio" que
+  // podem ter ficado salvas no banco por engano: "null", "<null>", "undefined", "n/a" etc.
+  const valorValido = v => {
+    if (!v) return false;
+    const limpo = String(v).trim().toLowerCase().replace(/^<|>$/g, '');
+    return !['null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
+  };
+  const semAcento = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
   // proximo dia (usado pra calcular o inicio de um periodo a partir do 'fat' do anterior)
   function proximoDia(iso) {
@@ -977,21 +988,9 @@
     el('grupo').innerHTML = Object.keys(lancamentosCrus[0] || {})
       .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${capitaliza(c)}`).join('');
 
-    // combos do formulario "Novo lancamento": categorias e frequencias ja usadas no banco, sem repetir
-    // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
-    const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // filtra valores vazios de verdade (null/undefined/"") E variacoes textuais de "vazio" que
-    // podem ter ficado salvas no banco por engano: "null", "<null>", "undefined", "n/a" etc.
-    // remove os simbolos < > antes de comparar, pra pegar tanto "null" quanto "<null>".
-    const valorValido = v => {
-      if (!v) return false;
-      const limpo = String(v).trim().toLowerCase().replace(/^<|>$/g, '');
-      return !['null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
-    };
-    const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
+    // Categoria do formulario e' populada por popularCategoriasNoForm() (ordenada por uso
+    // recente), chamada toda vez que o modal abre — nao precisa duplicar aqui.
     const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
-    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
-      categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     el('fFreq').innerHTML = '<option value="">—</option>' +
       frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
 
@@ -1087,7 +1086,6 @@
     if (novoInput) { novoInput.focus(); if (posicaoCursor != null) novoInput.setSelectionRange(posicaoCursor, posicaoCursor); }
   };
   // remove acentos e caixa: "Café" e "cafe" viram a mesma coisa pra comparar
-  const semAcento = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   // uma linha passa no filtro de texto da tabela se contem (ignorando acento e maiuscula) todos os termos digitados
   function passaFiltroTexto(r, idTabela) {
     const filtro = estadoFiltroTexto(idTabela);
@@ -1129,15 +1127,21 @@
       : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : textoOuTraco(r[chave])}`
   ).join('');
   // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
+  // botao "duplicar" so faz sentido pra linha real (com id no banco), nao pra fatura sintetica.
+  // fica numa coluna extra ao final, so quando a tabela e' selecionavel (fora do modo simples).
+  const celDuplicar = r => (r.id != null && r.id !== 0)
+    ? `<td class=colAcao><button type=button class=dupBt title="Duplicar" onclick="event.stopPropagation();duplicarLancamento('${r.id}')">⧉</button>`
+    : '<td class=colAcao>';
   const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
     const linhas = linhasBrutas.filter(r => passaFiltroTexto(r, idTabela));
     Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
     if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
-    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
-    return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
+    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}${selecionavel ? '<th>' : ''}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
+    return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}${selecionavel ? '<th>' : ''}</thead><tbody>` +
       ordenarLinhas(linhas, idTabela).map(r => {
         const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
-        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
+        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` +
+          celulasDaLinha(r) + (selecionavel ? celDuplicar(r) : '');
       }).join('') + '</tbody></table></div>';
   };
 
@@ -1558,18 +1562,20 @@
   });
 
   // ===================================================================
-  // NOVO LANÇAMENTO (modal de insercao)
+  // NOVO LANÇAMENTO (modal de insercao) — otimizado pra cadastro rapido:
+  // foco automatico, navegacao por Enter, busca de categoria por nome
+  // parecido, categorias ordenadas por uso recente, modal fica aberto
+  // apos salvar (pronto pro proximo), e duplicar a partir de uma linha.
   // ===================================================================
   const modalNovo = el('modalNovo');
+  const CAMPOS_ORDEM = ['fNome', 'fCateg', 'fValor', 'fData', 'fFreq', 'fCred', 'fIsa'];
 
   // mascara de dinheiro: mantem so digitos e desloca 2 casas decimais, tipo caixa eletronico.
-  // digitar "1","2","3","4" produz "0,01" -> "0,12" -> "1,23" -> "12,34"
   function formataMascaraDinheiro(valorDigitado) {
     const digitos = valorDigitado.replace(/\D/g, '');
     const numero = parseInt(digitos || '0', 10) / 100;
     return numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  // converte o texto mascarado de volta pro numero puro que vai pro banco
   function valorMascaraParaNumero(textoMascarado) {
     const digitos = textoMascarado.replace(/\D/g, '');
     return parseInt(digitos || '0', 10) / 100;
@@ -1578,14 +1584,10 @@
     const cursorNoFim = e.target.selectionEnd == e.target.value.length;
     e.target.value = formataMascaraDinheiro(e.target.value);
     if (cursorNoFim) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
-    atualizaSinalUI();   // valor pode ter zerado (ou saido de zero) -> botao de sinal reflete isso
+    atualizaSinalUI();
   });
 
-  // toggle de sinal: saida (negativo, padrao) <-> entrada (positivo). Existe pra nao depender
-  // de o teclado numerico do celular ter tecla de "-".
   let sinalPositivo = false;
-  // com o campo vazio ou zerado nao faz sentido dizer "negativo" ou "positivo" — o botao vira
-  // um simbolo neutro e fica desabilitado ate' haver um valor de verdade digitado
   function atualizaSinalUI() {
     const semValor = valorMascaraParaNumero(el('fValor').value || '0') === 0;
     el('fSinal').disabled = semValor;
@@ -1595,57 +1597,134 @@
   }
   el('fSinal').onclick = () => { sinalPositivo = !sinalPositivo; atualizaSinalUI(); };
 
-  // abre o modal: reseta o formulario pro estado padrao (data vazia, sinal negativo,
-  // Pago desmarcado, Ativo marcado) e da foco no primeiro campo
-  el('abreNovo').onclick = () => {
+  // ---- categorias ordenadas por uso nos ultimos 3 meses ----
+  // conta quantas vezes cada categoria apareceu em lancamentos dos ultimos ~90 dias;
+  // a mais usada fica primeiro na lista do <select>.
+  function categoriasPorPopularidade() {
+    const limite = new Date(); limite.setDate(limite.getDate() - 90);
+    const limiteIso = limite.toISOString().slice(0, 10);
+    const contagem = {};
+    Estado.lancamentos.forEach(r => {
+      if (!r.categ || !r.data || dataISO(r.data) < limiteIso) return;
+      contagem[r.categ] = (contagem[r.categ] || 0) + 1;
+    });
+    const todas = [...new Set(Estado.lancamentos.map(r => r.categ).filter(valorValido))];
+    return todas.sort((a, b) => (contagem[b] || 0) - (contagem[a] || 0) || a.localeCompare(b, 'pt'));
+  }
+  function popularCategoriasNoForm() {
+    const atual = el('fCateg').value;
+    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
+      categoriasPorPopularidade().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if (atual) el('fCateg').value = atual;
+  }
+
+  // ---- busca de categoria por nome parecido ----
+  // ao digitar o Nome, procura nos lancamentos existentes um nome IGUAL (case/acento
+  // insensitivo) ou que COMECE igual, pega o mais recente com esse nome, e usa a
+  // categoria dele. So marca como "achado" (pra pular a Categoria no Enter) quando
+  // a categoria foi de fato preenchida por essa busca.
+  let categoriaAchadaPorNome = false;
+  function buscaCategoriaPorNome(nomeDigitado) {
+    const alvo = semAcento(nomeDigitado.trim());
+    if (!alvo) return null;
+    const candidatos = Estado.lancamentos
+      .filter(r => r.nome && r.categ && valorValido(r.categ))
+      .filter(r => { const n = semAcento(r.nome); return n === alvo || n.startsWith(alvo) || alvo.startsWith(n); })
+      .sort((a, b) => dataISO(b.data || '') < dataISO(a.data || '') ? -1 : 1);   // mais recente primeiro
+    return candidatos[0]?.categ || null;
+  }
+  el('fNome').addEventListener('input', () => {
+    const categ = buscaCategoriaPorNome(el('fNome').value);
+    if (categ && categoriasPorPopularidade().includes(categ)) {
+      el('fCateg').value = categ;
+      categoriaAchadaPorNome = true;
+    } else {
+      categoriaAchadaPorNome = false;
+    }
+  });
+
+  // ---- navegacao por Enter, campo a campo, pulando Categoria quando ja foi achada ----
+  function proximoCampo(atualId) {
+    let i = CAMPOS_ORDEM.indexOf(atualId) + 1;
+    if (atualId == 'fNome' && categoriaAchadaPorNome) i = CAMPOS_ORDEM.indexOf('fValor');
+    // pula Isa se o campo nao estiver visivel (perfil restrito nao insere pela Isa, ou e' a propria Isa)
+    while (i < CAMPOS_ORDEM.length && CAMPOS_ORDEM[i] == 'fIsa' && el('fIsaWrap').hidden) i++;
+    return CAMPOS_ORDEM[i] || null;
+  }
+  CAMPOS_ORDEM.forEach(id => {
+    el(id).addEventListener('keydown', e => {
+      if (e.key != 'Enter') return;
+      e.preventDefault();
+      const prox = proximoCampo(id);
+      if (prox) {
+        const alvo = el(prox);
+        alvo.focus();
+        if (alvo.tagName == 'SELECT') alvo.click?.();   // abre o combo direto, se der
+      } else {
+        submeteNovoLancamento();   // Enter no ultimo campo visivel = cadastra
+      }
+    });
+  });
+
+  // ---- abrir modal: foco no Nome, categorias populares, Isa so pra quem nao e' a Isabella ----
+  function abreModalNovo(prefill = {}) {
     el('formNovo').reset();
+    popularCategoriasNoForm();
     el('fCateg').selectedIndex = 0;
     el('fFreq').value = '';
     sinalPositivo = false; atualizaSinalUI();
-    el('erroNovo').textContent = '';
-    el('fAtivo').checked = true;
-    el('fPago').checked = false;   // padrao desabilitado, como pedido
+    categoriaAchadaPorNome = false;
+    el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
+    el('fIsaWrap').hidden = Estado.restrito;   // Isabella nao lanca "pra" Isabella, ja e' o padrao dela
+    el('tituloModalNovo').textContent = prefill.nome ? 'Duplicar lançamento' : 'Novo lançamento';
+
+    if (prefill.nome) el('fNome').value = prefill.nome;
+    if (prefill.categ) el('fCateg').value = prefill.categ;
+    if (prefill.freq) el('fFreq').value = prefill.freq;
+    if (prefill.cred) el('fCred').checked = true;
+    if (prefill.isa) el('fIsa').checked = true;
+
     modalNovo.showModal();
-    setTimeout(() => el('fData').focus(), 50);
-  };
+    setTimeout(() => el('fNome').focus(), 50);
+  }
+  el('abreNovo').onclick = () => abreModalNovo();
   el('fechaNovo').onclick = () => modalNovo.close();
-  el('cancelaNovo').onclick = () => modalNovo.close();
-  // clique no backdrop (fora do <form>) fecha o modal
   modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
 
-  // envia o novo lancamento: valida, insere no Supabase, atualiza o Estado local
-  // (sem precisar de um load() completo) e fecha o modal.
-  el('formNovo').addEventListener('submit', async e => {
-    e.preventDefault();
-    el('erroNovo').textContent = '';
+  // duplicar uma linha: abre o modal pre-preenchido com nome/categoria/freq/cred/isa
+  // daquele lancamento. Data e valor ficam em branco, de proposito, pra voce ajustar.
+  window.duplicarLancamento = chave => {
+    const r = Estado.lancamentos.find(x => String(x.id) == chave);
+    if (!r) return;
+    abreModalNovo({ nome: r.nome, categ: r.categ, freq: r.freq, cred: r.cred, isa: r.isa });
+  };
 
-    // Nome e Categoria sao obrigatorios. O resto vai null quando vazio, nunca string vazia
-    // (string vazia salva no banco reaparece depois como um valor "fantasma" na tela).
+  // ---- salvar: nao fecha o modal, so limpa valor/data e mostra confirmacao ----
+  async function submeteNovoLancamento() {
+    el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
+
     const nome = el('fNome').value.trim();
-    if (!nome) return el('erroNovo').textContent = 'Preencha o nome.';
+    if (!nome) { el('erroNovo').textContent = 'Preencha o nome.'; el('fNome').focus(); return; }
     const categ = el('fCateg').value || null;
-    if (!categ) return el('erroNovo').textContent = 'Escolha uma categoria.';
+    if (!categ) { el('erroNovo').textContent = 'Escolha uma categoria.'; el('fCateg').focus(); return; }
 
     const data = el('fData').value || null;
     const freq = el('fFreq').value || null;
     const valorDigitado = el('fValor').value.trim();
     const valorNum = valorDigitado ? valorMascaraParaNumero(valorDigitado) * (sinalPositivo ? 1 : -1) : null;
 
+    // Ativo e Pago nao aparecem mais no formulario — sempre true, como definido
     const payload = {
       data, nome, categ, freq, valor: valorNum,
       cred: el('fCred').checked,
-      isa: el('fIsa').checked,
-      pago: el('fPago').checked,
-      ativo: el('fAtivo').checked,
+      isa: el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked,
+      pago: true,
+      ativo: true,
     };
 
-    el('salvaNovo').disabled = true;
-    el('salvaNovo').textContent = 'Salvando…';
     try {
       const linhaCriada = await inserirLancamento(payload);
 
-      // classifica a linha nova exatamente como carregarDados() faz, e insere no Estado local
-      // (evita ter que recarregar tudo do banco so pra ver o lancamento que acabou de entrar)
       let periodoIdx;
       if (!linhaCriada.data) periodoIdx = null;
       else if (linhaCriada.cred) periodoIdx = periodoDoCredito(linhaCriada.data, linhaCriada.isa);
@@ -1657,16 +1736,20 @@
         periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
       });
 
-      modalNovo.close();
+      // sucesso: NAO fecha o modal. Limpa so valor/data, mantem nome/categoria/cred/isa
+      // pro proximo lancamento da mesma sessao (ex: varios itens do mesmo mercado).
+      el('erroNovo').textContent = `Salvo: ${brl(linhaCriada.valor || 0)}`;
+      el('erroNovo').classList.add('ok');
+      el('fValor').value = ''; sinalPositivo = false; atualizaSinalUI();
+      el('fData').value = '';
+      popularCategoriasNoForm();   // recalcula popularidade com o lancamento recem-criado
       desenhar();
+      el('fNome').focus();
     } catch (err) {
-      // erro: nada e' perdido, os campos continuam preenchidos pro usuario tentar de novo
       el('erroNovo').textContent = 'Falhou ao salvar: ' + err.message;
-    } finally {
-      el('salvaNovo').disabled = false;
-      el('salvaNovo').textContent = 'Salvar';
     }
-  });
+  }
+
 
   // ===================================================================
   // LOGIN (Supabase Auth)

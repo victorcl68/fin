@@ -1528,6 +1528,10 @@ dialog#modalComparativo::backdrop {
     return !['null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
   };
   const semAcento = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  // categoria dedicada pra antecipacao de fatura: um debito nessa categoria abate o
+  // quanto ainda falta sair da conta na linha dinamica "Fatura do cartao" (nao duplica
+  // o lancamento — ele continua aparecendo normal na tabela de Debito).
+  const ehAntecipacaoFatura = categ => semAcento(categ).trim() === 'antecipacao fatura';
 
   // proximo dia (usado pra calcular o inicio de um periodo a partir do 'fat' do anterior)
   function proximoDia(iso) {
@@ -1854,6 +1858,15 @@ dialog#modalComparativo::backdrop {
     const creditos = filtrarLancamentos().filter(r => r.periodoIdx == i && r.cred);
     const totalCredito = creditos.reduce((s, r) => s + r.v, 0);
 
+    // antecipacoes de fatura: um debito (real, ja contado no bloco Debito normalmente)
+    // categorizado como "Antecipação Fatura" abate o quanto ainda falta sair da conta.
+    // So afeta a linha dinamica — o bloco Credito continua mostrando o valor BRUTO das
+    // compras, pra bater com a soma das linhas listadas ali.
+    const totalAntecipado = debitos
+      .filter(r => ehAntecipacaoFatura(r.categ))
+      .reduce((s, r) => s - r.v, 0);   // r.v e' negativo (saida); soma como valor positivo antecipado
+    const totalFaturaLiquido = totalCredito - totalAntecipado;
+
     // a fatura entra como UMA linha sintetica dentro do bloco Debito (ela sai da conta nesse periodo).
     // a data dessa linha e' o VENCIMENTO real (do banco), nao o inicio do ciclo. Como o bloco pode
     // misturar credito seu e da Isabella, o desempate e': Titular=Isabella usa venc_isa, qualquer
@@ -1863,9 +1876,9 @@ dialog#modalComparativo::backdrop {
       : (periodo.venc || periodo.venc_isa);
     const linhaFatura = {
       data: dataVencimentoFatura || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
-      freq: '', id: 0, v: totalCredito, _fat: 1, _sid: 'fat:' + i,
+      freq: '', id: 0, v: totalFaturaLiquido, _fat: 1, _sid: 'fat:' + i,
     };
-    Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalCredito;
+    Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalFaturaLiquido;
 
     const simples = modoSimples();
     const debitosComFatura = [...debitos, linhaFatura];

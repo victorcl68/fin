@@ -133,6 +133,41 @@ h1:hover .tt {
   background: var(--red-soft);
 }
 
+  #recarregar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--mu);
+  background: var(--pa);
+  border: 1px solid var(--ln);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+#recarregar:hover {
+  color: var(--fg);
+  border-color: var(--fg);
+  background: var(--field-hover);
+}
+
+#recarregar.carregando svg {
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
 #abreNovo {
   display: flex;
   align-items: center;
@@ -1270,12 +1305,24 @@ dialog#modalComparativo::backdrop {
 <div id=app>
  <div class=head>
   <button id=sair title="Encerrar" aria-label="Encerrar">
-    <svg viewBox="0 0 24 24" width=17 height=17 fill=none
-      stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-      <path d="M12 3v9" />
-      <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
-    </svg>
-  </button>
+  <svg viewBox="0 0 24 24" width=17 height=17 fill=none
+    stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+    <path d="M12 3v9" />
+    <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+  </svg>
+</button>
+
+<button id=recarregar title="Recarregar dados" aria-label="Recarregar dados">
+  <svg viewBox="0 0 24 24" width=17 height=17 fill=none
+    stroke="currentColor" stroke-width="2.2"
+    stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 11a8 8 0 0 0-14.9-4" />
+    <path d="M4 4v5h5" />
+    <path d="M4 13a8 8 0 0 0 14.9 4" />
+    <path d="M20 20v-5h-5" />
+  </svg>
+</button>
+
 
   <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
     <svg viewBox="0 0 24 24" width=17 height=17 fill=none
@@ -2412,6 +2459,22 @@ el('senha').onkeydown = e => {
 };
 
   el('sair').onclick = async () => { await sb.auth.signOut(); Estado.token = KEY; el('senha').value = ''; mostraTela(0); };
+
+  el('recarregar').onclick = async () => {
+  const bt = el('recarregar');
+
+  if (bt.classList.contains('carregando')) return;
+
+  bt.classList.add('carregando');
+  bt.disabled = true;
+
+  try {
+    await load();
+  } finally {
+    bt.classList.remove('carregando');
+    bt.disabled = false;
+  }
+};
 
   if (API.includes('SEUPROJETO')) { mostraTela(1); load(); }   // sem chaves configuradas: pula o login (modo dev)
   else boot();

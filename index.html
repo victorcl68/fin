@@ -1018,7 +1018,7 @@
   // E a unica funcao chamada de fora (pelo botao de recarregar e pelo login).
   async function load() {
     if (API.includes('SEUPROJETO')) return el('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
-    el('st').textContent = 'Carregando…';
+    // el('st').textContent = 'Carregando…';
     try {
       const { lancamentosCrus } = await carregarDados();
       atualizarCombos(lancamentosCrus);

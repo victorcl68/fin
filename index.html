@@ -135,6 +135,28 @@
     background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .7rem center
   }
 
+  .multiSel { position: relative }
+  .multiSelBtn {
+    font: inherit; color: inherit; background: var(--pa); border: 1px solid var(--ln);
+    border-radius: 9px; padding: .42rem 1.9rem .42rem .7rem; cursor: pointer; text-align: left;
+    min-width: 11rem; max-width: 16rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right .7rem center
+  }
+  .multiSelDrop {
+    display: none; position: absolute; top: calc(100% + .3rem); left: 0; z-index: 25;
+    background: var(--pa); border: 1px solid var(--ln); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: .4rem; min-width: 14rem; max-height: 16rem; overflow-y: auto
+  }
+  .multiSelDrop.open { display: block }
+  .multiSelDrop label {
+    display: flex; align-items: center; gap: .5rem; padding: .35rem .5rem;
+    border-radius: 6px; cursor: pointer; font-size: .9rem
+  }
+  .multiSelDrop label:hover { background: var(--bg) }
+  .multiSelDrop input { width: 1rem; height: 1rem; accent-color: var(--fg) }
+
   .chk {
     display: flex;
     gap: 1.1rem;
@@ -621,6 +643,13 @@
       <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
       <label class=f id=fde><span>De</span><select id=compDe></select></label>
       <label class=f id=fate><span>Até</span><select id=compAte></select></label>
+      <div class=f id=fcatInv>
+        <span>Categorias</span>
+        <div class=multiSel id=multiCatWrap>
+          <button type=button id=multiCatBtn class=multiSelBtn>Nenhuma selecionada</button>
+          <div class=multiSelDrop id=multiCatDrop></div>
+        </div>
+      </div>
     </div>
     <div class=row id=fsit>
       <label class=f><span>Pago</span>
@@ -719,6 +748,7 @@
     ordenacaoPorTabela: {},    // id da tabela -> { k: coluna, d: direcao (1 asc, 2 desc) }
     filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
     linhasVisiveis: {},         // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
+    categoriasSelecionadas: [], // categorias marcadas no filtro do Investimento, na ordem em que foram clicadas
     token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
   };
@@ -899,6 +929,14 @@
       categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     el('fFreq').innerHTML = '<option value="">—</option>' +
       frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+
+    // dropdown de categorias do filtro de Investimento: um checkbox por categoria existente.
+    // remove da selecao qualquer categoria que tenha deixado de existir (ex: sem lancamentos)
+    Estado.categoriasSelecionadas = Estado.categoriasSelecionadas.filter(c => categoriasExistentes.includes(c));
+    el('multiCatDrop').innerHTML = categoriasExistentes.map(c =>
+      `<label><input type=checkbox value="${escapeHtml(c)}" ${Estado.categoriasSelecionadas.includes(c) ? 'checked' : ''} onchange="toggleCategoriaInv('${escapeHtml(c)}',this.checked)">${escapeHtml(c)}</label>`
+    ).join('');
+    atualizaBotaoMultiCat();
 
     // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog.
     // "Todos" (value vazio) e' a opcao padrao — a matriz so recorta quando o usuario escolhe
@@ -1147,26 +1185,40 @@
 
   // Visão "Investimento": por periodo, quanto sobrou, quanto foi aportado/sacado na categoria
   // "Investimento" e o saldo acumulado ao longo do tempo.
+  // Visão "Investimento": balanço de entradas/saídas por período, com colunas fixas
+  // (Sobra, Aportado, Resgatado, Guardado, Acumulado) e colunas dinâmicas — uma por
+  // categoria marcada no filtro, mostrando o gasto total (débito+crédito) daquela
+  // categoria em cada período. A ordem das colunas dinâmicas é a ordem de seleção.
   function vInv() {
     const linhas = Estado.lancamentos.filter(r =>
       passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago) && r.periodoIdx != null
     );
     if (!linhas.length) return '<p class=empty>Vazio</p>';
 
+    const categorias = Estado.categoriasSelecionadas;
+    const colunasCateg = categorias.map(c => `<th class=n>${c}`).join('');
+
     let acumulado = 0;
     const corpo = [...new Set(linhas.map(r => r.periodoIdx))].sort((a, b) => a - b).map(i => {
       const doPeriodo = linhas.filter(r => r.periodoIdx == i);
       const investimentos = doPeriodo.filter(r => r.inv);
       const aportado = investimentos.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
-      const sacado = investimentos.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
-      acumulado += aportado - sacado;
+      const resgatado = investimentos.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+      acumulado += aportado - resgatado;
+
+      // uma celula por categoria selecionada: soma tudo (debito+credito) daquela categoria no periodo
+      const celulasCateg = categorias.map(c =>
+        celValor(doPeriodo.filter(r => r.categ === c).reduce((s, r) => s + r.v, 0))
+      ).join('');
+
       return `<tr><td>${nomePeriodo(Estado.periodos[i].fat)}` +
         celValor(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
-        celValor(aportado) + celValor(sacado) + celValor(aportado - sacado) + celValor(acumulado);
+        celValor(aportado) + celValor(resgatado) + celValor(aportado - resgatado) + celValor(acumulado) +
+        celulasCateg;
     }).join('');
 
-    return '<div class=wrap><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Sacado' +
-      '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
+    return '<div class="wrap wx"><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Resgatado' +
+      `<th class=n>Guardado<th class=n>Acumulado${colunasCateg}</thead><tbody>` + corpo + '</tbody></table></div>';
   }
 
   // ===================================================================
@@ -1186,6 +1238,7 @@
     el('fciclo').hidden = visao != 'c';
     el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || Estado.restrito || isMobile;
     el('ftit').hidden = visao == 'p' || Estado.restrito || isMobile;
+    el('fcatInv').hidden = visao != 'p' || Estado.restrito || isMobile;
     if (Estado.restrito || isMobile) {
       el('fsit').hidden = el('fvisao').hidden = true;
       el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
@@ -1257,6 +1310,32 @@
 
   // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);
+
+  // ===================================================================
+  // FILTRO MULTI-SELEÇÃO DE CATEGORIAS (visão Investimento)
+  // ===================================================================
+  // texto do botao: nenhuma / uma categoria / "N categorias"
+  function atualizaBotaoMultiCat() {
+    const n = Estado.categoriasSelecionadas.length;
+    el('multiCatBtn').textContent = n == 0 ? 'Nenhuma selecionada'
+      : n == 1 ? Estado.categoriasSelecionadas[0]
+      : `${n} categorias`;
+  }
+  // marca/desmarca uma categoria, preservando a ORDEM em que foi clicada (nao ordem alfabetica)
+  window.toggleCategoriaInv = (categoria, marcada) => {
+    if (marcada) {
+      if (!Estado.categoriasSelecionadas.includes(categoria)) Estado.categoriasSelecionadas.push(categoria);
+    } else {
+      Estado.categoriasSelecionadas = Estado.categoriasSelecionadas.filter(c => c !== categoria);
+    }
+    atualizaBotaoMultiCat();
+    desenhar();
+  };
+  el('multiCatBtn').onclick = () => el('multiCatDrop').classList.toggle('open');
+  // clique fora do dropdown fecha ele
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#multiCatWrap')) el('multiCatDrop').classList.remove('open');
+  });
 
   // ===================================================================
   // NOVO LANÇAMENTO (modal de insercao)

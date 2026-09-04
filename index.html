@@ -494,7 +494,7 @@
 
   /* navegador anterior/atual/proximo: aparece tanto pro perfil restrito (Isabella)
      quanto no mobile — os dois usam o mesmo "modo simples" */
-  #fciclNav { display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+  #fciclNav { display: flex; align-items: center; justify-content: flex-start; gap: .8rem;
     margin: 0 0 1.2rem; padding: .3rem 0 }
   #nomeCicloNav { font: 700 1.05rem/1 inherit }
   .cicloNav { display: flex; gap: .4rem }
@@ -969,7 +969,8 @@
       ? valorAnterior
       : (idxAtual >= 0 ? idxAtual : usados.at(-1) ?? -1);
     el('ciclo').value = valorEscolhido;
-    Estado.usados = usados;   // lista de indices navegaveis, usada pelo navegador anterior/proximo
+    Estado.usados = usados;   // lista de indices navegaveis (usada pelo combo Ciclo no modo completo)
+    Estado.idxHoje = idxAtual;   // ancora fixa do navegador anterior/proximo (D-1, D, D+1 de hoje)
     atualizaNavegadorCiclo();
 
     // combo "Agrupar por": todas as colunas do lancamento, com 'nome' pre-selecionado
@@ -1350,21 +1351,23 @@
   el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
 
   // navegador anterior/atual/proximo (modo simples): anda pela lista Estado.usados,
-  // que sao os indices de periodo com algum movimento, na ordem cronologica
+  // alcance fixo: so o ciclo de HOJE, o imediatamente anterior e o imediatamente seguinte
+  // (Estado.idxHoje - 1, Estado.idxHoje, Estado.idxHoje + 1) — nunca mais que isso,
+  // mesmo navegando repetidas vezes. Nao depende de Estado.usados (ter movimento ou nao).
   function atualizaNavegadorCiclo() {
     const idxAtual = +el('ciclo').value;
-    const pos = Estado.usados.indexOf(idxAtual);
     el('nomeCicloNav').textContent = idxAtual >= 0 && Estado.periodos[idxAtual]
       ? nomePeriodo(Estado.periodos[idxAtual].fat) : 'Backlog';
-    el('cicloAnterior').disabled = pos <= 0;
-    el('cicloProximo').disabled = pos < 0 || pos >= Estado.usados.length - 1;
+    el('cicloAnterior').disabled = idxAtual <= Estado.idxHoje - 1;
+    el('cicloProximo').disabled = idxAtual >= Estado.idxHoje + 1 || Estado.idxHoje < 0;
   }
   function navegaCiclo(direcao) {
     const idxAtual = +el('ciclo').value;
-    const pos = Estado.usados.indexOf(idxAtual);
-    const novaPos = pos + direcao;
-    if (novaPos < 0 || novaPos >= Estado.usados.length) return;
-    el('ciclo').value = Estado.usados[novaPos];
+    const novoIdx = idxAtual + direcao;
+    const limiteInferior = Estado.idxHoje - 1, limiteSuperior = Estado.idxHoje + 1;
+    if (Estado.idxHoje < 0 || novoIdx < limiteInferior || novoIdx > limiteSuperior) return;
+    if (!Estado.periodos[novoIdx]) return;
+    el('ciclo').value = novoIdx;
     Estado.selecionados.clear();
     desenhar();
   }

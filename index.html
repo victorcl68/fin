@@ -203,12 +203,6 @@
     border-radius: 7px; padding: .25rem .55rem; cursor: pointer; margin-left: .3rem
   }
   .selTudoBt:hover { color: var(--fg); border-color: var(--fg) }
-  .colAcao { width: 1.6rem; padding: 0 !important; text-align: center }
-  .dupBt {
-    width: 1.6rem; height: 1.6rem; font-size: .85rem; line-height: 1;
-    color: var(--mu); background: transparent; border: 0; border-radius: 6px; cursor: pointer
-  }
-  .dupBt:hover { color: var(--fg); background: var(--bg) }
 
   .blk .meta {
     font-size: .85rem;
@@ -599,7 +593,7 @@
     flex: 1; padding: .75rem; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; border: 0
   }
   .btSec { background: var(--bg); color: var(--fg); border: 1px solid var(--ln) }
-  .btPri { background: var(--fg); color: var(--pa) }
+  .btPri { background: var(--fg); color: var(--pa); width: 100%; margin-top: .3rem }
   .btPri:disabled { opacity: .5; cursor: default }
 
   @media (max-width: 640px) {
@@ -702,8 +696,13 @@
   <dialog id=modalNovo>
     <form id=formNovo method=dialog>
       <div class=modalHead>
-        <h2 id=tituloModalNovo>Novo lançamento</h2>
+        <h2>Novo lançamento</h2>
         <button type=button id=fechaNovo aria-label="Fechar">×</button>
+      </div>
+
+      <div class=fmChecks>
+        <label class=fmChk><input type=checkbox id=fCred><span>Crédito</span></label>
+        <label class=fmChk id=fIsaWrap><input type=checkbox id=fIsa><span>Isabella</span></label>
       </div>
 
       <label class=fm><span>Nome <b class=req>*</b></span>
@@ -726,12 +725,9 @@
       <label class=fm><span>Frequência</span>
         <select id=fFreq><option value="">—</option></select></label>
 
-      <div class=fmChecks>
-        <label class=fmChk><input type=checkbox id=fCred><span>Crédito</span></label>
-        <label class=fmChk id=fIsaWrap><input type=checkbox id=fIsa><span>Isabella</span></label>
-      </div>
-
       <p class="erroNovo okNovo" id=erroNovo></p>
+
+      <button type=button id=salvaNovo class=btPri>Salvar</button>
     </form>
   </dialog>
 
@@ -1127,21 +1123,15 @@
       : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : textoOuTraco(r[chave])}`
   ).join('');
   // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
-  // botao "duplicar" so faz sentido pra linha real (com id no banco), nao pra fatura sintetica.
-  // fica numa coluna extra ao final, so quando a tabela e' selecionavel (fora do modo simples).
-  const celDuplicar = r => (r.id != null && r.id !== 0)
-    ? `<td class=colAcao><button type=button class=dupBt title="Duplicar" onclick="event.stopPropagation();duplicarLancamento('${r.id}')">⧉</button>`
-    : '<td class=colAcao>';
   const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
     const linhas = linhasBrutas.filter(r => passaFiltroTexto(r, idTabela));
     Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
     if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
-    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}${selecionavel ? '<th>' : ''}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
-    return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}${selecionavel ? '<th>' : ''}</thead><tbody>` +
+    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
+    return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
       ordenarLinhas(linhas, idTabela).map(r => {
         const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
-        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` +
-          celulasDaLinha(r) + (selecionavel ? celDuplicar(r) : '');
+        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
       }).join('') + '</tbody></table></div>';
   };
 
@@ -1200,9 +1190,9 @@
       debitosComFatura, 'db', !simples, simples ? null : i
     );
 
-    // perfil restrito da Isabella E mobile ("modo simples"): so o Debito (com a fatura
-    // embutida), sem o detalhe do credito
-    if (simples) return blocoDebito;
+    // so a Isabella (perfil restrito) nao ve o bloco Credito. No mobile, quem nao e' a
+    // Isabella VE o Credito normalmente (so o resto do "modo simples" e' escondido).
+    if (Estado.restrito) return blocoDebito;
 
     const blocoCredito = renderBloco(
       'Crédito', totalCredito,
@@ -1565,10 +1555,9 @@
   // NOVO LANÇAMENTO (modal de insercao) — otimizado pra cadastro rapido:
   // foco automatico, navegacao por Enter, busca de categoria por nome
   // parecido, categorias ordenadas por uso recente, modal fica aberto
-  // apos salvar (pronto pro proximo), e duplicar a partir de uma linha.
+  // apos salvar (pronto pro proximo).
   // ===================================================================
   const modalNovo = el('modalNovo');
-  const CAMPOS_ORDEM = ['fNome', 'fCateg', 'fValor', 'fData', 'fFreq', 'fCred', 'fIsa'];
 
   // mascara de dinheiro: mantem so digitos e desloca 2 casas decimais, tipo caixa eletronico.
   function formataMascaraDinheiro(valorDigitado) {
@@ -1623,7 +1612,6 @@
   // insensitivo) ou que COMECE igual, pega o mais recente com esse nome, e usa a
   // categoria dele. So marca como "achado" (pra pular a Categoria no Enter) quando
   // a categoria foi de fato preenchida por essa busca.
-  let categoriaAchadaPorNome = false;
   function buscaCategoriaPorNome(nomeDigitado) {
     const alvo = semAcento(nomeDigitado.trim());
     if (!alvo) return null;
@@ -1633,71 +1621,32 @@
       .sort((a, b) => dataISO(b.data || '') < dataISO(a.data || '') ? -1 : 1);   // mais recente primeiro
     return candidatos[0]?.categ || null;
   }
+  // conforme digita o Nome, tenta achar por proximidade uma categoria ja usada com esse
+  // nome antes e pre-seleciona no combo (voce ainda pode trocar manualmente).
   el('fNome').addEventListener('input', () => {
     const categ = buscaCategoriaPorNome(el('fNome').value);
-    if (categ && categoriasPorPopularidade().includes(categ)) {
-      el('fCateg').value = categ;
-      categoriaAchadaPorNome = true;
-    } else {
-      categoriaAchadaPorNome = false;
-    }
+    if (categ && categoriasPorPopularidade().includes(categ)) el('fCateg').value = categ;
   });
 
   // ---- navegacao por Enter, campo a campo, pulando Categoria quando ja foi achada ----
-  function proximoCampo(atualId) {
-    let i = CAMPOS_ORDEM.indexOf(atualId) + 1;
-    if (atualId == 'fNome' && categoriaAchadaPorNome) i = CAMPOS_ORDEM.indexOf('fValor');
-    // pula Isa se o campo nao estiver visivel (perfil restrito nao insere pela Isa, ou e' a propria Isa)
-    while (i < CAMPOS_ORDEM.length && CAMPOS_ORDEM[i] == 'fIsa' && el('fIsaWrap').hidden) i++;
-    return CAMPOS_ORDEM[i] || null;
-  }
-  CAMPOS_ORDEM.forEach(id => {
-    el(id).addEventListener('keydown', e => {
-      if (e.key != 'Enter') return;
-      e.preventDefault();
-      const prox = proximoCampo(id);
-      if (prox) {
-        const alvo = el(prox);
-        alvo.focus();
-        if (alvo.tagName == 'SELECT') alvo.click?.();   // abre o combo direto, se der
-      } else {
-        submeteNovoLancamento();   // Enter no ultimo campo visivel = cadastra
-      }
-    });
-  });
 
   // ---- abrir modal: foco no Nome, categorias populares, Isa so pra quem nao e' a Isabella ----
-  function abreModalNovo(prefill = {}) {
+  function abreModalNovo() {
     el('formNovo').reset();
     popularCategoriasNoForm();
     el('fCateg').selectedIndex = 0;
     el('fFreq').value = '';
     sinalPositivo = false; atualizaSinalUI();
-    categoriaAchadaPorNome = false;
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
     el('fIsaWrap').hidden = Estado.restrito;   // Isabella nao lanca "pra" Isabella, ja e' o padrao dela
-    el('tituloModalNovo').textContent = prefill.nome ? 'Duplicar lançamento' : 'Novo lançamento';
-
-    if (prefill.nome) el('fNome').value = prefill.nome;
-    if (prefill.categ) el('fCateg').value = prefill.categ;
-    if (prefill.freq) el('fFreq').value = prefill.freq;
-    if (prefill.cred) el('fCred').checked = true;
-    if (prefill.isa) el('fIsa').checked = true;
 
     modalNovo.showModal();
     setTimeout(() => el('fNome').focus(), 50);
   }
   el('abreNovo').onclick = () => abreModalNovo();
   el('fechaNovo').onclick = () => modalNovo.close();
+  el('salvaNovo').onclick = () => submeteNovoLancamento();
   modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
-
-  // duplicar uma linha: abre o modal pre-preenchido com nome/categoria/freq/cred/isa
-  // daquele lancamento. Data e valor ficam em branco, de proposito, pra voce ajustar.
-  window.duplicarLancamento = chave => {
-    const r = Estado.lancamentos.find(x => String(x.id) == chave);
-    if (!r) return;
-    abreModalNovo({ nome: r.nome, categ: r.categ, freq: r.freq, cred: r.cred, isa: r.isa });
-  };
 
   // ---- salvar: nao fecha o modal, so limpa valor/data e mostra confirmacao ----
   async function submeteNovoLancamento() {

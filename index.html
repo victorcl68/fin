@@ -595,6 +595,14 @@
     }
     #formNovo { max-height: 100vh; padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom)) }
     .fmChecks { grid-template-columns: 1fr 1fr }
+
+    dialog#modalGrafico, dialog#modalComparativo {
+      width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh;
+      border-radius: 0; margin: 0; padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+      overflow-y: auto
+    }
+    #modalGrafico > div[style*=height], #modalComparativo > div[style*=height] { height: 320px !important }
+    .multiSelBtn { min-width: 0; max-width: 100% }
   }
 </style>
 
@@ -729,6 +737,17 @@
       <canvas id=canvasGraficoGastos role=img aria-label="Gráfico de pizza dos gastos por categoria no ciclo"></canvas>
     </div>
     <p class=empty id=graficoVazio hidden>Sem gastos neste ciclo.</p>
+  </dialog>
+
+  <dialog id=modalComparativo>
+    <div class=modalHead>
+      <h2>Ganho x gasto x aportado</h2>
+      <button type=button id=fechaComparativo aria-label="Fechar">×</button>
+    </div>
+    <p class=meta>Verde: ganho do mês (fora Investimento) · Vermelho: gasto do mês (inclui resgate) · Laranja: aportado em Investimento</p>
+    <div style="position:relative;height:420px;margin-top:.6rem">
+      <canvas id=canvasEvolucao role=img aria-label="Gráfico de barras comparando ganho, gasto e aportado mês a mês"></canvas>
+    </div>
   </dialog>
 </div>
 
@@ -1194,7 +1213,8 @@
       periodosUsados.map(i => celValor(totalPorPeriodo(i))).join('') +
       celValor(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
 
-    return `<div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
+    const btnEvolucao = `<button type=button class=selTudoBt onclick="abrirGraficoEvolucao(${de},${ate})">Ver evolução</button>`;
+    return `<p class=meta style="margin:0 0 .6rem">${btnEvolucao}</p><div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
   }
 
   // Visão "Investimento": balanço de entradas/saídas por período (Sobra, Aportado,
@@ -1420,6 +1440,69 @@
   el('fechaGrafico').onclick = () => el('modalGrafico').close();
   el('modalGrafico').addEventListener('click', e => {
     if (e.target == el('modalGrafico')) el('modalGrafico').close();
+  });
+
+  // ===================================================================
+  // GRÁFICO DE EVOLUÇÃO (Comparar) — ganho x gasto x aportado, mês a mês
+  // ===================================================================
+  // Regra por período:
+  //   Ganho    = soma dos positivos, exceto categoria Investimento
+  //   Aportado = soma dos negativos DA categoria Investimento (invertido pra positivo)
+  //   Gasto    = soma dos negativos exceto Investimento, MAIS os positivos de
+  //              Investimento (resgate conta como gasto, nao como ganho)
+  let graficoEvolucaoChart = null;
+
+  function dadosEvolucao(de, ate) {
+    const periodosUsados = [];
+    for (let i = de; i <= ate; i++) if (Estado.periodos[i]) periodosUsados.push(i);
+
+    const porPeriodo = periodosUsados.map(i => {
+      const linhas = filtrarLancamentos().filter(r => r.periodoIdx == i);
+      const investimento = linhas.filter(r => r.inv);
+      const resto = linhas.filter(r => !r.inv);
+
+      const ganho = resto.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+      const gastoResto = resto.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
+      const resgate = investimento.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+      const aportado = investimento.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
+
+      return { nome: nomePeriodo(Estado.periodos[i].fat), ganho, gasto: gastoResto + resgate, aportado };
+    });
+    return porPeriodo;
+  }
+
+  window.abrirGraficoEvolucao = (de, ate) => {
+    const dados = dadosEvolucao(de, ate);
+    desenhaGraficoEvolucao(dados);
+    el('modalComparativo').showModal();
+  };
+
+  function desenhaGraficoEvolucao(dados) {
+    if (graficoEvolucaoChart) graficoEvolucaoChart.destroy();
+    graficoEvolucaoChart = new Chart(el('canvasEvolucao'), {
+      type: 'bar',
+      data: {
+        labels: dados.map(d => d.nome),
+        datasets: [
+          { label: 'Ganho', data: dados.map(d => d.ganho), backgroundColor: '#1D9E75' },
+          { label: 'Gasto', data: dados.map(d => d.gasto), backgroundColor: '#E24B4A' },
+          { label: 'Aportado', data: dados.map(d => d.aportado), backgroundColor: '#EF9F27' },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${brl(ctx.parsed.y)}` } },
+        },
+        scales: { y: { ticks: { callback: v => brl(v) } } },
+      },
+    });
+  }
+
+  el('fechaComparativo').onclick = () => el('modalComparativo').close();
+  el('modalComparativo').addEventListener('click', e => {
+    if (e.target == el('modalComparativo')) el('modalComparativo').close();
   });
 
   // ===================================================================

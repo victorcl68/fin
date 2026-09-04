@@ -1872,14 +1872,14 @@ const totalAntecipado = totalAntecipadoDaFatura(filtrarLancamentos(), i);
     // soma (nao subtrai): fatura e' negativa, antecipado e' positivo — antecipar reduz
     // o quanto ainda falta sair. Sem compras no credito nao ha fatura pra abater.
     const totalFaturaLiquido = totalCredito ? totalCredito + totalAntecipado : 0;
-
-    // a fatura entra como UMA linha sintetica dentro do bloco Debito (ela sai da conta nesse periodo).
-    // a data dessa linha e' o VENCIMENTO real (do banco), nao o inicio do ciclo. Como o bloco pode
-    // misturar credito seu e da Isabella, o desempate e': Titular=Isabella usa venc_isa, qualquer
-    // outro caso (Eu ou Todos) usa o seu venc.
-    const dataVencimentoFatura = el('titular').value == 'I'
-      ? (periodo.venc_isa || periodo.venc)
-      : (periodo.venc || periodo.venc_isa);
+    // O vencimento da fatura exibida neste ciclo mora no periodo ANTERIOR: periodoDoCredito
+    // pega o 'venc' e joga a fatura no periodo cujo 'fat' e' o mes seguinte, entao quem
+    // aparece em Agosto (fat=set) venceu no 'venc' do periodo de fat=ago. Titular=Isabella
+    // usa venc_isa; Eu ou Todos usam o seu venc.
+    const periodoDoVencimento = Estado.periodos[i - 1];
+    const dataVencimentoFatura = periodoDoVencimento && (el('titular').value == 'I'
+      ? (periodoDoVencimento.venc_isa || periodoDoVencimento.venc)
+      : (periodoDoVencimento.venc || periodoDoVencimento.venc_isa));
     const linhaFatura = {
       data: dataVencimentoFatura || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
       freq: '', id: 0, v: totalFaturaLiquido, _fat: 1, _sid: 'fat:' + i,

@@ -1023,8 +1023,8 @@
       const { lancamentosCrus } = await carregarDados();
       atualizarCombos(lancamentosCrus);
 
-      const totalBacklog = Estado.lancamentos.filter(r => r.periodoIdx == null).length;
-      el('st').innerHTML = `<b>${Estado.lancamentos.length}</b> Lançamentos · <b>${totalBacklog}</b> Itens no Backlog`;
+      // const totalBacklog = Estado.lancamentos.filter(r => r.periodoIdx == null).length;
+      // el('st').innerHTML = `<b>${Estado.lancamentos.length}</b> Lançamentos · <b>${totalBacklog}</b> Itens no Backlog`;
       desenhar();
     } catch (e) {
       el('st').textContent = '';

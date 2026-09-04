@@ -156,6 +156,7 @@
   }
   .multiSelDrop label:hover { background: var(--bg) }
   .multiSelDrop input { width: 1rem; height: 1rem; accent-color: var(--fg) }
+  .multiSelTodos { border-bottom: 1px solid var(--ln); margin-bottom: .3rem; padding-bottom: .5rem !important }
 
   .chk {
     display: flex;
@@ -749,6 +750,7 @@
     filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
     linhasVisiveis: {},         // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
     categoriasSelecionadas: [], // categorias marcadas no filtro do Investimento, na ordem em que foram clicadas
+    categoriasDisponiveis: [],  // todas as categorias existentes no banco (usado pelo checkbox "Todos")
     token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
   };
@@ -930,12 +932,17 @@
     el('fFreq').innerHTML = '<option value="">—</option>' +
       frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
 
-    // dropdown de categorias do filtro de Investimento: um checkbox por categoria existente.
+    // dropdown de categorias do filtro de Investimento: um checkbox "Todos" (marca/desmarca
+    // tudo de uma vez) mais um checkbox por categoria existente.
     // remove da selecao qualquer categoria que tenha deixado de existir (ex: sem lancamentos)
     Estado.categoriasSelecionadas = Estado.categoriasSelecionadas.filter(c => categoriasExistentes.includes(c));
-    el('multiCatDrop').innerHTML = categoriasExistentes.map(c =>
-      `<label><input type=checkbox value="${escapeHtml(c)}" ${Estado.categoriasSelecionadas.includes(c) ? 'checked' : ''} onchange="toggleCategoriaInv('${escapeHtml(c)}',this.checked)">${escapeHtml(c)}</label>`
-    ).join('');
+    Estado.categoriasDisponiveis = categoriasExistentes;   // guarda pra "Todos" saber o universo completo
+    const todasMarcadas = categoriasExistentes.length > 0 && categoriasExistentes.every(c => Estado.categoriasSelecionadas.includes(c));
+    el('multiCatDrop').innerHTML =
+      `<label class=multiSelTodos><input type=checkbox ${todasMarcadas ? 'checked' : ''} onchange="toggleTodasCategoriasInv(this.checked)"><b>Todos</b></label>` +
+      categoriasExistentes.map(c =>
+        `<label><input type=checkbox value="${escapeHtml(c)}" ${Estado.categoriasSelecionadas.includes(c) ? 'checked' : ''} onchange="toggleCategoriaInv('${escapeHtml(c)}',this.checked)">${escapeHtml(c)}</label>`
+      ).join('');
     atualizaBotaoMultiCat();
 
     // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog.
@@ -1211,13 +1218,13 @@
         celValor(doPeriodo.filter(r => r.categ === c).reduce((s, r) => s + r.v, 0))
       ).join('');
 
-      return `<tr><td>${nomePeriodo(Estado.periodos[i].fat)}` +
+      return `<tr><td class=c1>${nomePeriodo(Estado.periodos[i].fat)}` +
         celValor(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
         celValor(aportado) + celValor(resgatado) + celValor(aportado - resgatado) + celValor(acumulado) +
         celulasCateg;
     }).join('');
 
-    return '<div class="wrap wx"><table><thead><tr><th>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Resgatado' +
+    return '<div class="wrap wx"><table><thead><tr><th class=c1>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Resgatado' +
       `<th class=n>Guardado<th class=n>Acumulado${colunasCateg}</thead><tbody>` + corpo + '</tbody></table></div>';
   }
 
@@ -1329,6 +1336,16 @@
       Estado.categoriasSelecionadas = Estado.categoriasSelecionadas.filter(c => c !== categoria);
     }
     atualizaBotaoMultiCat();
+    desenhar();
+  };
+  // "Todos": marca (ordem alfabetica, ja que nao ha um clique individual pra ordenar) ou
+  // desmarca tudo de uma vez. Reusa atualizarCombos so pra redesenhar os checkboxes do dropdown.
+  window.toggleTodasCategoriasInv = marcarTudo => {
+    Estado.categoriasSelecionadas = marcarTudo ? [...Estado.categoriasDisponiveis] : [];
+    atualizaBotaoMultiCat();
+    document.querySelectorAll('#multiCatDrop input[type=checkbox]').forEach(cb => {
+      if (cb.value) cb.checked = marcarTudo;   // ignora o proprio checkbox "Todos" (sem 'value')
+    });
     desenhar();
   };
   el('multiCatBtn').onclick = () => el('multiCatDrop').classList.toggle('open');

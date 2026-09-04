@@ -135,1420 +135,34 @@
     background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .7rem center
   }
 
-  .chk {
-    display: flex;
-    gap: 1.1rem;
-    align-items: center;
-    height: 2.1rem
-  }
-
-  .chk label {
-    display: flex;
-    gap: .4rem;
-    align-items: center;
-    font-size: .92rem;
-    cursor: pointer
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--fg);
-    outline-offset: 2px
-  }
-
-  .blk {
-    margin: 0 0 1.8rem
-  }
-
-  .blk h3 {
-    font: 700 1.05rem/1.3 inherit;
-    margin: 0
-  }
-
-  .blk h3 b {
-    font-weight: 700
-  }
-
-  .selTudoBt {
-    font: 400 .78rem/1 inherit; vertical-align: middle;
-    color: var(--mu); background: var(--pa); border: 1px solid var(--ln);
-    border-radius: 7px; padding: .25rem .55rem; cursor: pointer; margin-left: .3rem
-  }
-  .selTudoBt:hover { color: var(--fg); border-color: var(--fg) }
-
-  .blk .meta {
-    font-size: .85rem;
-    color: var(--mu);
-    font-style: italic;
-    margin: .1rem 0 .6rem
-  }
-
-  .wrap {
-    background: var(--pa);
-    border: 1px solid var(--ln);
-    border-radius: 10px;
-    overflow: hidden
-  }
-
-  .wx {
-    overflow: auto;
-    max-height: 78vh
-  }
-
-  table {
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    background: var(--pa)
-  }
-
-  th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--pa);
-    font-size: .7rem;
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    color: var(--mu);
-    text-align: left;
-    padding: .55rem .7rem;
-    border-bottom: 1px solid var(--ln);
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap
-  }
-
-  thead tr.filtros th {
-    position: sticky; top: 1.9rem; z-index: 1; background: var(--pa);
-    padding: .25rem .5rem .45rem; border-bottom: 1px solid var(--ln); cursor: default
-  }
-  thead tr.filtros input {
-    width: 100%; font: 12px/1.3 inherit; font-weight: 400; text-transform: none;
-    letter-spacing: normal; color: var(--fg); background: var(--bg);
-    border: 1px solid var(--ln); border-radius: 6px; padding: .2rem .4rem
-  }
-  thead tr.filtros input::placeholder { color: var(--mu) }
-
-  th .ar {
-    color: var(--fg);
-    font-style: normal
-  }
-
-  td {
-    padding: .5rem .7rem;
-    border-bottom: 1px solid var(--ln)
-  }
-
-  tr:last-child td {
-    border-bottom: 0
-  }
-
-  tbody tr:hover td {
-    background: var(--bg)
-  }
-
-  .wrap {
-    -webkit-overflow-scrolling: touch
-  }
-
-  .n {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap
-  }
-
-  .vd {
-    color: var(--vd);
-    font-weight: 600
-  }
-
-  tbody tr.fat td {
-    background: #FBEFE4
-  }
-
-  tbody tr.fat:hover td {
-    background: #F7E6D5
-  }
-
-  .vm {
-    color: var(--vm);
-    font-weight: 600
-  }
-
-  .tot td {
-    font-weight: 700;
-    border-top: 1px solid var(--ln);
-    border-bottom: 0;
-    background: var(--bg)
-  }
-
-  .tot td:first-child {
-    border-radius: 0 0 0 10px
-  }
-
-  .tot td:last-child {
-    border-radius: 0 0 10px 0
-  }
-
-  .empty {
-    color: var(--mu);
-    font-style: italic;
-    font-size: .9rem;
-    padding: .8rem
-  }
-
-  .sumr {
-    margin: .5rem 0 0;
-    font-size: .9rem
-  }
-
-  .sumr div {
-    display: flex;
-    justify-content: space-between;
-    padding: .3rem .1rem;
-    border-bottom: 1px solid var(--ln)
-  }
-
-  .sumr div:last-child {
-    border-bottom: 0;
-    font-weight: 700;
-    border-top: 2px solid var(--fg);
-    padding-top: .4rem
-  }
-
-  .sumr span:last-child {
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap
-  }
-
-  #login {
-    max-width: 19rem;
-    margin: 16vh auto 0;
-    display: none;
-    flex-direction: column;
-    gap: .7rem
-  }
-
-  #login h1 {
-    cursor: default
-  }
-
-  #login h1 .tt {
-    text-decoration: none
-  }
-
-  #login input {
-    font: inherit;
-    padding: .55rem .7rem;
-    border: 1px solid var(--ln);
-    border-radius: 9px;
-    background: var(--pa)
-  }
-
-  #login button {
-    font: inherit;
-    color: var(--pa);
-    background: var(--fg);
-    border: 0;
-    border-radius: 9px;
-    padding: .6rem;
-    cursor: pointer
-  }
-
-  #login button:hover {
-    opacity: .85
-  }
-
-  #login .err {
-    color: var(--vm);
-    font-size: .85rem;
-    min-height: 1.1rem
-  }
-
-  #login .out {
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    font-size: .8rem;
-    color: var(--mu)
-  }
-
-  #app {
-    display: none
-  }
-
-  #selbar {
-    position: fixed;
-    right: 1.6rem;
-    bottom: 1.6rem;
-    display: none;
-    align-items: center;
-    gap: 1.4rem;
-    background: var(--pa);
-    color: var(--fg);
-    padding: .9rem 1.3rem;
-    border: 1px solid var(--ln);
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
-    z-index: 20
-  }
-
-  #selbar .info {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2
-  }
-
-  #selbar .cnt {
-    font-size: .78rem;
-    color: var(--mu);
-    text-transform: uppercase;
-    letter-spacing: .04em
-  }
-
-  #selbar .val {
-    font-size: 1.35rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums
-  }
-
-  #selbar button {
-    font: inherit;
-    color: var(--pa);
-    background: var(--fg);
-    border: 0;
-    border-radius: 9px;
-    padding: .5rem .9rem;
-    cursor: pointer
-  }
-
-  #selbar button:hover {
-    opacity: .85
-  }
-
-  tbody tr.pick {
-    cursor: pointer
-  }
-
-  tbody tr.on td {
-    background: #EAF3EC
-  }
-
-  tbody tr.on:hover td {
-    background: #E0EDE3
-  }
-
-  .wx td.c1,
-  .wx th.c1 {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: var(--pa)
-  }
-
-  .wx thead th.c1 {
-    z-index: 3
-  }
-
-  .wx tbody tr:hover td.c1 {
-    background: var(--bg)
-  }
-
-  .wx tr.tot td.c1 {
-    background: var(--bg)
-  }
-
-  .wx td.c1 {
-    border-right: 1px solid var(--ln)
-  }
-
-  #fcicloFixo { display: none }   /* so aparece no mobile (ver media query abaixo) */
-
-  @media (max-width: 640px) {
-    body { padding: 1.2rem .9rem }
-    h1 { font-size: 1.15rem }
-    .head { gap: .5rem }
-
-    /* seletor de Ciclo sempre visivel no mobile — e' o unico filtro que existe la */
-    #fcicloFixo { display: flex; margin: 0 0 1rem }
-    #fcicloFixo select { width: 100% }
-
-    /* mobile nao usa gaveta: a barra de filtros (.tool) simplesmente nao aparece */
-    .tool { display: none }
-
-    /* esconde abas nao-Ciclo no combo Visao (Comparar/Investimento) */
-    #visao option[value=k], #visao option[value=p] { display: none }
-
-    /* tabela: scroll horizontal em todas as visoes */
-    .wrap { overflow-x: auto }
-
-    /* barra flutuante ocupa a largura */
-    #selbar { left: .8rem; right: .8rem; bottom: .8rem; padding: .7rem 1rem }
-    #selbar .val { font-size: 1.2rem }
-  }
-
-  /* --- botao "Novo" no cabecalho: mesmo molde do #sair, so muda cor e icone --- */
-  #abreNovo {
-    display: flex; align-items: center; justify-content: center;
-    width: 2rem; height: 2rem; padding: 0; margin-left: auto;
-    color: var(--pa); background: var(--fg); border: 0;
-    border-radius: 9px; cursor: pointer
-  }
-  #abreNovo:hover { opacity: .85 }
-
-  /* --- modal --- */
-  dialog#modalNovo {
-    border: 0; border-radius: 16px; padding: 0;
-    width: min(30rem, 92vw); max-height: 88vh;
-    box-shadow: 0 20px 60px rgba(0,0,0,.25);
-    color: var(--fg)
-  }
-  dialog#modalNovo::backdrop { background: rgba(26,25,23,.45) }
-  #formNovo { display: flex; flex-direction: column; padding: 1.3rem; gap: 1rem; overflow-y: auto; max-height: 88vh }
-
-  .modalHead { display: flex; align-items: center; justify-content: space-between }
-  .modalHead h2 { font: 700 1.1rem/1 inherit; margin: 0 }
-  #fechaNovo {
-    font-size: 1.5rem; line-height: 1; background: transparent; border: 0;
-    color: var(--mu); cursor: pointer; padding: .2rem .4rem
-  }
-
-  .fm { display: flex; flex-direction: column; gap: .35rem }
-  .fm > span { font-size: .8rem; font-weight: 600; color: var(--mu) }
-  .fm .req { color: var(--vm); font-weight: 700 }
-  .fm input[type=text], .fm input[type=date], .fm select {
-    font: 16px inherit; /* 16px evita zoom automatico no iOS ao focar */
-    padding: .65rem .8rem; border: 1px solid var(--ln); border-radius: 10px;
-    background: var(--pa); color: var(--fg); width: 100%
-  }
-  .fm select { appearance: none; cursor: pointer;
-    background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .8rem center;
-    padding-right: 2rem
-  }
-
-  .moneyWrap { display: flex; align-items: stretch; border: 1px solid var(--ln); border-radius: 10px; overflow: hidden }
-  .sinalBt {
-    width: 2.4rem; border: 0; border-right: 1px solid var(--ln); background: var(--bg);
-    color: var(--vm); font-size: 1.15rem; font-weight: 700; cursor: pointer
-  }
-  .sinalBt.pos { color: var(--vd) }
-  .sinalBt.neutro { color: var(--mu); cursor: default }
-  .sinalBt:disabled { opacity: .6 }
-  .moneyPrefix { display: flex; align-items: center; padding: 0 .5rem; background: var(--bg); color: var(--mu); font-weight: 600; font-size: .9rem }
-  .moneyWrap input { border: 0; border-radius: 0; text-align: right; font-variant-numeric: tabular-nums; flex: 1; min-width: 0 }
-  .moneyWrap input:focus { outline: none }
-  .hintNeg { color: var(--mu); font-size: .74rem }
-
-  .fmChecks { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem }
-  .fmChk {
-    display: flex; align-items: center; gap: .5rem; padding: .6rem .7rem;
-    border: 1px solid var(--ln); border-radius: 10px; cursor: pointer; font-size: .92rem; user-select: none
-  }
-  .fmChk input { width: 1.15rem; height: 1.15rem; accent-color: var(--fg) }
-
-  .erroNovo { color: var(--vm); font-size: .85rem; margin: 0; min-height: 1.1rem }
-
-  .modalActs { display: flex; gap: .7rem; margin-top: .2rem }
-  .btSec, .btPri {
-    flex: 1; padding: .75rem; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; border: 0
-  }
-  .btSec { background: var(--bg); color: var(--fg); border: 1px solid var(--ln) }
-  .btPri { background: var(--fg); color: var(--pa) }
-  .btPri:disabled { opacity: .5; cursor: default }
-
-  @media (max-width: 640px) {
-    #abreNovo .lbl { display: none }             /* so o icone no mobile, economiza espaco */
-    #abreNovo { padding: .5rem; width: 2rem; height: 2rem; justify-content: center }
-    dialog#modalNovo {
-      width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh;
-      border-radius: 0; margin: 0
-    }
-    #formNovo { max-height: 100vh; padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom)) }
-    .fmChecks { grid-template-columns: 1fr 1fr }
-  }
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<div id=login>
-  <h1><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
-  <input id=email type=email placeholder="e-mail" autocomplete=username>
-  <input id=senha type=password placeholder="senha" autocomplete=current-password>
-  <button id=entrar>Entrar</button>
-  <div class=err id=lerr></div>
-</div>
-
-<div id=app>
-  <div class=head>
-    <button id=sair title="Encerrar" aria-label="Encerrar"><svg viewBox="0 0 24 24" width=17 height=17 fill=none
-        stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-        <path d="M12 3v9" />
-        <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
-      </svg></button>
-    <h1 onclick=load() title="Recarregar do banco"><span class=ic>💰</span> <span class=tt>Lançamentos</span></h1>
-    <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento"><svg viewBox="0 0 24 24" width=17 height=17 fill=none
-        stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-        <line x1=12 y1=5 x2=12 y2=19 />
-        <line x1=5 y1=12 x2=19 y2=12 />
-      </svg></button>
-  </div>
-  <p class=sub><span id=st></span></p>
-
-  <label class=f id=fcicloFixo><span>Ciclo</span><select id=cicloFixo></select></label>
-
-  <div class=tool>
-    <div class=row>
-      <label class=f id=fvisao><span>Visão</span>
-        <select id=visao>
-          <option value=c>Ciclo
-          <option value=k>Comparar
-          <option value=p>Balanço
-        </select></label>
-      <label class=f id=fciclo><span>Ciclo</span><select id=ciclo></select></label>
-      <label class=f id=forigem><span>Origem</span>
-        <select id=origem>
-          <option value=A>Tudo
-          <option value=D>Débito
-          <option value=F>Crédito
-        </select></label>
-      <label class=f id=ftit><span>Titular</span>
-        <select id=titular>
-          <option value=T>Todos
-          <option value=E>Eu
-          <option value=I>Isabella
-        </select></label>
-      <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
-      <label class=f id=fde><span>De</span><select id=compDe></select></label>
-      <label class=f id=fate><span>Até</span><select id=compAte></select></label>
-    </div>
-    <div class=row id=fsit>
-      <label class=f><span>Pago</span>
-        <select id=fpago>
-          <option value=B>Ambos
-          <option value=S>Sim
-          <option value=N>Não
-        </select></label>
-      <label class=f><span>Ativo</span>
-        <select id=fativo>
-          <option value=S>Sim
-          <option value=B>Ambos
-          <option value=N>Não
-        </select></label>
-    </div>
-  </div>
-  <div id=out></div>
-  <div id=selbar><span id=selinfo class=info></span><button id=selclear>Limpar</button></div>
-
-  <dialog id=modalNovo>
-    <form id=formNovo method=dialog>
-      <div class=modalHead>
-        <h2>Novo lançamento</h2>
-        <button type=button id=fechaNovo aria-label="Fechar">×</button>
-      </div>
-
-      <label class=fm><span>Data</span>
-        <input type=date id=fData></label>
-
-      <label class=fm><span>Nome <b class=req>*</b></span>
-        <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
-
-      <label class=fm><span>Valor</span>
-        <div class=moneyWrap>
-          <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
-          <span class=moneyPrefix>R$</span>
-          <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
-        </div>
-      </label>
-
-      <label class=fm><span>Categoria <b class=req>*</b></span>
-        <select id=fCateg required></select></label>
-
-      <label class=fm><span>Frequência</span>
-        <select id=fFreq><option value="">—</option></select></label>
-
-      <div class=fmChecks>
-        <label class=fmChk><input type=checkbox id=fCred><span>Crédito</span></label>
-        <label class=fmChk><input type=checkbox id=fIsa><span>Isabella</span></label>
-        <label class=fmChk><input type=checkbox id=fPago><span>Pago</span></label>
-        <label class=fmChk><input type=checkbox id=fAtivo checked><span>Ativo</span></label>
-      </div>
-
-      <p class=erroNovo id=erroNovo></p>
-
-      <div class=modalActs>
-        <button type=button id=cancelaNovo class=btSec>Cancelar</button>
-        <button type=submit id=salvaNovo class=btPri>Salvar</button>
-      </div>
-    </form>
-  </dialog>
-</div>
-
-<script>
-        // ===================================================================
-  // CONFIG — credenciais do Supabase, e-mail do perfil restrito, e as
-  // definicoes que moldam a interface (meses, colunas das tabelas)
-  // ===================================================================
-  const API = 'https://yzmyncxoskvqzdczaill.supabase.co', KEY = 'sb_publishable_Fq984qUdQO8mGq4PSYmUiQ_ySaLrmEQ';
-  const EMAIL_ISABELLA = 'isabella.251200@gmail.com';   // login que recebe a visao restrita
-
-  // nomes dos meses, usados por nomePeriodo() pra rotular cada periodo (ex: "Junho 2026")
-  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-
-  // colunas mostradas nas tabelas de lancamentos, na ordem em que aparecem.
-  // [chave no objeto, rotulo exibido, tipo]  tipo: d=data, t=texto, n=numero, b=booleano
-  const COLS = [
-    ['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
-    ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n'],
-  ];
-  // no mobile a tabela mostra so o essencial: Data, Nome e Valor
-  const COLS_MOBILE = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['valor', 'Valor', 'n']];
-  const isMobile = () => matchMedia('(max-width: 640px)').matches;
-  const colunasAtivas = () => isMobile() ? COLS_MOBILE : COLS;
-
-  // ===================================================================
-  // ESTADO — tudo que muda durante o uso do app fica junto aqui, num
-  // objeto so. Facilita saber "o que e dado da aplicacao" so olhando
-  // essa lista, em vez de variaveis soltas espalhadas pelo arquivo.
-  // ===================================================================
-  const Estado = {
-    periodos: [],              // linhas da tabela 'periodos', ja com o campo 'ini' calculado
-    lancamentos: [],           // linhas da tabela 'lancamentos', ja com 'v' (numero) e 'periodoIdx'
-    valorFaturaPorCiclo: {},   // chave 'fat:<indice>' -> total da fatura daquele periodo (usado na selecao)
-    selecionados: new Map(),   // chave de selecao -> valor da linha (soma da barra flutuante)
-    ordenacaoPorTabela: {},    // id da tabela -> { k: coluna, d: direcao (1 asc, 2 desc) }
-    filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
-    linhasVisiveis: {},         // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
-    token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
-    restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
-  };
-
-  // le (ou cria) o estado de ordenacao de uma tabela especifica
-  const estadoOrdenacao = id => Estado.ordenacaoPorTabela[id] || (Estado.ordenacaoPorTabela[id] = { k: 'data', d: 1 });
-  const estadoFiltroTexto = id => Estado.filtroTexto[id] || (Estado.filtroTexto[id] = {});
-
-  // ===================================================================
-  // HELPERS — pequenas funcoes puras usadas em toda parte
-  // ===================================================================
-  const el = id => document.getElementById(id);                         // atalho pra getElementById
-  const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); // formata em R$
-  const corValor = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';                // classe css: vermelho/verde conforme o sinal
-  const celValor = v => `<td class="n ${corValor(v)}">${brl(v)}`;        // celula <td> ja formatada em R$
-  const dataISO = s => String(s || '').slice(0, 10);                    // normaliza pra 'YYYY-MM-DD'
-  const timestamp = s => Date.parse(dataISO(s)) || 0;                   // 'YYYY-MM-DD' -> numero, pra comparar/ordenar
-  const dataBR = s => { const p = dataISO(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s }; // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
-  const capitaliza = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
-
-  // proximo dia (usado pra calcular o inicio de um periodo a partir do 'fat' do anterior)
-  function proximoDia(iso) {
-    const d = new Date(dataISO(iso) + 'T00:00:00Z');
-    d.setUTCDate(d.getUTCDate() + 1);
-    return d.toISOString().slice(0, 10);
-  }
-  // 30 dias antes de uma data (usado so pro limite inferior do primeiro periodo, que nao tem "anterior")
-  function menos30(iso) {
-    const d = new Date(dataISO(iso) + 'T00:00:00Z');
-    d.setUTCDate(d.getUTCDate() - 30);
-    return d.toISOString().slice(0, 10);
-  }
-
-  // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'.
-  // Ex.: periodo com fat=2026-07-06 se chama "Junho 2026" (o mes em que ele comecou).
-  function nomePeriodo(fatStr) {
-    const iso = dataISO(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
-    let mesAnterior = m - 1, ano = y;
-    if (mesAnterior == 0) { mesAnterior = 12; ano--; }   // janeiro -> volta pra dezembro do ano anterior
-    return `${MESES[mesAnterior - 1]} ${ano}`;
-  }
-
-  // Em qual PERIODO uma compra no CREDITO aparece.
-  // Passos:
-  //  1) acha a fatura que recebe a compra: primeiro periodo cujo 'fecha' (ou 'fecha_isa')
-  //     e maior ou igual a data da compra
-  //  2) essa fatura vence no 'venc' (ou 'venc_isa') desse mesmo periodo
-  //  3) a compra aparece no periodo cujo NOME bate com o mes/ano desse vencimento
-  //     (nome do periodo = mes anterior ao seu 'fat', entao fat.mes = venc.mes + 1)
-  // Se o vencimento nao estiver preenchido, retorna null (a compra cai no Backlog).
-  function periodoDoCredito(dataStr, ehIsabella) {
-    const dataCompra = dataISO(dataStr);
-    const iFatura = Estado.periodos.findIndex(per => {
-      const fechamento = ehIsabella ? per.fecha_isa : per.fecha;
-      return fechamento && dataISO(fechamento) >= dataCompra;
-    });
-    if (iFatura < 0) return null;
-    const vencimento = ehIsabella ? Estado.periodos[iFatura].venc_isa : Estado.periodos[iFatura].venc;
-    if (!vencimento) return null;   // sem vencimento cadastrado -> Backlog
-    const v = dataISO(vencimento), anoVenc = +v.slice(0, 4), mesVenc = +v.slice(5, 7);
-    // mes/ano do periodo que deve exibir essa fatura: mes seguinte ao vencimento vira o 'fat' dele
-    let mesAlvo = mesVenc + 1, anoAlvo = anoVenc;
-    if (mesAlvo == 13) { mesAlvo = 1; anoAlvo++; }
-    return Estado.periodos.findIndex(per => {
-      const f = dataISO(per.fat);
-      return +f.slice(0, 4) == anoAlvo && +f.slice(5, 7) == mesAlvo;
-    });
-  }
-
-  // Em qual PERIODO uma movimentacao de DEBITO cai: o periodo cujo intervalo [ini, fat] contem a data.
-  // Retorna null se a data for vazia (Backlog) ou nao cair em nenhum periodo cadastrado.
-  function periodoDoDebito(iso) {
-    if (!iso) return null;
-    return Estado.periodos.findIndex(per => iso >= per.ini && iso <= dataISO(per.fat));
-  }
-
-  // ===================================================================
-  // CARGA DE DADOS — busca no Supabase e processa (sem tocar na tela)
-  // ===================================================================
-  const buscar = async tabela => {
-    const r = await fetch(`${API}/rest/v1/${tabela}?select=*&limit=100000`,
-      { headers: { apikey: KEY, Authorization: 'Bearer ' + Estado.token } });
-    if (!r.ok) throw Error(`${tabela}: ${r.status} ${await r.text()}`);
-    return r.json();
-  };
-
-  // insere uma linha em 'lancamentos' e devolve ela ja com o id gerado pelo banco
-  // (Prefer: return=representation faz o Supabase devolver a linha criada, nao so 201 vazio)
-  const inserirLancamento = async payload => {
-    const r = await fetch(`${API}/rest/v1/lancamentos`, {
-      method: 'POST',
-      headers: {
-        apikey: KEY, Authorization: 'Bearer ' + Estado.token,
-        'Content-Type': 'application/json', Prefer: 'return=representation',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!r.ok) throw Error(`inserir: ${r.status} ${await r.text()}`);
-    const linhas = await r.json();
-    return linhas[0];
-  };
-
-  // Busca periodos + lancamentos no Supabase e monta Estado.periodos / Estado.lancamentos,
-  // ja com a competencia (periodoIdx) de cada lancamento calculada. Nao mexe na tela.
-  async function carregarDados() {
-    const [periodosCrus, lancamentosCrus] = await Promise.all([buscar('periodos'), buscar('lancamentos')]);
-
-    // ordena por 'fat' e calcula o inicio de cada periodo (= fat do anterior + 1 dia).
-    // o primeiro periodo nao tem anterior, entao usa fat-30dias so como limite inferior.
-    Estado.periodos = periodosCrus
-      .sort((a, b) => timestamp(a.fat) - timestamp(b.fat))
-      .map((per, i, arr) => ({ ...per, ini: i == 0 ? menos30(per.fat) : proximoDia(arr[i - 1].fat) }));
-
-    // classifica cada lancamento na sua competencia (periodoIdx)
-    Estado.lancamentos = lancamentosCrus.map(r => {
-      let periodoIdx;
-      if (!r.data) {
-        periodoIdx = null;                                   // sem data -> Backlog, sempre
-      } else if (r.cred) {
-        periodoIdx = periodoDoCredito(r.data, r.isa);         // credito segue fechamento/vencimento do cartao
-      } else {
-        periodoIdx = periodoDoDebito(dataISO(r.data));        // debito segue o intervalo do periodo
-      }
-      return {
-        ...r,
-        v: +r.valor || 0,                                                    // valor numerico seguro
-        inv: /^investimento$/i.test(String(r.categ || '').trim()),           // e da categoria Investimento?
-        periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
-      };
-    });
-
-    return { periodosCrus, lancamentosCrus };   // devolve os crus tambem, usados so na montagem dos combos
-  }
-
-  // ===================================================================
-  // ATUALIZAÇÃO DE UI — popula os <select> a partir do Estado já carregado
-  // ===================================================================
-  // Monta o combo de periodos (so os que tem algum lancamento, mais o periodo atual mesmo se vazio)
-  // e o combo "Agrupar por" (colunas disponiveis pra visao Comparar).
-  function atualizarCombos(lancamentosCrus) {
-    const selecaoAnterior = el('ciclo').value;
-    const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-    const idxAtual = Estado.periodos.findIndex(per => hoje >= per.ini && hoje <= dataISO(per.fat));
-    const usados = [...new Set(Estado.lancamentos.map(r => r.periodoIdx).filter(p => p != null))];
-    if (idxAtual >= 0 && !usados.includes(idxAtual)) usados.push(idxAtual);
-    usados.sort((a, b) => a - b);
-    const opcoesCiclo = '<option value=-1>Backlog' +
-      usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
-    el('ciclo').innerHTML = opcoesCiclo;
-    el('cicloFixo').innerHTML = opcoesCiclo;   // espelho do mesmo combo, visivel fixo no mobile
-
-    // preserva a selecao anterior se ainda for valida; senao cai no periodo atual (ou no mais recente usado)
-    const valorAnterior = selecaoAnterior === '' ? null : +selecaoAnterior;
-    const valorEscolhido = valorAnterior !== null && (valorAnterior < 0 || usados.includes(valorAnterior))
-      ? valorAnterior
-      : (idxAtual >= 0 ? idxAtual : usados.at(-1) ?? -1);
-    el('ciclo').value = valorEscolhido;
-    el('cicloFixo').value = valorEscolhido;
-
-    // combo "Agrupar por": todas as colunas do lancamento, com 'nome' pre-selecionado
-    el('grupo').innerHTML = Object.keys(lancamentosCrus[0] || {})
-      .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${capitaliza(c)}`).join('');
-
-    // combos do formulario "Novo lancamento": categorias e frequencias ja usadas no banco, sem repetir
-    // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
-    const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // filtra valores vazios de verdade (null/undefined/"") E variacoes textuais de "vazio" que
-    // podem ter ficado salvas no banco por engano: "null", "<null>", "undefined", "n/a" etc.
-    // remove os simbolos < > antes de comparar, pra pegar tanto "null" quanto "<null>".
-    const valorValido = v => {
-      if (!v) return false;
-      const limpo = String(v).trim().toLowerCase().replace(/^<|>$/g, '');
-      return !['null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
-    };
-    const categoriasExistentes = [...new Set(lancamentosCrus.map(r => r.categ).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
-    const frequenciasExistentes = [...new Set(lancamentosCrus.map(r => r.freq).filter(valorValido))].sort((a, b) => a.localeCompare(b, 'pt'));
-    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
-      categoriasExistentes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-    el('fFreq').innerHTML = '<option value="">—</option>' +
-      frequenciasExistentes.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
-
-    // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog.
-    // "Todos" (value vazio) e' a opcao padrao — a matriz so recorta quando o usuario escolhe
-    // explicitamente um De ou Ate, nunca vem pre-preenchida sozinha.
-    const opcoesPeriodo = '<option value="">Todos</option>' +
-      usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
-    const deAnterior = el('compDe').value, ateAnterior = el('compAte').value;
-    el('compDe').innerHTML = opcoesPeriodo;
-    el('compAte').innerHTML = opcoesPeriodo;
-    el('compDe').value = usados.includes(+deAnterior) ? deAnterior : '';
-    el('compAte').value = usados.includes(+ateAnterior) ? ateAnterior : '';
-  }
-
-  // Fluxo completo de carga: busca dados, atualiza os combos, mostra o contador e desenha a tela.
-  // E a unica funcao chamada de fora (pelo botao de recarregar e pelo login).
-  async function load() {
-    if (API.includes('SEUPROJETO')) return el('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
-    el('st').textContent = 'Carregando…';
-    try {
-      const { lancamentosCrus } = await carregarDados();
-      atualizarCombos(lancamentosCrus);
-
-      const totalBacklog = Estado.lancamentos.filter(r => r.periodoIdx == null).length;
-      el('st').innerHTML = `<b>${Estado.lancamentos.length}</b> Lançamentos · <b>${totalBacklog}</b> Itens no Backlog`;
-      desenhar();
-    } catch (e) {
-      el('st').textContent = '';
-      el('out').innerHTML = '<p class=empty>Falhou: ' + e.message + '</p>';
-    }
-  }
-
-  // ===================================================================
-  // FILTROS — os selects/checkboxes da barra de ferramentas
-  // ===================================================================
-  // le um select de 3 estados (Ambos/Sim/Não) e diz se um valor booleano passa no filtro
-  const passaFiltroTriEstado = (idSelect, valor) => {
-    const v = el(idSelect).value;
-    return v == 'B' || (v == 'S') == !!valor;
-  };
-  // aplica todos os filtros ativos (situacao, origem, titular) sobre a lista de lancamentos
-  const filtrarLancamentos = () => Estado.lancamentos.filter(r =>
-    passaFiltroTriEstado('fativo', r.ativo) &&
-    passaFiltroTriEstado('fpago', r.pago) &&
-    ({ A: 1, D: !r.cred, F: r.cred })[el('origem').value] &&
-    ({ T: 1, E: !r.isa, I: r.isa })[el('titular').value]
-  );
-
-  // ===================================================================
-  // ORDENAÇÃO DE TABELAS — cada tabela (id) guarda seu proprio estado
-  // ===================================================================
-  function ordenarLinhas(linhas, idTabela) {
-    const { k: coluna, d: direcao } = estadoOrdenacao(idTabela);
-    const tipo = COLS.find(c => c[0] == coluna)[2];
-    const copia = [...linhas];
-    copia.sort((a, b) => {
-      const A = a[coluna], B = b[coluna];
-      const cmp = tipo == 'n' || tipo == 'b' ? ((+A || 0) - (+B || 0))
-        : tipo == 'd' ? (timestamp(A) - timestamp(B))
-        : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
-      return direcao == 1 ? cmp : -cmp;
-    });
-    return copia;
-  }
-  // monta o <tr> de cabecalho de uma tabela, com a setinha de ordenacao na coluna ativa
-  function cabecalhoTabela(idTabela) {
-    const cols = colunasAtivas();
-    const { k: colunaAtiva, d: direcao } = estadoOrdenacao(idTabela);
-    const linhaTitulos = cols.map(([chave, rotulo, tipo]) => {
-      const seta = colunaAtiva == chave ? (direcao == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
-      return `<th class="${tipo == 'n' ? 'n' : ''}" onclick="sortCol('${idTabela}','${chave}')">${rotulo}${seta}`;
-    }).join('');
-    // 2a linha do header: campo de busca por coluna, so nas colunas de texto (tipo 't')
-    // no mobile nao ha coluna de texto na lista reduzida, entao essa linha fica vazia sozinha
-    const filtroAtual = estadoFiltroTexto(idTabela);
-    const linhaBusca = '<tr class=filtros>' + cols.map(([chave, rotulo, tipo]) => tipo == 't'
-      ? `<th><input type=text placeholder="Filtrar ${rotulo.toLowerCase()}…" value="${filtroAtual[chave] ?? ''}" oninput="filtrarColuna('${idTabela}','${chave}',this.value)"></th>`
-      : '<th>'
-    ).join('');
-    return linhaTitulos + linhaBusca;
-  }
-  // chamado a cada tecla digitada num campo de busca de coluna.
-  // desenhar() reescreve o innerHTML inteiro, o que tiraria o foco do campo a cada letra —
-  // por isso guarda qual input estava focado (e onde estava o cursor) e restaura depois.
-  window.filtrarColuna = (idTabela, coluna, texto) => {
-    estadoFiltroTexto(idTabela)[coluna] = texto;
-    const ativo = document.activeElement;
-    const posicaoCursor = ativo && ativo.selectionStart;
-    desenhar();
-    const novoInput = document.querySelector(`[oninput*="filtrarColuna('${idTabela}','${coluna}'"]`);
-    if (novoInput) { novoInput.focus(); if (posicaoCursor != null) novoInput.setSelectionRange(posicaoCursor, posicaoCursor); }
-  };
-  // remove acentos e caixa: "Café" e "cafe" viram a mesma coisa pra comparar
-  const semAcento = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  // uma linha passa no filtro de texto da tabela se contem (ignorando acento e maiuscula) todos os termos digitados
-  function passaFiltroTexto(r, idTabela) {
-    const filtro = estadoFiltroTexto(idTabela);
-    return Object.entries(filtro).every(([coluna, termo]) =>
-      !termo || semAcento(r[coluna]).includes(semAcento(termo))
-    );
-  }
-  // clique no header: 1o clique ordena asc, 2o desc, alternando (sem 3o estado "original")
-  window.sortCol = (idTabela, coluna) => {
-    const estado = estadoOrdenacao(idTabela);
-    if (estado.k != coluna) { estado.k = coluna; estado.d = 1; }
-    else estado.d = estado.d == 1 ? 2 : 1;
-    desenhar();
-  };
-
-  // ===================================================================
-  // RENDERIZAÇÃO DE TABELAS
-  // ===================================================================
-  // chave de selecao de uma linha: usa o _sid sintetico (linha de fatura) ou o id real
-  const chaveSelecao = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
-  // no mobile a cor do Valor muda de sentido: nao e' mais sinal (saida/entrada), e' status de
-  // pagamento (pago = verde, em aberto = vermelho). No desktop continua sendo o sinal (celValor).
-  // a linha sintetica "Fatura do cartao" nao tem 'pago' (nao vem do banco) -> cai em vermelho
-  // por padrao, o que e' aceitavel: ela representa uma saida que ainda vai vencer
-  const celValorMobile = r => `<td class="n ${r.pago ? 'vd' : 'vm'}">${brl(r.v)}`;
-  // texto de uma celula "vazia": trata null/undefined/"" E a string literal "null"/"undefined"
-  // que pode ter ficado gravada no banco por engano em alguma insercao anterior
-  // mesma logica de limpeza do valorValido: reconhece "null", "<null>", "n/a" etc como vazio
-  const ehVazioTextual = v => {
-    if (v == null) return true;
-    const limpo = String(v).trim().toLowerCase().replace(/^<|>$/g, '');
-    return ['', 'null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
-  };
-  const textoOuTraco = v => ehVazioTextual(v) ? '—' : v;
-  // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
-  const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
-    ? (isMobile() ? celValorMobile(r) : celValor(r.v))
-    : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
-      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : textoOuTraco(r[chave])}`
-  ).join('');
-  // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
-  const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
-    const linhas = linhasBrutas.filter(r => passaFiltroTexto(r, idTabela));
-    Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
-    if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
-    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
-    return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
-      ordenarLinhas(linhas, idTabela).map(r => {
-        const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
-        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
-      }).join('') + '</tbody></table></div>';
-  };
-
-  // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
-  // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
-  // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
-  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false) => {
-    const btnTudo = selecionavel && linhas.length
-      ? `<button type=button class=selTudoBt onclick="selecionarTudo('${idTabela}')">Selecionar tudo</button>`
-      : '';
-    return `<div class=blk><h3>${titulo} · <b class="${corValor(total)}">${brl(Math.abs(total))}</b> ${btnTudo}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
-  };
-
-  // ===================================================================
-  // AS TRÊS VISÕES: Ciclo, Comparar, Investimento
-  // ===================================================================
-
-  // Visão "Ciclo": mostra um periodo por vez, com os blocos Debito e Credito (ou o Backlog).
-  function vCiclo() {
-    const i = +el('ciclo').value;
-
-    if (i < 0) {   // Backlog: lancamentos sem data ou fora de qualquer periodo
-      const linhas = filtrarLancamentos().filter(r => r.periodoIdx == null);
-      return renderBloco('Backlog', linhas.reduce((s, r) => s + r.v, 0), 'Sem data ou fora dos ciclos', linhas, 'bk', true);
-    }
-
-    const periodo = Estado.periodos[i];
-    if (!periodo) return '<p class=empty>Sem ciclos</p>';
-
-    const debitos = filtrarLancamentos().filter(r => r.periodoIdx == i && !r.cred);
-    const creditos = filtrarLancamentos().filter(r => r.periodoIdx == i && r.cred);
-    const totalCredito = creditos.reduce((s, r) => s + r.v, 0);
-
-    // a fatura entra como UMA linha sintetica dentro do bloco Debito (ela sai da conta nesse periodo).
-    // a data dessa linha e' o VENCIMENTO real (do banco), nao o inicio do ciclo. Como o bloco pode
-    // misturar credito seu e da Isabella, o desempate e': Titular=Isabella usa venc_isa, qualquer
-    // outro caso (Eu ou Todos) usa o seu venc.
-    const dataVencimentoFatura = el('titular').value == 'I'
-      ? (periodo.venc_isa || periodo.venc)
-      : (periodo.venc || periodo.venc_isa);
-    const linhaFatura = {
-      data: dataVencimentoFatura || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
-      freq: '', id: 0, v: totalCredito, _fat: 1, _sid: 'fat:' + i,
-    };
-    Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalCredito;
-
-    const debitosComFatura = [...debitos, linhaFatura];
-    const blocoDebito = renderBloco(
-      'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
-      `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-      debitosComFatura, 'db', true
-    );
-
-    // perfil restrito da Isabella E mobile: so o Debito (com a fatura embutida), sem o detalhe do credito
-    const isMobile = matchMedia('(max-width: 640px)').matches;
-    if (Estado.restrito || isMobile) return blocoDebito;
-
-    const blocoCredito = renderBloco(
-      'Crédito', totalCredito,
-      Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
-      creditos, 'cr', true
-    );
-    return blocoDebito + blocoCredito;
-  }
-
-  // Visão "Comparar": uma matriz [categoria/nome/etc × periodo], com totais por linha e coluna.
-  function vComp() {
-    const coluna = el('grupo').value;
-    // so mostra a matriz depois que o usuario escolhe De E Ate — nunca vem preenchida sozinha
-    const deTexto = el('compDe').value, ateTexto = el('compAte').value;
-    if (!deTexto || !ateTexto) return '<p class=empty>Escolha o período (De / Até) para comparar.</p>';
-
-    const linhas = filtrarLancamentos().filter(r => r.periodoIdx != null);
-    if (!linhas.length) return '<p class=empty>Vazio</p>';
-
-    const de = +deTexto, ate = +ateTexto;
-    const dentroDoIntervalo = i => i >= de && i <= ate;
-    const periodosUsados = [...new Set(linhas.map(r => r.periodoIdx))].filter(dentroDoIntervalo).sort((a, b) => a - b);
-    const matriz = {};
-    linhas.filter(r => dentroDoIntervalo(r.periodoIdx)).forEach(r => {
-      const chave = textoOuTraco(r[coluna]);
-      (matriz[chave] = matriz[chave] || {})[r.periodoIdx] = (matriz[chave][r.periodoIdx] || 0) + r.v;
-    });
-    const totalDaChave = chave => Object.values(matriz[chave]).reduce((a, b) => a + b, 0);
-
-    const cabecalho = `<tr><th class=c1>${capitaliza(coluna)}` +
-      periodosUsados.map(i => `<th class=n>${nomePeriodo(Estado.periodos[i].fat)}`).join('') + '<th class=n>Total</thead>';
-
-    const corpo = Object.keys(matriz).sort((a, b) => totalDaChave(b) - totalDaChave(a)).map(chave =>
-      `<tr><td class=c1>${chave}` +
-      periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celValor(matriz[chave][i])).join('') +
-      celValor(totalDaChave(chave))
-    ).join('');
-
-    const linhasNoIntervalo = linhas.filter(r => dentroDoIntervalo(r.periodoIdx));
-    const totalPorPeriodo = i => linhasNoIntervalo.filter(r => r.periodoIdx == i).reduce((s, r) => s + r.v, 0);
-    const linhaTotal = '<tr class=tot><td class=c1>Total' +
-      periodosUsados.map(i => celValor(totalPorPeriodo(i))).join('') +
-      celValor(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
-
-    return `<div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
-  }
-
-  // Visão "Investimento": balanço de entradas/saídas por período (Sobra, Aportado,
-  // Resgatado, Guardado, Acumulado). Gasto por categoria fica a cargo da visão Comparar
-  // (Agrupar por → Categoria), que já cobre isso de forma mais completa.
-  function vInv() {
-    const linhas = Estado.lancamentos.filter(r =>
-      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago) && r.periodoIdx != null
-    );
-    if (!linhas.length) return '<p class=empty>Vazio</p>';
-
-    let acumulado = 0;
-    const corpo = [...new Set(linhas.map(r => r.periodoIdx))].sort((a, b) => a - b).map(i => {
-      const doPeriodo = linhas.filter(r => r.periodoIdx == i);
-      const investimentos = doPeriodo.filter(r => r.inv);
-      const aportado = investimentos.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
-      const resgatado = investimentos.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
-      acumulado += aportado - resgatado;
-
-      return `<tr><td class=c1>${nomePeriodo(Estado.periodos[i].fat)}` +
-        celValor(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
-        celValor(aportado) + celValor(resgatado) + celValor(aportado - resgatado) + celValor(acumulado);
-    }).join('');
-
-    return '<div class="wrap wx"><table><thead><tr><th class=c1>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Resgatado' +
-      '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
-  }
-
-  // ===================================================================
-  // PERFIL RESTRITO (Isabella) e DESENHO GERAL DA TELA
-  // ===================================================================
-  // aplicado uma vez, logo apos o login: trava a visao em Ciclo e some com os demais filtros
-  function aplicaPerfil() {
-    if (!Estado.restrito) return;
-    el('visao').value = 'c';   // o resto (esconder filtros, forcar Pago/Ativo) e' feito em desenhar()
-  }
-
-  // redesenha a tela conforme a visao ativa, escondendo/mostrando os filtros que fazem sentido nela
-  function desenhar() {
-    const isMobile = matchMedia('(max-width: 640px)').matches;
-    const visao = (Estado.restrito || isMobile) ? 'c' : el('visao').value;   // mobile so mostra Ciclo
-
-    el('fciclo').hidden = visao != 'c';
-    el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || Estado.restrito || isMobile;
-    el('ftit').hidden = visao == 'p' || Estado.restrito || isMobile;
-    if (Estado.restrito || isMobile) {
-      el('fsit').hidden = el('fvisao').hidden = true;
-      el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
-    }
-    if (visao != 'k') el('origem').value = 'A';
-    if (visao == 'p') el('titular').value = 'T';
-
-    el('out').innerHTML = visao == 'c' ? vCiclo() : visao == 'k' ? vComp() : vInv();
-    if (visao != 'c') Estado.selecionados.clear();   // troca de aba limpa a selecao (evita soma "fantasma")
-    if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
-  }
-
-  // ===================================================================
-  // SELEÇÃO DE LINHAS (barra flutuante de soma)
-  // ===================================================================
-  function atualizaBarraSelecao() {
-    if (!Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
-    let soma = 0;
-    for (const v of Estado.selecionados.values()) soma += v;
-    el('selinfo').innerHTML =
-      `<span class=cnt>${Estado.selecionados.size} ${Estado.selecionados.size == 1 ? 'selecionado' : 'selecionados'}</span>` +
-      `<span class="val ${corValor(soma)}">${brl(soma)}</span>`;
-    el('selbar').style.display = 'flex';
-  }
-  // valor de uma linha a partir da sua chave de selecao (linha real ou fatura sintetica)
-  function valorDaChave(chave) {
-    if (chave.startsWith('fat:')) return Estado.valorFaturaPorCiclo[chave] || 0;
-    const r = Estado.lancamentos.find(x => String(x.id) == chave);
-    return r ? r.v : 0;
-  }
-  function alternarSelecao(chave) {
-    if (!chave) return;
-    Estado.selecionados.has(chave) ? Estado.selecionados.delete(chave) : Estado.selecionados.set(chave, valorDaChave(chave));
-    document.querySelectorAll(`tr[data-sid="${chave}"]`).forEach(tr => tr.classList.toggle('on', Estado.selecionados.has(chave)));
-    atualizaBarraSelecao();
-  }
-  // marca/desmarca de uma vez todas as linhas visiveis de uma tabela (respeita filtro de texto ativo).
-  // se todas ja estao marcadas, desmarca tudo (toggle); senao, marca as que faltam.
-  window.selecionarTudo = idTabela => {
-    const chaves = (Estado.linhasVisiveis[idTabela] || []).map(chaveSelecao).filter(Boolean);
-    const todasMarcadas = chaves.length > 0 && chaves.every(c => Estado.selecionados.has(c));
-    chaves.forEach(chave => {
-      if (todasMarcadas) Estado.selecionados.delete(chave);
-      else if (!Estado.selecionados.has(chave)) Estado.selecionados.set(chave, valorDaChave(chave));
-    });
-    desenhar();   // redesenha pra refletir o novo estado 'on' em todas as linhas de uma vez
-  };
-  el('out').addEventListener('click', e => {
-    const linha = e.target.closest('tr[data-sid]');
-    if (linha && linha.dataset.sid && !e.target.closest('th')) alternarSelecao(linha.dataset.sid);
-  });
-  el('selclear').onclick = () => {
-    Estado.selecionados.clear();
-    document.querySelectorAll('tr.on').forEach(tr => tr.classList.remove('on'));
-    atualizaBarraSelecao();
-  };
-  el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
-
-  // sincroniza o combo de ciclo fixo (mobile) com o de dentro da gaveta (desktop/gaveta):
-  // mudar um propaga pro outro e redesenha, como se fossem o mesmo campo em dois lugares
-  el('cicloFixo').addEventListener('change', () => {
-    el('ciclo').value = el('cicloFixo').value;
-    Estado.selecionados.clear();
-    desenhar();
-  });
-  el('ciclo').addEventListener('change', () => {
-    el('cicloFixo').value = el('ciclo').value;
-  });
-
-  // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
-  document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);
-
-  // ===================================================================
-  // NOVO LANÇAMENTO (modal de insercao)
-  // ===================================================================
-  const modalNovo = el('modalNovo');
-
-  // mascara de dinheiro: mantem so digitos e desloca 2 casas decimais, tipo caixa eletronico.
-  // digitar "1","2","3","4" produz "0,01" -> "0,12" -> "1,23" -> "12,34"
-  function formataMascaraDinheiro(valorDigitado) {
-    const digitos = valorDigitado.replace(/\D/g, '');
-    const numero = parseInt(digitos || '0', 10) / 100;
-    return numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  // converte o texto mascarado de volta pro numero puro que vai pro banco
-  function valorMascaraParaNumero(textoMascarado) {
-    const digitos = textoMascarado.replace(/\D/g, '');
-    return parseInt(digitos || '0', 10) / 100;
-  }
-  el('fValor').addEventListener('input', e => {
-    const cursorNoFim = e.target.selectionEnd == e.target.value.length;
-    e.target.value = formataMascaraDinheiro(e.target.value);
-    if (cursorNoFim) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
-    atualizaSinalUI();   // valor pode ter zerado (ou saido de zero) -> botao de sinal reflete isso
-  });
-
-  // toggle de sinal: saida (negativo, padrao) <-> entrada (positivo). Existe pra nao depender
-  // de o teclado numerico do celular ter tecla de "-".
-  let sinalPositivo = false;
-  // com o campo vazio ou zerado nao faz sentido dizer "negativo" ou "positivo" — o botao vira
-  // um simbolo neutro e fica desabilitado ate' haver um valor de verdade digitado
-  function atualizaSinalUI() {
-    const semValor = valorMascaraParaNumero(el('fValor').value || '0') === 0;
-    el('fSinal').disabled = semValor;
-    el('fSinal').classList.toggle('pos', sinalPositivo && !semValor);
-    el('fSinal').classList.toggle('neutro', semValor);
-    el('fSinal').textContent = semValor ? '±' : (sinalPositivo ? '+' : '−');
-  }
-  el('fSinal').onclick = () => { sinalPositivo = !sinalPositivo; atualizaSinalUI(); };
-
-  // abre o modal: reseta o formulario pro estado padrao (data vazia, sinal negativo,
-  // Pago desmarcado, Ativo marcado) e da foco no primeiro campo
-  el('abreNovo').onclick = () => {
-    el('formNovo').reset();
-    el('fCateg').selectedIndex = 0;
-    el('fFreq').value = '';
-    sinalPositivo = false; atualizaSinalUI();
-    el('erroNovo').textContent = '';
-    el('fAtivo').checked = true;
-    el('fPago').checked = false;   // padrao desabilitado, como pedido
-    modalNovo.showModal();
-    setTimeout(() => el('fData').focus(), 50);
-  };
-  el('fechaNovo').onclick = () => modalNovo.close();
-  el('cancelaNovo').onclick = () => modalNovo.close();
-  // clique no backdrop (fora do <form>) fecha o modal
-  modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
-
-  // envia o novo lancamento: valida, insere no Supabase, atualiza o Estado local
-  // (sem precisar de um load() completo) e fecha o modal.
-  el('formNovo').addEventListener('submit', async e => {
-    e.preventDefault();
-    el('erroNovo').textContent = '';
-
-    // Nome e Categoria sao obrigatorios. O resto vai null quando vazio, nunca string vazia
-    // (string vazia salva no banco reaparece depois como um valor "fantasma" na tela).
-    const nome = el('fNome').value.trim();
-    if (!nome) return el('erroNovo').textContent = 'Preencha o nome.';
-    const categ = el('fCateg').value || null;
-    if (!categ) return el('erroNovo').textContent = 'Escolha uma categoria.';
-
-    const data = el('fData').value || null;
-    const freq = el('fFreq').value || null;
-    const valorDigitado = el('fValor').value.trim();
-    const valorNum = valorDigitado ? valorMascaraParaNumero(valorDigitado) * (sinalPositivo ? 1 : -1) : null;
-
-    const payload = {
-      data, nome, categ, freq, valor: valorNum,
-      cred: el('fCred').checked,
-      isa: el('fIsa').checked,
-      pago: el('fPago').checked,
-      ativo: el('fAtivo').checked,
-    };
-
-    el('salvaNovo').disabled = true;
-    el('salvaNovo').textContent = 'Salvando…';
-    try {
-      const linhaCriada = await inserirLancamento(payload);
-
-      // classifica a linha nova exatamente como carregarDados() faz, e insere no Estado local
-      // (evita ter que recarregar tudo do banco so pra ver o lancamento que acabou de entrar)
-      let periodoIdx;
-      if (!linhaCriada.data) periodoIdx = null;
-      else if (linhaCriada.cred) periodoIdx = periodoDoCredito(linhaCriada.data, linhaCriada.isa);
-      else periodoIdx = periodoDoDebito(dataISO(linhaCriada.data));
-      Estado.lancamentos.push({
-        ...linhaCriada,
-        v: +linhaCriada.valor || 0,
-        inv: /^investimento$/i.test(String(linhaCriada.categ || '').trim()),
-        periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
-      });
-
-      modalNovo.close();
-      desenhar();
-    } catch (err) {
-      // erro: nada e' perdido, os campos continuam preenchidos pro usuario tentar de novo
-      el('erroNovo').textContent = 'Falhou ao salvar: ' + err.message;
-    } finally {
-      el('salvaNovo').disabled = false;
-      el('salvaNovo').textContent = 'Salvar';
-    }
-  });
-
-  // ===================================================================
-  // LOGIN (Supabase Auth)
-  // ===================================================================
-  const sb = supabase.createClient(API, KEY);
-  const mostraTela = logado => {
-    el('login').style.display = logado ? 'none' : 'flex';
-    el('app').style.display = logado ? 'block' : 'none';
-  };
-
-  // ao abrir a pagina: se ja existe sessao salva, entra direto; senao mostra o login
-  async function boot() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      Estado.token = session.access_token;
-      Estado.restrito = (session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase();
-      aplicaPerfil(); mostraTela(1); load();
-    } else {
-      mostraTela(0);
-    }
-  }
-  el('entrar').onclick = async () => {
-    el('lerr').textContent = '';
-    const { data, error } = await sb.auth.signInWithPassword(
-      { email: el('email').value.trim(), password: el('senha').value });
-    if (error) return el('lerr').textContent = 'E-mail ou senha inválidos.';
-    Estado.token = data.session.access_token;
-    Estado.restrito = (data.session.user.email || '').toLowerCase() == EMAIL_ISABELLA.toLowerCase();
-    aplicaPerfil(); mostraTela(1); load();
-  };
-  el('senha').onkeydown = e => { if (e.key == 'Enter') el('entrar').click(); };
-  el('sair').onclick = async () => { await sb.auth.signOut(); Estado.token = KEY; el('senha').value = ''; mostraTela(0); };
-
-  if (API.includes('SEUPROJETO')) { mostraTela(1); load(); }   // sem chaves configuradas: pula o login (modo dev)
-  else boot();
-
-
-
-
-
-
-
-
-</script><!doctype html>
-<html lang=pt-br>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width, initial-scale=1">
-<link rel=icon
-  href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
-<title>Lançamentos</title>
-<style>
-  :root {
-    --bg: #F7F6F3;
-    --pa: #FFF;
-    --fg: #1A1917;
-    --mu: #8A857C;
-    --ln: #E7E4DD;
-    --vd: #2F7D4F;
-    --vm: #C0392B
-  }
-
-  * {
-    box-sizing: border-box
-  }
-
-  [hidden] {
-    display: none !important
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--fg);
-    margin: 0;
-    padding: 2rem 1.4rem;
-    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif
-  }
-
-  h1 {
-    font: 700 1.35rem/1 inherit;
-    letter-spacing: -.02em;
-    margin: 0;
-    cursor: pointer;
-    display: inline-block
-  }
-
-  .head {
-    display: flex;
-    align-items: center;
-    gap: .7rem;
-    margin: 0 0 .3rem
-  }
-
-  #sair {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    color: var(--mu);
-    background: var(--pa);
-    border: 1px solid var(--ln);
-    border-radius: 9px;
-    cursor: pointer
-  }
-
-  #sair:hover {
-    color: var(--vm);
-    border-color: var(--vm)
-  }
-
-  h1 .tt {
-    text-decoration: underline;
-    text-underline-offset: 3px
-  }
-
-  h1 .ic {
-    text-decoration: none
-  }
-
-  h1:hover .tt {
-    color: var(--mu)
-  }
-
-  .sub {
-    font-size: .85rem;
-    color: var(--mu);
-    font-style: italic;
-    margin: 0 0 1.8rem
-  }
-
-  .sub a {
-    color: var(--fg);
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px
-  }
-
-  .tool {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--ln)
-  }
-
-  .row {
-    display: flex;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    align-items: flex-end
-  }
-
-  .f {
-    display: flex;
-    flex-direction: column;
-    gap: .35rem
-  }
-
-  .f>span {
-    font-size: .7rem;
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    color: var(--mu)
-  }
-
-  select {
-    font: inherit;
-    color: inherit;
-    background: var(--pa);
-    border: 1px solid var(--ln);
-    border-radius: 9px;
-    padding: .42rem 1.9rem .42rem .7rem;
-    cursor: pointer;
+  .multiSel { position: relative }
+  .multiSelBtn {
+    font: inherit; color: inherit; background: var(--pa); border: 1px solid var(--ln);
+    border-radius: 9px; padding: .42rem 1.9rem .42rem .7rem; cursor: pointer; text-align: left;
+    min-width: 11rem; max-width: 16rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     appearance: none;
-    background: var(--pa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right .7rem center
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%238A857C' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right .7rem center
   }
+  .multiSelDrop {
+    display: none; position: absolute; top: calc(100% + .3rem); left: 0; z-index: 25;
+    background: var(--pa); border: 1px solid var(--ln); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: .4rem; min-width: 14rem; max-height: 16rem; overflow-y: auto
+  }
+  .multiSelDrop.open { display: block }
+  .multiSelDrop label {
+    display: flex; align-items: center; gap: .5rem; padding: .35rem .5rem;
+    border-radius: 6px; cursor: pointer; font-size: .9rem
+  }
+  .multiSelDrop label:hover { background: var(--bg) }
+  .multiSelDrop input { width: 1rem; height: 1rem; accent-color: var(--fg) }
+
+  #modalGrafico { width: min(44rem, 94vw); max-height: 92vh; padding: 1.5rem }
+  #modalGrafico .meta { margin: .2rem 0 1rem }
+  .verGraficoBt { font: 400 .78rem/1 inherit; vertical-align: middle;
+    color: var(--mu); background: var(--pa); border: 1px solid var(--ln);
+    border-radius: 7px; padding: .25rem .55rem; cursor: pointer; margin-left: .3rem }
+  .verGraficoBt:hover { color: var(--fg); border-color: var(--fg) }
 
   .chk {
     display: flex;
@@ -2097,8 +711,28 @@
       </div>
     </form>
   </dialog>
+
+  <dialog id=modalGrafico>
+    <div class=modalHead>
+      <h2>Gastos do ciclo</h2>
+      <button type=button id=fechaGrafico aria-label="Fechar">×</button>
+    </div>
+    <p class=meta id=graficoSubtitulo></p>
+    <div class=f id=fExcluirCat>
+      <span>Excluir categorias</span>
+      <div class=multiSel id=excluirCatWrap>
+        <button type=button id=excluirCatBtn class=multiSelBtn>Nenhuma excluída</button>
+        <div class=multiSelDrop id=excluirCatDrop></div>
+      </div>
+    </div>
+    <div style="position:relative;height:480px;margin-top:1rem">
+      <canvas id=canvasGraficoGastos role=img aria-label="Gráfico de pizza dos gastos por categoria no ciclo"></canvas>
+    </div>
+    <p class=empty id=graficoVazio hidden>Sem gastos neste ciclo.</p>
+  </dialog>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
         // ===================================================================
   // CONFIG — credenciais do Supabase, e-mail do perfil restrito, e as
@@ -2463,11 +1097,14 @@
   // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
   // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
   // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
-  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false) => {
+  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null) => {
     const btnTudo = selecionavel && linhas.length
       ? `<button type=button class=selTudoBt onclick="selecionarTudo('${idTabela}')">Selecionar tudo</button>`
       : '';
-    return `<div class=blk><h3>${titulo} · <b class="${corValor(total)}">${brl(Math.abs(total))}</b> ${btnTudo}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+    const btnGrafico = periodoIdxGrafico != null
+      ? `<button type=button class=selTudoBt onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
+      : '';
+    return `<div class=blk><h3>${titulo} · <b class="${corValor(total)}">${brl(Math.abs(total))}</b> ${btnTudo}${btnGrafico}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
   };
 
   // ===================================================================
@@ -2507,7 +1144,7 @@
     const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
       `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-      debitosComFatura, 'db', true
+      debitosComFatura, 'db', true, i
     );
 
     // perfil restrito da Isabella E mobile: so o Debito (com a fatura embutida), sem o detalhe do credito
@@ -2674,6 +1311,116 @@
 
   // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);
+
+  // ===================================================================
+  // GRÁFICO DE GASTOS DO CICLO (pizza)
+  // ===================================================================
+  // Regra: total = soma de TUDO positivo no ciclo (renda, sem selecao manual).
+  // Fatias = cada categoria com saldo negativo no ciclo (gasto), com a linha
+  // sintetica "Fatura do cartão" contando como a categoria "Fatura do cartão".
+  // O usuario pode excluir categorias especificas da pizza via multi-select.
+  let graficoChart = null;
+  let excluidasDoGrafico = [];
+
+  function dadosDoGraficoCiclo(idxPeriodo) {
+    const periodo = Estado.periodos[idxPeriodo];
+    const doPeriodo = Estado.lancamentos.filter(r =>
+      r.periodoIdx == idxPeriodo && !r.cred &&
+      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago)
+    );
+    // fatura sintetica do credito, igual ao que aparece no bloco Debito
+    const creditosDoPeriodo = Estado.lancamentos.filter(r => r.periodoIdx == idxPeriodo && r.cred);
+    const totalCredito = creditosDoPeriodo.reduce((s, r) => s + r.v, 0);
+    const linhas = totalCredito
+      ? [...doPeriodo, { categ: 'Fatura do cartão', v: totalCredito }]
+      : doPeriodo;
+
+    const renda = linhas.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
+    const porCategoria = {};
+    linhas.filter(r => r.v < 0).forEach(r => {
+      const cat = textoOuTraco(r.categ);
+      porCategoria[cat] = (porCategoria[cat] || 0) + (-r.v);
+    });
+    return { periodo, renda, porCategoria };
+  }
+
+  window.abrirGraficoGastos = idxPeriodo => {
+    const { periodo, renda, porCategoria } = dadosDoGraficoCiclo(idxPeriodo);
+    const todasCategorias = Object.keys(porCategoria).sort((a, b) => porCategoria[b] - porCategoria[a]);
+    excluidasDoGrafico = excluidasDoGrafico.filter(c => todasCategorias.includes(c));
+
+    el('graficoSubtitulo').textContent = `${nomePeriodo(periodo.fat)} · Renda do ciclo: ${brl(renda)}`;
+    montaExcluirCatDrop(todasCategorias);
+    desenhaGraficoPizza(idxPeriodo);
+    el('modalGrafico').showModal();
+  };
+
+  function montaExcluirCatDrop(categorias) {
+    el('excluirCatDrop').innerHTML = categorias.map(c =>
+      `<label><input type=checkbox value="${c}" ${excluidasDoGrafico.includes(c) ? '' : 'checked'} onchange="toggleCategoriaGrafico('${c}',this.checked)">${c}</label>`
+    ).join('');
+    atualizaBotaoExcluirCat();
+  }
+  function atualizaBotaoExcluirCat() {
+    const n = excluidasDoGrafico.length;
+    el('excluirCatBtn').textContent = n == 0 ? 'Nenhuma excluída' : `${n} excluída${n > 1 ? 's' : ''}`;
+  }
+  // checkbox MARCADO = categoria incluida na pizza; desmarcar exclui
+  window.toggleCategoriaGrafico = (categoria, incluida) => {
+    excluidasDoGrafico = incluida
+      ? excluidasDoGrafico.filter(c => c !== categoria)
+      : [...excluidasDoGrafico, categoria];
+    atualizaBotaoExcluirCat();
+    const idxAtual = el('modalGrafico').dataset.periodoIdx;
+    desenhaGraficoPizza(+idxAtual);
+  };
+  el('excluirCatBtn').onclick = () => el('excluirCatDrop').classList.toggle('open');
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#excluirCatWrap')) el('excluirCatDrop').classList.remove('open');
+  });
+
+  const CORES_PIZZA = ['#7F77DD', '#1D9E75', '#D85A30', '#D4537E', '#378ADD', '#EF9F27', '#639922', '#888780', '#A32D2D', '#993556'];
+
+  function desenhaGraficoPizza(idxPeriodo) {
+    el('modalGrafico').dataset.periodoIdx = idxPeriodo;
+    const { renda, porCategoria } = dadosDoGraficoCiclo(idxPeriodo);
+    const categorias = Object.keys(porCategoria)
+      .filter(c => !excluidasDoGrafico.includes(c))
+      .sort((a, b) => porCategoria[b] - porCategoria[a]);
+    const valores = categorias.map(c => porCategoria[c]);
+
+    el('graficoVazio').hidden = categorias.length > 0;
+    el('canvasGraficoGastos').style.display = categorias.length ? 'block' : 'none';
+    if (!categorias.length) { if (graficoChart) { graficoChart.destroy(); graficoChart = null } return; }
+
+    const cores = categorias.map((_, i) => CORES_PIZZA[i % CORES_PIZZA.length]);
+    if (graficoChart) graficoChart.destroy();
+    graficoChart = new Chart(el('canvasGraficoGastos'), {
+      type: 'pie',
+      data: { labels: categorias, datasets: [{ data: valores, backgroundColor: cores, borderColor: '#FFF', borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { boxWidth: 12, padding: 14 } },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const total = valores.reduce((a, b) => a + b, 0);
+                const pctRenda = renda ? (ctx.parsed / renda * 100).toFixed(1) : '0.0';
+                const pctGasto = total ? (ctx.parsed / total * 100).toFixed(1) : '0.0';
+                return `${ctx.label}: ${brl(ctx.parsed)} · ${pctGasto}% dos gastos · ${pctRenda}% da renda`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  el('fechaGrafico').onclick = () => el('modalGrafico').close();
+  el('modalGrafico').addEventListener('click', e => {
+    if (e.target == el('modalGrafico')) el('modalGrafico').close();
+  });
 
   // ===================================================================
   // NOVO LANÇAMENTO (modal de insercao)

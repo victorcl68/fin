@@ -822,6 +822,12 @@
   const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); // formata em R$
   const corValor = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';                // classe css: vermelho/verde conforme o sinal
   const celValor = v => `<td class="n ${corValor(v)}">${brl(v)}`;        // celula <td> ja formatada em R$
+
+  // Zona morta pra SOMAS/TOTAIS (nunca pra valor de lancamento individual): entre -R$50 e
+  // +R$50 (inclusive) fica cinza, porque uma diferenca tao pequena nao muda decisao nenhuma —
+  // so pinta vermelho/verde quando o total realmente sai desse intervalo.
+  const corSoma = v => (v >= -50 && v <= 50) ? '' : corValor(v);
+  const celSoma = v => `<td class="n ${corSoma(v)}">${brl(v)}`;
   const dataISO = s => String(s || '').slice(0, 10);                    // normaliza pra 'YYYY-MM-DD'
   const timestamp = s => Date.parse(dataISO(s)) || 0;                   // 'YYYY-MM-DD' -> numero, pra comparar/ordenar
   const dataBR = s => { const p = dataISO(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s }; // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
@@ -1144,7 +1150,7 @@
     const btnGrafico = periodoIdxGrafico != null
       ? `<button type=button class=selTudoBt onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
       : '';
-    return `<div class=blk><h3>${titulo} · <b class="${corValor(total)}">${brl(Math.abs(total))}</b> ${btnTudo}${btnGrafico}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+    return `<div class=blk><h3>${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnTudo}${btnGrafico}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
   };
 
   // ===================================================================
@@ -1226,15 +1232,15 @@
 
     const corpo = Object.keys(matriz).sort((a, b) => totalDaChave(b) - totalDaChave(a)).map(chave =>
       `<tr><td class=c1>${chave}` +
-      periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celValor(matriz[chave][i])).join('') +
-      celValor(totalDaChave(chave))
+      periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celSoma(matriz[chave][i])).join('') +
+      celSoma(totalDaChave(chave))
     ).join('');
 
     const linhasNoIntervalo = linhas.filter(r => dentroDoIntervalo(r.periodoIdx));
     const totalPorPeriodo = i => linhasNoIntervalo.filter(r => r.periodoIdx == i).reduce((s, r) => s + r.v, 0);
     const linhaTotal = '<tr class=tot><td class=c1>Total' +
-      periodosUsados.map(i => celValor(totalPorPeriodo(i))).join('') +
-      celValor(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
+      periodosUsados.map(i => celSoma(totalPorPeriodo(i))).join('') +
+      celSoma(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
 
     const btnEvolucao = `<button type=button class=selTudoBt onclick="abrirGraficoEvolucao(${de},${ate})">Ver evolução</button>`;
     return `<p class=meta style="margin:0 0 .6rem">${btnEvolucao}</p><div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
@@ -1258,8 +1264,8 @@
       acumulado += aportado - resgatado;
 
       return `<tr><td class=c1>${nomePeriodo(Estado.periodos[i].fat)}` +
-        celValor(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
-        celValor(aportado) + celValor(resgatado) + celValor(aportado - resgatado) + celValor(acumulado);
+        celSoma(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
+        celSoma(aportado) + celSoma(resgatado) + celSoma(aportado - resgatado) + celSoma(acumulado);
     }).join('');
 
     return '<div class="wrap wx"><table><thead><tr><th class=c1>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Resgatado' +
@@ -1305,7 +1311,7 @@
     for (const v of Estado.selecionados.values()) soma += v;
     el('selinfo').innerHTML =
       `<span class=cnt>${Estado.selecionados.size} ${Estado.selecionados.size == 1 ? 'selecionado' : 'selecionados'}</span>` +
-      `<span class="val ${corValor(soma)}">${brl(soma)}</span>`;
+      `<span class="val ${corSoma(soma)}">${brl(soma)}</span>`;
     el('selbar').style.display = 'flex';
   }
   // valor de uma linha a partir da sua chave de selecao (linha real ou fatura sintetica)

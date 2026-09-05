@@ -1335,7 +1335,16 @@ dialog#modalComparativo::backdrop {
   margin-left: .25rem;
 }
   
-
+.avisoFr {
+  margin: -.5rem 0 0;
+  padding: .5rem .7rem;
+  font-size: .82rem;
+  line-height: 1.35;
+  color: var(--fg);
+  background: var(--orange-soft);
+  border: 1px solid #6A5330;
+  border-radius: 9px;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1449,8 +1458,10 @@ dialog#modalComparativo::backdrop {
       <label class=fm><span>Nome <b class=req>*</b></span>
         <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
 
-      <label class=fm><span>Data</span>
+     <label class=fm><span>Data</span>
         <input type=date id=fData></label>
+
+      <p class=avisoFr id=avisoFr hidden></p>
 
       <label class=fm><span>Valor</span>
         <div class=moneyWrap>
@@ -1881,6 +1892,22 @@ dialog#modalComparativo::backdrop {
     return copia;
   }
 
+   // avisa quando a compra cai no dia do fechamento: o D+1 da captura vai jogar ela
+  // pra fatura seguinte, entao vale conferir na fatura real antes de salvar
+  function atualizaAvisoFronteira() {
+    const data = el('fData').value;
+    const simulado = { cred: el('fCred').checked, data, nome: el('fNome').value,
+      isa: el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked };
+    const mostra = !!data && ehFronteira(simulado);
+    el('avisoFr').hidden = !mostra;
+    if (!mostra) return;
+    const idx = periodoDoCredito(data, simulado.isa, simulado.nome);
+    const alvo = idx != null && idx >= 0 && Estado.periodos[idx]
+      ? nomePeriodo(Estado.periodos[idx].fat) : 'a fatura seguinte';
+    el('avisoFr').textContent =
+      `Dia do fechamento: capturada em D+1, vai cair em ${alvo}. Confira na fatura.`;
+  }
+
   // qual tabela contem as linhas selecionadas — a barra e' global, mas "selecionar tudo"
   // so faz sentido dentro de uma tabela
   function tabelaDaSelecao() {
@@ -1933,6 +1960,10 @@ dialog#modalComparativo::backdrop {
     else estado.d = estado.d == 1 ? 2 : 1;
     desenhar();
   };
+
+   ['fData', 'fNome', 'fCred', 'fIsa'].forEach(id =>
+    el(id).addEventListener('change', atualizaAvisoFronteira));
+  el('fNome').addEventListener('input', atualizaAvisoFronteira);
 
   // ===================================================================
   // RENDERIZAÇÃO DE TABELAS
@@ -2645,6 +2676,7 @@ const blocoDebito = renderBloco(
       el('fData').value = hojeISO();
     }
     atualizaSinalUI();
+    atualizaAvisoFronteira();
 
     modalNovo.showModal();
     // duplicando, o foco vai pro Valor (o que mais muda); do zero, vai pro Nome
@@ -2713,6 +2745,7 @@ const blocoDebito = renderBloco(
       el('fValor').value = ''; sinalPositivo = false; atualizaSinalUI();
             el('fData').value = hojeISO();
       el('fCateg').selectedIndex = 0;   // categoria vinha do nome; sem nome, nao faz sentido manter
+      atualizaAvisoFronteira();
       popularCategoriasNoForm();   // recalcula popularidade com o lancamento recem-criado
       desenhar();
       el('fNome').focus();

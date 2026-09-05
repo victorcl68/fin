@@ -1774,7 +1774,7 @@ dialog#modalComparativo::backdrop {
         ...r,
         v: +r.valor || 0,                                                    // valor numerico seguro
         inv: /^investimento$/i.test(String(r.categ || '').trim()),           // e da categoria Investimento?
-        periodoIdx = periodoDoCredito(r.data, r.isa, r.nome);
+        periodoIdx = periodoDoCredito(r.data, r.isa, r.nome)
       };
     });
 

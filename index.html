@@ -1327,6 +1327,13 @@ dialog#modalComparativo::backdrop {
   color: var(--fg);
   border-color: var(--fg);
 }
+
+  .fr {
+  color: var(--vm);
+  font-weight: 700;
+  cursor: help;
+  margin-left: .25rem;
+}
   
 
 </style>
@@ -1584,6 +1591,21 @@ dialog#modalComparativo::backdrop {
   // credito. Entra no fluxo de caixa (bloco Debito) e fica fora das analises de gasto
   // (Comparar, Balanco, evolucao, pizza) — senao a mesma despesa conta duas vezes.
   const ehTransferenciaFatura = r => !r.cred && ehAntecipacaoFatura(r.categ);
+// Dia de fronteira: a compra caiu no fechamento (ou depois dele, ja na virada), entao
+  // o D+1 da captura empurrou ela pra fatura seguinte. E' o unico caso em que a data
+  // lancada e a fatura resultante parecem nao bater — por isso a marca na tela.
+  function ehFronteira(r) {
+    if (!r.cred || !r.data || ehCapturaMesmoDia(r.nome)) return false;
+    const d = dataISO(r.data);
+    return Estado.periodos.some(per => dataISO(r.isa ? per.fecha_isa : per.fecha) === d);
+  }
+  // Captura: o emissor so registra a compra no dia seguinte (D+1) na maioria dos casos.
+  // Excecao: NuPay captura no mesmo dia — hoje isso e' sempre Uber. Fora dos dias de
+  // fronteira o deslocamento nao muda nada, entao a data que voce lanca continua sendo
+  // a da compra; o D+1 so importa quando a compra cai no dia do fechamento.
+  const ehCapturaMesmoDia = nome => semAcento(nome).includes('uber');
+  const dataCaptura = (dataStr, nome) =>
+    ehCapturaMesmoDia(nome) ? dataISO(dataStr) : proximoDia(dataStr);
 
   // Data a partir da qual voce passou a lancar os pagamentos de fatura. Faturas que
   // venceram antes disso foram pagas sem lancamento, entao tem saldo "fantasma" e
@@ -1633,11 +1655,13 @@ dialog#modalComparativo::backdrop {
   //     (nome do periodo = mes anterior ao seu 'fat', entao fat.mes = venc.mes + 1)
   // Se o vencimento nao estiver preenchido, retorna null (a compra cai no Backlog).
   function periodoDoCredito(dataStr, ehIsabella) {
-    const dataCompra = dataISO(dataStr);
+    function periodoDoCredito(dataStr, ehIsabella, nome) {
+    const dataCompra = dataCaptura(dataStr, nome);
     const iFatura = Estado.periodos.findIndex(per => {
       const fechamento = ehIsabella ? per.fecha_isa : per.fecha;
-      return fechamento && dataISO(fechamento) > dataCompra;
+      return fechamento && dataISO(fechamento) >= dataCompra;
     });
+
     if (iFatura < 0) return null;
     const vencimento = ehIsabella ? Estado.periodos[iFatura].venc_isa : Estado.periodos[iFatura].venc;
     if (!vencimento) return null;   // sem vencimento cadastrado -> Backlog
@@ -1750,7 +1774,7 @@ dialog#modalComparativo::backdrop {
         ...r,
         v: +r.valor || 0,                                                    // valor numerico seguro
         inv: /^investimento$/i.test(String(r.categ || '').trim()),           // e da categoria Investimento?
-        periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
+        periodoIdx = periodoDoCredito(r.data, r.isa, r.nome);
       };
     });
 
@@ -1935,7 +1959,9 @@ dialog#modalComparativo::backdrop {
     ? (isMobile() ? celValorMobile(r) : celValor(r.v)).replace(/$/,
         r._saldo != null ? `<span class=sd>${brl(r._saldo)}</span>` : '')
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
-      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : textoOuTraco(r[chave])}`
+     : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data'
+          ? (r.data ? dataBR(r.data) + (ehFronteira(r) ? '<span class=fr title="Compra no dia do fechamento: capturada em D+1, entrou na fatura seguinte">*</span>' : '') : '—')
+          : textoOuTraco(r[chave])}`
   ).join('');
   // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
   const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
@@ -2671,7 +2697,7 @@ const blocoDebito = renderBloco(
 
       let periodoIdx;
       if (!linhaCriada.data) periodoIdx = null;
-      else if (linhaCriada.cred) periodoIdx = periodoDoCredito(linhaCriada.data, linhaCriada.isa);
+      else if (linhaCriada.cred) periodoIdx = periodoDoCredito(linhaCriada.data, linhaCriada.isa, linhaCriada.nome);
       else periodoIdx = periodoDoDebito(dataISO(linhaCriada.data));
       Estado.lancamentos.push({
         ...linhaCriada,

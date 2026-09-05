@@ -835,6 +835,12 @@
       opacity: .3;
       cursor: default;
     }
+
+    .cicloNav .btHoje {
+      width: auto;
+      padding: 0 .8rem;
+      font-size: .85rem;
+    }
     
     /* =========================================================
        MODAL — NOVO LANÇAMENTO
@@ -1417,13 +1423,14 @@
     </div>
     <p class=sub><span id=st></span></p>
 
-    <div class=f id=fciclNav>
-        <span id=nomeCicloNav>—</span>
-        <div class=cicloNav>
-            <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
-            <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
-        </div>
+  <div class=f id=fciclNav>
+    <span id=nomeCicloNav>—</span>
+    <div class=cicloNav>
+      <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
+      <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
+      <button type=button id=cicloHoje class=btHoje>Ciclo atual</button>
     </div>
+  </div>
 
     <div class=tool>
         <div class=row>
@@ -2294,8 +2301,10 @@ if (Estado.restrito) return blocoDebito;
     el('fciclo').hidden = true;   // modo simples usa o navegador anterior/proximo, nao o combo
     el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
     el('ftit').hidden = visao == 'p' || simples;
-    el('fciclNav').hidden = false;   // navegador anterior/atual/proximo, so no modo simples
-    atualizaNavegadorCiclo();   // mantem rotulo e disabled dos botoes em dia
+    // navegador de ciclos so faz sentido na visao Ciclo — Comparar usa De/Ate e o
+    // Balanco mostra todos os periodos de uma vez
+    el('fciclNav').hidden = visao != 'c';
+    if (visao == 'c') atualizaNavegadorCiclo();
     if (simples) {
       el('fsit').hidden = el('fvisao').hidden = true;
       el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
@@ -2415,6 +2424,7 @@ if (Estado.restrito) return blocoDebito;
       ? nomePeriodo(Estado.periodos[idxAtual].fat) : 'Backlog';
     el('cicloAnterior').disabled = idxAtual <= min || Estado.idxHoje < 0;
     el('cicloProximo').disabled = idxAtual >= max || Estado.idxHoje < 0;
+    el('cicloHoje').disabled = Estado.idxHoje < 0 || idxAtual === Estado.idxHoje;
   }
 
   function navegaCiclo(direcao) {
@@ -2428,7 +2438,17 @@ if (Estado.restrito) return blocoDebito;
   }
   el('cicloAnterior').onclick = () => navegaCiclo(-1);
   el('cicloProximo').onclick = () => navegaCiclo(1);
-    el('btGrafico').onclick = () => abrirGraficoGastos(+el('btGrafico').dataset.idx);
+
+  // volta pro ciclo que contem a data de hoje. Fica desabilitado quando voce ja esta
+  // nele (ou quando hoje nao cai em periodo nenhum).
+  el('cicloHoje').onclick = () => {
+    if (Estado.idxHoje < 0) return;
+    el('ciclo').value = Estado.idxHoje;
+    Estado.selecionados.clear();
+    desenhar();
+  };
+    
+  el('btGrafico').onclick = () => abrirGraficoGastos(+el('btGrafico').dataset.idx);
 
   // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);

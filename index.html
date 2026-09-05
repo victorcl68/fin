@@ -1545,7 +1545,15 @@ dialog#modalComparativo::backdrop {
   // quanto ainda falta sair da conta na linha dinamica "Fatura do cartao" (nao duplica
   // o lancamento — ele continua aparecendo normal na tabela de Debito).
   const ehAntecipacaoFatura = categ => semAcento(categ).trim() === 'antecipacao fatura';
+ // Antecipacao e' TRANSFERENCIA, nao gasto: a despesa ja foi contada na compra do
+  // credito. Entra no fluxo de caixa (bloco Debito) e fica fora das analises de gasto
+  // (Comparar, Balanco, evolucao, pizza) — senao a mesma despesa conta duas vezes.
+  const ehTransferenciaFatura = r => !r.cred && ehAntecipacaoFatura(r.categ);
 
+  // Data a partir da qual voce passou a lancar os pagamentos de fatura. Faturas que
+  // venceram antes disso foram pagas sem lancamento, entao tem saldo "fantasma" e
+  // engoliriam as antecipacoes novas. AJUSTE aqui quando comecar a lancar.
+  const ANTECIPACAO_DESDE = '2026-09-01';
   // proximo dia (usado pra calcular o inicio de um periodo a partir do 'fat' do anterior)
   function proximoDia(iso) {
     const d = new Date(dataISO(iso) + 'T00:00:00Z');
@@ -1559,12 +1567,12 @@ dialog#modalComparativo::backdrop {
     return d.toISOString().slice(0, 10);
   }
 
-  // 'ehIsa' restringe as antecipacoes ao titular da fatura: uma antecipacao lancada como
-  // Isabella so abate a fatura dela, e vice-versa.
-  const totalAntecipadoDaFatura = (linhas, idx, ehIsa) => linhas
-    .filter(r => !r.cred && r.data && !!r.isa === ehIsa &&
-      ehAntecipacaoFatura(r.categ) && periodoDaAntecipacao(r.data, ehIsa) === idx)
-    .reduce((s, r) => s - r.v, 0);
+  // // 'ehIsa' restringe as antecipacoes ao titular da fatura: uma antecipacao lancada como
+  // // Isabella so abate a fatura dela, e vice-versa.
+  // const totalAntecipadoDaFatura = (linhas, idx, ehIsa) => linhas
+  //   .filter(r => !r.cred && r.data && !!r.isa === ehIsa &&
+  //     ehAntecipacaoFatura(r.categ) && periodoDaAntecipacao(r.data, ehIsa) === idx)
+  //   .reduce((s, r) => s - r.v, 0);
 
   // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'.
   // Ex.: periodo com fat=2026-07-06 se chama "Junho 2026" (o mes em que ele comecou).
@@ -1621,6 +1629,46 @@ dialog#modalComparativo::backdrop {
     const vencimento = ehIsabella ? Estado.periodos[iFatura].venc_isa : Estado.periodos[iFatura].venc;
     if (!vencimento) return null;   // sem vencimento cadastrado -> Backlog
     return periodoQueExibeVencimento(vencimento);
+  }
+
+   // Distribui as antecipacoes de um titular pelas faturas, da mais antiga pra mais nova:
+  // cada antecipacao abate a fatura mais antiga que ainda tem saldo, e o excedente
+  // transborda pra seguinte. Assim quitar a fatura fechada joga o resto na aberta
+  // sozinho, sem depender de calendario nem de marcar nada como pago.
+  // Devolve { idxDoCiclo: valorAbatido (positivo) }.
+  function alocacaoAntecipacoes(linhas, ehIsa) {
+    // saldo devido de cada fatura, na ordem em que aparecem na tela
+    const faturas = [];
+    Estado.periodos.forEach((per, idx) => {
+      const anterior = Estado.periodos[idx - 1];
+      const venc = anterior && (ehIsa ? anterior.venc_isa : anterior.venc);
+      if (!venc || dataISO(venc) < ANTECIPACAO_DESDE) return;   // fatura antiga: fora
+      const bruto = linhas
+        .filter(r => r.cred && !!r.isa === ehIsa && r.periodoIdx === idx)
+        .reduce((s, r) => s + r.v, 0);
+      if (bruto < 0) faturas.push({ idx, saldo: -bruto });
+    });
+
+    const antecipacoes = linhas
+      .filter(r => ehTransferenciaFatura(r) && r.data && !!r.isa === ehIsa && r.v < 0 &&
+        dataISO(r.data) >= ANTECIPACAO_DESDE)
+      .sort((a, b) => timestamp(a.data) - timestamp(b.data));
+
+    const abatido = {};
+    let p = 0;   // ponteiro na fatura mais antiga ainda com saldo
+    antecipacoes.forEach(r => {
+      let resto = -r.v;
+      while (resto > 0.005 && p < faturas.length) {
+        const f = faturas[p];
+        const usa = Math.min(resto, f.saldo);
+        f.saldo -= usa; resto -= usa;
+        abatido[f.idx] = (abatido[f.idx] || 0) + usa;
+        if (f.saldo <= 0.005) p++;   // fatura quitada: proxima antecipacao vai pra seguinte
+        else break;                   // sobrou saldo: nada transborda
+      }
+      // resto que sobrar depois da ultima fatura conhecida simplesmente nao abate nada
+    });
+    return abatido;
   }
 
   // Em qual PERIODO uma movimentacao de DEBITO cai: o periodo cujo intervalo [ini, fat] contem a data.
@@ -1909,10 +1957,14 @@ dialog#modalComparativo::backdrop {
     // O vencimento vem do periodo ANTERIOR (ver periodoDoCredito).
     const periodoDoVencimento = Estado.periodos[i - 1];
     const visiveis = filtrarLancamentos();
+    // a alocacao e' global (varre todos os ciclos), entao roda uma vez por titular
+    const abatidoEu = alocacaoAntecipacoes(visiveis, false);
+    const abatidoIsa = alocacaoAntecipacoes(visiveis, true);
+
     const montaLinhaFatura = (ehIsa, rotulo) => {
       const total = creditos.filter(r => !!r.isa === ehIsa).reduce((s, r) => s + r.v, 0);
       if (!total) return null;   // sem compras desse titular, sem linha
-      const liquido = total + totalAntecipadoDaFatura(visiveis, i, ehIsa);
+      const liquido = total + ((ehIsa ? abatidoIsa : abatidoEu)[i] || 0);
       const venc = periodoDoVencimento &&
         (ehIsa ? periodoDoVencimento.venc_isa : periodoDoVencimento.venc);
       const sid = `fat:${i}:${ehIsa ? 'isa' : 'eu'}`;
@@ -1955,7 +2007,7 @@ const blocoDebito = renderBloco(
     const deTexto = el('compDe').value, ateTexto = el('compAte').value;
     if (!deTexto || !ateTexto) return '<p class=empty>Escolha o período (De / Até) para comparar.</p>';
 
-    const linhas = filtrarLancamentos().filter(r => r.periodoIdx != null);
+        const linhas = filtrarLancamentos().filter(r => r.periodoIdx != null && !ehTransferenciaFatura(r));
     if (!linhas.length) return '<p class=empty>Vazio</p>';
 
     const de = +deTexto, ate = +ateTexto;
@@ -1992,7 +2044,8 @@ const blocoDebito = renderBloco(
   // (Agrupar por → Categoria), que já cobre isso de forma mais completa.
   function vInv() {
     const linhas = Estado.lancamentos.filter(r =>
-      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago) && r.periodoIdx != null
+      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago) &&
+      r.periodoIdx != null && !ehTransferenciaFatura(r)
     );
     if (!linhas.length) return '<p class=empty>Vazio</p>';
 
@@ -2154,15 +2207,16 @@ const blocoDebito = renderBloco(
     const visiveis = Estado.lancamentos.filter(r =>
       passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago)
     );
-    const doPeriodo = visiveis.filter(r => r.periodoIdx == idxPeriodo && !r.cred);
+    const doPeriodo = visiveis.filter(r =>
+      r.periodoIdx == idxPeriodo && !r.cred && !ehTransferenciaFatura(r));
 
-    // fatura sintetica por titular, ja liquida de antecipacoes — igual ao bloco Debito
+
+// fatia BRUTA por titular: a pizza mostra onde o dinheiro foi gasto, e antecipar
+    // e' so a forma de pagar — quem paga a fatura inteira nao gastou menos.
     const creditosDoPeriodo = Estado.lancamentos.filter(r => r.periodoIdx == idxPeriodo && r.cred);
     const fatiaFatura = (ehIsa, rotulo) => {
       const total = creditosDoPeriodo.filter(r => !!r.isa === ehIsa).reduce((s, r) => s + r.v, 0);
-      if (!total) return null;
-      const liquido = total + totalAntecipadoDaFatura(visiveis, idxPeriodo, ehIsa);
-      return liquido ? { categ: rotulo, v: liquido } : null;
+      return total ? { categ: rotulo, v: total } : null;
     };
     const linhas = [
       ...doPeriodo,
@@ -2283,7 +2337,7 @@ const blocoDebito = renderBloco(
     for (let i = de; i <= ate; i++) if (Estado.periodos[i]) periodosUsados.push(i);
 
     const porPeriodo = periodosUsados.map(i => {
-      const linhas = filtrarLancamentos().filter(r => r.periodoIdx == i);
+            const linhas = filtrarLancamentos().filter(r => r.periodoIdx == i && !ehTransferenciaFatura(r));
       const investimento = linhas.filter(r => r.inv);
       const resto = linhas.filter(r => !r.inv);
 

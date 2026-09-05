@@ -2838,8 +2838,7 @@ el('senha').onkeydown = e => {
   if (e.key == 'Enter') entrar();
 };
 
-  el('sair').onclick = async () => { await sb.auth.signOut(); Estado.token = KEY; el('senha').value = ''; mostraTela(0); };
-
+  el('sair').onclick = async () => { await sb.auth.signOut(); el('senha').value = ''; mostraTela(0); };
   el('recarregar').onclick = async () => {
   const bt = el('recarregar');
 

@@ -1352,12 +1352,16 @@
 
     
     
-      .blk h3 .liq {
-      font-weight: 400;
-      font-size: .9rem;
-      color: var(--mu);
-      margin-left: .35rem;
-    }
+.blk h3 .bruto {
+  font-weight: 400;
+  font-size: .88rem;
+  color: var(--mu);
+  margin-left: .4rem;
+}
+
+.blk h3 .bruto s {
+  text-decoration: none;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2069,7 +2073,10 @@
     // recolhido: mantem titulo, total e subtitulo — some so a tabela
     const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
     const n = linhas.length;   // quantas linhas essa tabela tem
-    return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra} ${btnGrafico}</h3><p class=meta>${n} ${n == 1 ? 'linha' : 'linhas'} · ${subtitulo}</p>${corpo}</div>`;
+    // 'extra' preenchido substitui o total no destaque: o titulo passa a exibir o que
+    // falta pagar em evidencia, com o bruto de lado, apagado.
+    const valor = extra || `<b class="${corSoma(total)}">${brl(Math.abs(total))}</b>`;
+    return `<div class=blk><h3>${btnTog}${titulo} · ${valor} ${btnGrafico}</h3><p class=meta>${n} ${n == 1 ? 'linha' : 'linhas'} · ${subtitulo}</p>${corpo}</div>`;
   };
 
 
@@ -2176,12 +2183,17 @@ const blocoDebito = renderBloco(
     // Isabella VE o Credito normalmente (so o resto do "modo simples" e' escondido).
 if (Estado.restrito) return blocoDebito;
 
-        const blocoCredito = renderBloco(
+        // com fatura em aberto, o destaque vai pro que FALTA pagar e o bruto fica de lado,
+    // apagado. Quitada (ou sem antecipacao), mostra so o total normal.
+    const faltaPagar = Math.abs(totalFaturaLiquido);
+    const houveAbatimento = Math.abs(totalFaturaLiquido - totalCredito) > 0.005;
+    const blocoCredito = renderBloco(
       'Crédito', totalCredito,
       Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
       creditos, 'cr', true, null,
-      Math.abs(totalFaturaLiquido - totalCredito) > 0.005
-        ? `<span class=liq>(${brl(Math.abs(totalFaturaLiquido))} a pagar)</span>` : ''
+      houveAbatimento && faltaPagar > 0.005
+        ? `<b class="${corSoma(totalFaturaLiquido)}">${brl(faltaPagar)}</b><span class=bruto>de ${brl(Math.abs(totalCredito))}</span>`
+        : ''
     );
     
     return blocoDebito + blocoCredito;

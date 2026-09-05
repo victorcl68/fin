@@ -1563,7 +1563,7 @@ dialog#modalComparativo::backdrop {
   // Isabella so abate a fatura dela, e vice-versa.
   const totalAntecipadoDaFatura = (linhas, idx, ehIsa) => linhas
     .filter(r => !r.cred && r.data && !!r.isa === ehIsa &&
-      ehAntecipacaoFatura(r.categ) && periodoDoCredito(r.data, r.isa) === idx)
+      ehAntecipacaoFatura(r.categ) && periodoDaAntecipacao(r.data, ehIsa) === idx)
     .reduce((s, r) => s - r.v, 0);
 
   // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'.
@@ -1573,6 +1573,34 @@ dialog#modalComparativo::backdrop {
     let mesAnterior = m - 1, ano = y;
     if (mesAnterior == 0) { mesAnterior = 12; ano--; }   // janeiro -> volta pra dezembro do ano anterior
     return `${MESES[mesAnterior - 1]} ${ano}`;
+  }
+
+    // Dado o 'venc' de uma fatura, em qual periodo ela APARECE na tela: o periodo cujo
+  // 'fat' cai no mes seguinte ao vencimento (nome do periodo = mes anterior ao 'fat').
+  function periodoQueExibeVencimento(vencimento) {
+    if (!vencimento) return -1;
+    const v = dataISO(vencimento), anoVenc = +v.slice(0, 4), mesVenc = +v.slice(5, 7);
+    let mesAlvo = mesVenc + 1, anoAlvo = anoVenc;
+    if (mesAlvo == 13) { mesAlvo = 1; anoAlvo++; }
+    return Estado.periodos.findIndex(per => {
+      const f = dataISO(per.fat);
+      return +f.slice(0, 4) == anoAlvo && +f.slice(5, 7) == mesAlvo;
+    });
+  }
+
+  function periodoDaAntecipacao(dataStr, ehIsa) {
+    const d = dataISO(dataStr);
+    const iFechada = Estado.periodos.findIndex(per => {
+      const fecha = ehIsa ? per.fecha_isa : per.fecha;
+      const venc = ehIsa ? per.venc_isa : per.venc;
+      return fecha && venc && dataISO(fecha) < d && d <= proximoDia(venc);
+    });
+    if (iFechada >= 0) {
+      const venc = ehIsa ? Estado.periodos[iFechada].venc_isa : Estado.periodos[iFechada].venc;
+      const idx = periodoQueExibeVencimento(venc);
+      if (idx >= 0) return idx;
+    }
+    return periodoDoCredito(d, ehIsa);
   }
 
   // Em qual PERIODO uma compra no CREDITO aparece.
@@ -1592,14 +1620,7 @@ dialog#modalComparativo::backdrop {
     if (iFatura < 0) return null;
     const vencimento = ehIsabella ? Estado.periodos[iFatura].venc_isa : Estado.periodos[iFatura].venc;
     if (!vencimento) return null;   // sem vencimento cadastrado -> Backlog
-    const v = dataISO(vencimento), anoVenc = +v.slice(0, 4), mesVenc = +v.slice(5, 7);
-    // mes/ano do periodo que deve exibir essa fatura: mes seguinte ao vencimento vira o 'fat' dele
-    let mesAlvo = mesVenc + 1, anoAlvo = anoVenc;
-    if (mesAlvo == 13) { mesAlvo = 1; anoAlvo++; }
-    return Estado.periodos.findIndex(per => {
-      const f = dataISO(per.fat);
-      return +f.slice(0, 4) == anoAlvo && +f.slice(5, 7) == mesAlvo;
-    });
+    return periodoQueExibeVencimento(vencimento);
   }
 
   // Em qual PERIODO uma movimentacao de DEBITO cai: o periodo cujo intervalo [ini, fat] contem a data.

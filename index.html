@@ -1567,13 +1567,6 @@ dialog#modalComparativo::backdrop {
     return d.toISOString().slice(0, 10);
   }
 
-  // // 'ehIsa' restringe as antecipacoes ao titular da fatura: uma antecipacao lancada como
-  // // Isabella so abate a fatura dela, e vice-versa.
-  // const totalAntecipadoDaFatura = (linhas, idx, ehIsa) => linhas
-  //   .filter(r => !r.cred && r.data && !!r.isa === ehIsa &&
-  //     ehAntecipacaoFatura(r.categ) && periodoDaAntecipacao(r.data, ehIsa) === idx)
-  //   .reduce((s, r) => s - r.v, 0);
-
   // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'.
   // Ex.: periodo com fat=2026-07-06 se chama "Junho 2026" (o mes em que ele comecou).
   function nomePeriodo(fatStr) {
@@ -1594,21 +1587,6 @@ dialog#modalComparativo::backdrop {
       const f = dataISO(per.fat);
       return +f.slice(0, 4) == anoAlvo && +f.slice(5, 7) == mesAlvo;
     });
-  }
-
-  function periodoDaAntecipacao(dataStr, ehIsa) {
-    const d = dataISO(dataStr);
-    const iFechada = Estado.periodos.findIndex(per => {
-      const fecha = ehIsa ? per.fecha_isa : per.fecha;
-      const venc = ehIsa ? per.venc_isa : per.venc;
-      return fecha && venc && dataISO(fecha) < d && d <= proximoDia(venc);
-    });
-    if (iFechada >= 0) {
-      const venc = ehIsa ? Estado.periodos[iFechada].venc_isa : Estado.periodos[iFechada].venc;
-      const idx = periodoQueExibeVencimento(venc);
-      if (idx >= 0) return idx;
-    }
-    return periodoDoCredito(d, ehIsa);
   }
 
   // Em qual PERIODO uma compra no CREDITO aparece.
@@ -1640,18 +1618,17 @@ dialog#modalComparativo::backdrop {
     // saldo devido de cada fatura, na ordem em que aparecem na tela
     const faturas = [];
     Estado.periodos.forEach((per, idx) => {
-      const anterior = Estado.periodos[idx - 1];
-      const venc = anterior && (ehIsa ? anterior.venc_isa : anterior.venc);
-      if (!venc || dataISO(venc) < ANTECIPACAO_DESDE) return;   // fatura antiga: fora
+      
+      
+      
       const bruto = linhas
         .filter(r => r.cred && !!r.isa === ehIsa && r.periodoIdx === idx)
         .reduce((s, r) => s + r.v, 0);
       if (bruto < 0) faturas.push({ idx, saldo: -bruto });
     });
-
-    const antecipacoes = linhas
-      .filter(r => ehTransferenciaFatura(r) && r.data && !!r.isa === ehIsa && r.v < 0 &&
-        dataISO(r.data) >= ANTECIPACAO_DESDE)
+    
+       const antecipacoes = linhas
+      .filter(r => ehTransferenciaFatura(r) && r.data && !!r.isa === ehIsa && r.v < 0)
       .sort((a, b) => timestamp(a.data) - timestamp(b.data));
 
     const abatido = {};
@@ -2525,10 +2502,6 @@ const blocoDebito = renderBloco(
     const r = Estado.lancamentos.find(x => String(x.id) == chave);
     if (r) abreModalNovo(r);
   };
-  el('abreNovo').onclick = () => abreModalNovo();
-  el('fechaNovo').onclick = () => modalNovo.close();
-  el('salvaNovo').onclick = () => submeteNovoLancamento();
-  modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
 
   // ---- salvar: nao fecha o modal, so limpa valor/data e mostra confirmacao ----
   async function submeteNovoLancamento() {

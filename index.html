@@ -1306,6 +1306,29 @@ dialog#modalComparativo::backdrop {
   }
 }
 
+  .blk h3 .tog {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-right: .35rem;
+  vertical-align: middle;
+
+  font: 400 .85rem/1 inherit;
+  color: var(--mu);
+  background: var(--field);
+  border: 1px solid var(--ln);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.blk h3 .tog:hover {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+  
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1509,6 +1532,7 @@ dialog#modalComparativo::backdrop {
     ordenacaoPorTabela: {},    // id da tabela -> { k: coluna, d: direcao (1 asc, 2 desc) }
     filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
     linhasVisiveis: {},         // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
+    fechados: {},
     token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
     usados: [],                 // indices de periodos com movimento, na ordem — usado pelo navegador anterior/proximo
@@ -1672,14 +1696,17 @@ dialog#modalComparativo::backdrop {
     // pega o token da sessao NA HORA: o supabase-js renova sozinho em background, entao
   // guardar o token do login numa variavel garante 401 depois de ~1h. Se nao ha sessao,
   // cai na chave publica (modo dev).
-  const tokenAtual = async () => {
+  const tokenAtual = async (forcar) => {
+    if (forcar) await sb.auth.refreshSession();
     const { data: { session } } = await sb.auth.getSession();
     return session?.access_token || KEY;
   };
 
-  const buscar = async tabela => {
+  const buscar = async (tabela, retry) => {
     const r = await fetch(`${API}/rest/v1/${tabela}?select=*&limit=100000`,
-      { headers: { apikey: KEY, Authorization: 'Bearer ' + await tokenAtual() } });
+      { headers: { apikey: KEY, Authorization: 'Bearer ' + await tokenAtual(retry) } });
+    // 401 costuma ser token expirado ou relogio dessincronizado: renova e tenta uma vez
+    if (r.status === 401 && !retry) return buscar(tabela, true);
     if (!r.ok) throw Error(`${tabela}: ${r.status} ${await r.text()}`);
     return r.json();
   };
@@ -1944,10 +1971,14 @@ dialog#modalComparativo::backdrop {
   // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
   // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
   const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null) => {
-    const btnGrafico = periodoIdxGrafico != null
+    const fechado = !!Estado.fechados[idTabela];
+    const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
+    const btnGrafico = periodoIdxGrafico != null && !fechado
       ? `<button type=button class=selTudoBt onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
       : '';
-    return `<div class=blk><h3>${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+    // recolhido: mantem titulo, total e subtitulo — some so a tabela
+    const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
+    return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${corpo}</div>`;
   };
 
   // ===================================================================
@@ -2218,6 +2249,17 @@ const blocoDebito = renderBloco(
     });
     desenhar();   // redesenha pra refletir o novo estado 'on' em todas as linhas de uma vez
   };
+
+ window.alternarBloco = idTabela => {
+    Estado.fechados[idTabela] = !Estado.fechados[idTabela];
+    if (Estado.fechados[idTabela]) {
+      (Estado.linhasVisiveis[idTabela] || []).map(chaveSelecao).filter(Boolean)
+        .forEach(c => Estado.selecionados.delete(c));
+      Estado.linhasVisiveis[idTabela] = [];
+    }
+    desenhar();
+  };
+  
   el('out').addEventListener('click', e => {
     const linha = e.target.closest('tr[data-sid]');
     if (linha && linha.dataset.sid && !e.target.closest('th')) alternarSelecao(linha.dataset.sid);

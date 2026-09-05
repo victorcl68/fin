@@ -2196,7 +2196,7 @@ const blocoDebito = renderBloco(
     el('fciclo').hidden = true;   // modo simples usa o navegador anterior/proximo, nao o combo
     el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
     el('ftit').hidden = visao == 'p' || simples;
-    el('fciclNav').hidden = true;   // navegador anterior/atual/proximo, so no modo simples
+    el('fciclNav').hidden = false;   // navegador anterior/atual/proximo, so no modo simples
     atualizaNavegadorCiclo();   // mantem rotulo e disabled dos botoes em dia
     if (simples) {
       el('fsit').hidden = el('fvisao').hidden = true;

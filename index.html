@@ -1533,16 +1533,6 @@ dialog#modalComparativo::backdrop {
   // o lancamento — ele continua aparecendo normal na tabela de Debito).
   const ehAntecipacaoFatura = categ => semAcento(categ).trim() === 'antecipacao fatura';
 
-    // Soma (positiva) das antecipacoes que abatem a fatura do periodo idx. A antecipacao
-  // abate a fatura que estava ABERTA na data em que foi paga (mesma regra de fechamento/
-  // vencimento das compras no credito), e nao a fatura do ciclo em que ela saiu da conta:
-  // uma antecipacao paga em julho abate a fatura que aparece em agosto. Por isso varre a
-  // lista inteira, nao so o ciclo atual — o lancamento continua listado normal no Debito
-  // do ciclo em que o dinheiro saiu (nao duplica).
-  const totalAntecipadoDaFatura = (linhas, idx) => linhas
-    .filter(r => !r.cred && r.data && ehAntecipacaoFatura(r.categ) && periodoDoCredito(r.data, r.isa) === idx)
-    .reduce((s, r) => s - r.v, 0);
-
   // proximo dia (usado pra calcular o inicio de um periodo a partir do 'fat' do anterior)
   function proximoDia(iso) {
     const d = new Date(dataISO(iso) + 'T00:00:00Z');

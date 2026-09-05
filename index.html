@@ -2440,8 +2440,10 @@ dialog#modalComparativo::backdrop {
       // pro proximo lancamento da mesma sessao (ex: varios itens do mesmo mercado).
       el('erroNovo').textContent = `Salvo: ${brl(linhaCriada.valor || 0)}`;
       el('erroNovo').classList.add('ok');
+            el('fNome').value = '';
       el('fValor').value = ''; sinalPositivo = false; atualizaSinalUI();
       el('fData').value = '';
+      el('fCateg').selectedIndex = 0;   // categoria vinha do nome; sem nome, nao faz sentido manter
       popularCategoriasNoForm();   // recalcula popularidade com o lancamento recem-criado
       desenhar();
       el('fNome').focus();

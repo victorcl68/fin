@@ -1349,11 +1349,7 @@
     }
     
     
-    .bkAviso {
-      margin: 0 0 1rem;
-      font-size: .82rem;
-      color: var(--mu);
-    }
+
     
     
       .blk h3 .liq {
@@ -2072,20 +2068,11 @@
       : '';
     // recolhido: mantem titulo, total e subtitulo — some so a tabela
     const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
-    return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra} ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${corpo}</div>`;
+    const n = linhas.length;   // quantas linhas essa tabela tem
+    return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra} ${btnGrafico}</h3><p class=meta>${n} ${n == 1 ? 'linha' : 'linhas'} · ${subtitulo}</p>${corpo}</div>`;
   };
 
-    // quantos itens estao parados no Backlog (sem data ou fora dos ciclos), separados por
-  // origem — serve de lembrete nos outros ciclos de que tem coisa esperando classificacao
-  function resumoBacklog() {
-    const linhas = filtrarLancamentos().filter(r => r.periodoIdx == null);
-    const deb = linhas.filter(r => !r.cred).length, cred = linhas.filter(r => r.cred).length;
-    if (!deb && !cred) return '';
-    const partes = [];
-    if (deb) partes.push(`${deb} débito${deb > 1 ? 's' : ''}`);
-    if (cred) partes.push(`${cred} crédito${cred > 1 ? 's' : ''}`);
-    return `<p class=bkAviso>Backlog: ${partes.join(' · ')}</p>`;
-  }
+
 
   // ===================================================================
   // AS TRÊS VISÕES: Ciclo, Comparar, Investimento
@@ -2187,7 +2174,7 @@ const blocoDebito = renderBloco(
 
     // so a Isabella (perfil restrito) nao ve o bloco Credito. No mobile, quem nao e' a
     // Isabella VE o Credito normalmente (so o resto do "modo simples" e' escondido).
- if (Estado.restrito) return resumoBacklog() + blocoDebito;
+if (Estado.restrito) return blocoDebito;
 
         const blocoCredito = renderBloco(
       'Crédito', totalCredito,
@@ -2197,7 +2184,7 @@ const blocoDebito = renderBloco(
         ? `<span class=liq>(${brl(Math.abs(totalFaturaLiquido))} a pagar)</span>` : ''
     );
     
- return resumoBacklog() + blocoDebito + blocoCredito;
+    return blocoDebito + blocoCredito;
   }
 
   // Visão "Comparar": uma matriz [categoria/nome/etc × periodo], com totais por linha e coluna.

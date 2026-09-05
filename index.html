@@ -4,1527 +4,1553 @@
 <meta name=viewport content="width=device-width, initial-scale=1">
 <title>.</title>
 <style>
-:root {
-  --bg: #111315;
-  --pa: #1A1D20;
-  --fg: #F1F3F4;
-  --mu: #9CA3AA;
-  --ln: #30353A;
-
-  --vd: #4CCB78;
-  --vm: #F06A61;
-
-  --bg-soft: #16191C;
-  --field: #202428;
-  --field-hover: #262B30;
-  --line-strong: #3A4046;
-
-  --green-soft: #183023;
-  --green-hover: #1D3929;
-
-  --red-soft: #351E1D;
-  --red-hover: #412321;
-
-  --orange-soft: #33291F;
-
-  --shadow: rgba(0, 0, 0, .42);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-[hidden] {
-  display: none !important;
-}
-
-html {
-  color-scheme: dark;
-}
-
-body {
-  background: var(--bg);
-  color: var(--fg);
-  margin: 0;
-  padding: 2rem 1.4rem;
-  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
-}
-
-/* =========================================================
-   CABEÇALHO
-   ========================================================= */
-
-h1 {
-  font: 700 1.35rem/1 inherit;
-  letter-spacing: -.02em;
-  margin: 0;
-  cursor: pointer;
-  display: inline-block;
-}
-
-.head {
-  display: flex;
-  align-items: center;
-  gap: .7rem;
-  margin: 0 0 1.8rem;
-}
-
-.head .sub {
-  margin: 0;
-  flex: 1;
-  font-size: .85rem;
-  color: var(--mu);
-  font-style: italic;
-}
-
-.head .sub b {
-  font-style: normal;
-  color: var(--fg);
-}
-
-h1 .tt {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-h1 .ic {
-  text-decoration: none;
-}
-
-h1:hover .tt {
-  color: var(--mu);
-}
-
-.sub {
-  font-size: .85rem;
-  color: var(--mu);
-  font-style: italic;
-  margin: 0 0 1.8rem;
-}
-
-.sub a {
-  color: var(--fg);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* =========================================================
-   BOTÕES DO CABEÇALHO
-   ========================================================= */
-
-#sair {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  color: var(--mu);
-  background: var(--pa);
-  border: 1px solid var(--ln);
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-#sair:hover {
-  color: var(--vm);
-  border-color: var(--vm);
-  background: var(--red-soft);
-}
-
-  #recarregar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  color: var(--mu);
-  background: var(--pa);
-  border: 1px solid var(--ln);
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-#recarregar:hover {
-  color: var(--fg);
-  border-color: var(--fg);
-  background: var(--field-hover);
-}
-
-#recarregar.carregando svg {
-  animation: girar 0.8s linear infinite;
-}
-
-@keyframes girar {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-
-#abreNovo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  margin-left: auto;
-  color: #111315;
-  background: var(--fg);
-  border: 0;
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-#abreNovo:hover {
-  background: #FFFFFF;
-  opacity: 1;
-}
-
-/* =========================================================
-   FOCO
-   ========================================================= */
-
-:focus-visible {
-  outline: 2px solid #7BCF99;
-  outline-offset: 2px;
-}
-
-/* =========================================================
-   FILTROS / TOOLBAR
-   ========================================================= */
-
-.tool {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--ln);
-}
-
-.row {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.f {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-}
-
-.f > span {
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--mu);
-}
-
-select {
-  font: inherit;
-  color: var(--fg);
-  background-color: var(--field);
-  border: 1px solid var(--ln);
-  border-radius: 9px;
-  padding: .42rem 1.9rem .42rem .7rem;
-  cursor: pointer;
-  appearance: none;
-
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
-
-  background-repeat: no-repeat;
-  background-position: right .7rem center;
-}
-
-select:hover {
-  background-color: var(--field-hover);
-  border-color: var(--line-strong);
-}
-
-select option {
-  background: var(--field);
-  color: var(--fg);
-}
-
-.multiSel {
-  position: relative;
-}
-
-.multiSelBtn {
-  font: inherit;
-  color: var(--fg);
-  background-color: var(--field);
-  border: 1px solid var(--ln);
-  border-radius: 9px;
-  padding: .42rem 1.9rem .42rem .7rem;
-  cursor: pointer;
-  text-align: left;
-  min-width: 11rem;
-  max-width: 16rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  appearance: none;
-
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
-
-  background-repeat: no-repeat;
-  background-position: right .7rem center;
-}
-
-.multiSelBtn:hover {
-  background-color: var(--field-hover);
-  border-color: var(--line-strong);
-}
-
-.multiSelDrop {
-  display: none;
-  position: absolute;
-  top: calc(100% + .3rem);
-  left: 0;
-  z-index: 25;
-
-  background: var(--pa);
-  border: 1px solid var(--ln);
-  border-radius: 10px;
-  box-shadow: 0 12px 35px var(--shadow);
-
-  padding: .4rem;
-  min-width: 14rem;
-  max-height: 16rem;
-  overflow-y: auto;
-}
-
-.multiSelDrop.open {
-  display: block;
-}
-
-.multiSelDrop label {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .35rem .5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: .9rem;
-}
-
-.multiSelDrop label:hover {
-  background: var(--bg-soft);
-}
-
-.multiSelDrop input {
-  width: 1rem;
-  height: 1rem;
-  accent-color: #6FCB8F;
-}
-
-.chk {
-  display: flex;
-  gap: 1.1rem;
-  align-items: center;
-  height: 2.1rem;
-}
-
-.chk label {
-  display: flex;
-  gap: .4rem;
-  align-items: center;
-  font-size: .92rem;
-  cursor: pointer;
-}
-
-/* =========================================================
-   BLOCOS
-   ========================================================= */
-
-.blk {
-  margin: 0 0 1.8rem;
-}
-
-.blk h3 {
-  font: 700 1.05rem/1.3 inherit;
-  margin: 0;
-  color: var(--fg);
-}
-
-.blk h3 b {
-  font-weight: 700;
-}
-
-.blk .meta {
-  font-size: .85rem;
-  color: var(--mu);
-  font-style: italic;
-  margin: .1rem 0 .6rem;
-}
-
-.empty {
-  color: var(--mu);
-  font-style: italic;
-  font-size: .9rem;
-  padding: .8rem;
-}
-
-/* =========================================================
-   BOTÕES SECUNDÁRIOS
-   ========================================================= */
-
-.selTudoBt,
-.verGraficoBt {
-  font: 400 .78rem/1 inherit;
-  vertical-align: middle;
-  color: var(--mu);
-  background: var(--field);
-  border: 1px solid var(--ln);
-  border-radius: 7px;
-  padding: .25rem .55rem;
-  cursor: pointer;
-  margin-left: .3rem;
-}
-
-.selTudoBt:hover,
-.verGraficoBt:hover {
-  color: var(--fg);
-  background: var(--field-hover);
-  border-color: var(--fg);
-}
-
-/* =========================================================
-   TABELAS
-   ========================================================= */
-
-.wrap {
-  background: var(--pa);
-  border: 1px solid var(--ln);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
-}
-
-.wx {
-  overflow: auto;
-  max-height: 78vh;
-}
-
-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-  background: var(--pa);
-}
-
-th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-
-  background: #1D2024;
-  color: var(--mu);
-
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  text-align: left;
-
-  padding: .55rem .7rem;
-  border-bottom: 1px solid var(--ln);
-
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-
-th:hover {
-  color: var(--fg);
-  background: #22262A;
-}
-
-thead tr.filtros th {
-  position: sticky;
-  top: 1.9rem;
-  z-index: 1;
-  background: #1A1D20;
-  padding: .25rem .5rem .45rem;
-  border-bottom: 1px solid var(--ln);
-  cursor: default;
-}
-
-thead tr.filtros input {
-  width: 100%;
-  font: 12px/1.3 inherit;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-
-  color: var(--fg);
-  background: var(--field);
-
-  border: 1px solid var(--ln);
-  border-radius: 6px;
-  padding: .2rem .4rem;
-}
-
-thead tr.filtros input:focus {
-  border-color: #68727A;
-  background: #24292E;
-  outline: none;
-}
-
-thead tr.filtros input::placeholder {
-  color: #737B82;
-}
-
-th .ar {
-  color: var(--fg);
-  font-style: normal;
-}
-
-td {
-  padding: .5rem .7rem;
-  border-bottom: 1px solid var(--ln);
-  color: var(--fg);
-}
-
-tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-tbody tr:hover td {
-  background: #202428;
-}
-
-.wrap {
-  -webkit-overflow-scrolling: touch;
-}
-
-.n {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* =========================================================
-   CORES DE VALORES
-   ========================================================= */
-
-.vd {
-  color: var(--vd);
-  font-weight: 600;
-}
-
-.vm {
-  color: var(--vm);
-  font-weight: 600;
-}
-
-/* =========================================================
-   LINHA DE FATURA
-   ========================================================= */
-
-tbody tr.fat td {
-  background: var(--red-soft);
-}
-
-tbody tr.fat:hover td {
-  background: var(--red-hover);
-}
-
-/* =========================================================
-   TOTAL
-   ========================================================= */
-
-.tot td {
-  font-weight: 700;
-  border-top: 1px solid var(--line-strong);
-  border-bottom: 0;
-  background: #202428;
-}
-
-.tot td:first-child {
-  border-radius: 0 0 0 10px;
-}
-
-.tot td:last-child {
-  border-radius: 0 0 10px 0;
-}
-
-/* =========================================================
-   SELEÇÃO DE LINHAS
-   ========================================================= */
-
-tbody tr.pick {
-  cursor: pointer;
-}
-
-tbody tr.on td {
-  background: var(--green-soft);
-}
-
-tbody tr.on:hover td {
-  background: var(--green-hover);
-}
-
-/* =========================================================
-   PRIMEIRA COLUNA FIXA
-   ========================================================= */
-
-.wx td.c1,
-.wx th.c1 {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: var(--pa);
-}
-
-.wx th.c1 {
-  background: #1D2024;
-}
-
-.wx thead th.c1 {
-  z-index: 3;
-}
-
-.wx tbody tr:hover td.c1 {
-  background: #202428;
-}
-
-.wx tbody tr.on td.c1 {
-  background: var(--green-soft);
-}
-
-.wx tbody tr.on:hover td.c1 {
-  background: var(--green-hover);
-}
-
-.wx tr.tot td.c1 {
-  background: #202428;
-}
-
-.wx td.c1 {
-  border-right: 1px solid var(--ln);
-}
-
-/* =========================================================
-   RESUMO
-   ========================================================= */
-
-.sumr {
-  margin: .5rem 0 0;
-  font-size: .9rem;
-}
-
-.sumr div {
-  display: flex;
-  justify-content: space-between;
-  padding: .3rem .1rem;
-  border-bottom: 1px solid var(--ln);
-}
-
-.sumr div:last-child {
-  border-bottom: 0;
-  font-weight: 700;
-  border-top: 2px solid var(--fg);
-  padding-top: .4rem;
-}
-
-.sumr span:last-child {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* =========================================================
-   LOGIN
-   ========================================================= */
-
-#login {
-  max-width: 19rem;
-  margin: 16vh auto 0;
-  display: none;
-  flex-direction: column;
-  gap: .7rem;
-}
-
-#login h1 {
-  cursor: default;
-}
-
-#login h1 .tt {
-  text-decoration: none;
-}
-
-#login input {
-  font: inherit;
-  color: var(--fg);
-  padding: .55rem .7rem;
-  border: 1px solid var(--ln);
-  border-radius: 9px;
-  background: var(--field);
-}
-
-#login input::placeholder {
-  color: #747C83;
-}
-
-#login input:focus {
-  border-color: #68727A;
-  background: #24292E;
-  outline: none;
-}
-
-#login button {
-  font: inherit;
-  color: #111315;
-  background: var(--fg);
-  border: 0;
-  border-radius: 9px;
-  padding: .6rem;
-  cursor: pointer;
-}
-
-#login button:hover {
-  background: #FFFFFF;
-}
-
-#login .err {
-  color: var(--vm);
-  font-size: .85rem;
-  min-height: 1.1rem;
-}
-
-#login .out {
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  font-size: .8rem;
-  color: var(--mu);
-}
-
-#app {
-  display: none;
-}
-
-/* =========================================================
-   BARRA DE SELEÇÃO
-   ========================================================= */
-
-#selbar {
-  position: fixed;
-  right: 1.6rem;
-  bottom: 1.6rem;
-
-  display: none;
-  align-items: center;
-  gap: 1.4rem;
-
-  background: #202428;
-  color: var(--fg);
-
-  padding: .9rem 1.3rem;
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-
-  box-shadow: 0 12px 35px rgba(0, 0, 0, .45);
-  z-index: 20;
-}
-
-#selbar .info {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-#selbar .cnt {
-  font-size: .78rem;
-  color: var(--mu);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-
-#selbar .val {
-  font-size: 1.35rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-#selbar button {
-  font: inherit;
-  color: #111315;
-  background: var(--fg);
-  border: 0;
-  border-radius: 9px;
-  padding: .5rem .9rem;
-  cursor: pointer;
-}
-
-#selbar button:hover {
-  background: #FFFFFF;
-}
-
-#selbar #seldup {
-  color: var(--fg);
-  background: var(--field);
-  border: 1px solid var(--line-strong);
-}
-
-#selbar #seldup:hover {
-  background: var(--field-hover);
-  border-color: var(--fg);
-}
-
-/* =========================================================
-   NAVEGAÇÃO DE CICLOS
-   ========================================================= */
-
-#fciclNav {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: .8rem;
-
-  margin: 0 0 1.2rem;
-  padding: .3rem 0;
-  width: fit-content;
-}
-
-#nomeCicloNav {
-  font: 700 1.05rem/1 inherit;
-}
-
-.cicloNav {
-  display: flex;
-  gap: .4rem;
-}
-
-.cicloNav button {
-  width: 2.2rem;
-  height: 2.2rem;
-  font-size: 1.2rem;
-  line-height: 1;
-
-  color: var(--fg);
-  background: var(--field);
-  border: 1px solid var(--ln);
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-.cicloNav button:hover {
-  background: var(--field-hover);
-  border-color: var(--fg);
-}
-
-.cicloNav button:disabled {
-  opacity: .3;
-  cursor: default;
-}
-
-/* =========================================================
-   MODAL — NOVO LANÇAMENTO
-   ========================================================= */
-
-dialog#modalNovo,
-dialog#modalGrafico,
-dialog#modalComparativo {
-  color: var(--fg);
-  background: var(--pa);
-  border: 1px solid var(--ln);
-}
-
-dialog#modalNovo {
-  border: 1px solid var(--ln);
-  border-radius: 16px;
-  padding: 0;
-  width: min(30rem, 92vw);
-  max-height: 88vh;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
-}
-
-dialog#modalNovo::backdrop,
-dialog#modalGrafico::backdrop,
-dialog#modalComparativo::backdrop {
-  background: rgba(0, 0, 0, .68);
-}
-
-#formNovo {
-  display: flex;
-  flex-direction: column;
-  padding: 1.3rem;
-  gap: 1rem;
-  overflow-y: auto;
-  max-height: 88vh;
-}
-
-.modalHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modalHead h2 {
-  font: 700 1.1rem/1 inherit;
-  margin: 0;
-  color: var(--fg);
-}
-
-#fechaNovo,
-#fechaGrafico,
-#fechaComparativo {
-  font-size: 1.5rem;
-  line-height: 1;
-
-  background: transparent;
-  border: 0;
-  color: var(--mu);
-
-  cursor: pointer;
-  padding: .2rem .4rem;
-}
-
-#fechaNovo:hover,
-#fechaGrafico:hover,
-#fechaComparativo:hover {
-  color: var(--fg);
-}
-
-/* =========================================================
-   FORMULÁRIO
-   ========================================================= */
-
-.fm {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-}
-
-.fm > span {
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--mu);
-}
-
-.fm .req {
-  color: var(--vm);
-  font-weight: 700;
-}
-
-.fm input[type=text],
-.fm input[type=date],
-.fm select {
-  font: 16px inherit;
-  color: var(--fg);
-
-  padding: .65rem .8rem;
-  border: 1px solid var(--ln);
-  border-radius: 10px;
-
-  background: var(--field);
-  width: 100%;
-}
-
-.fm input[type=text]::placeholder {
-  color: #747C83;
-}
-
-.fm input[type=text]:focus,
-.fm input[type=date]:focus,
-.fm select:focus {
-  border-color: #68727A;
-  background: #24292E;
-  outline: none;
-}
-
-.fm select {
-  appearance: none;
-  cursor: pointer;
-
-  background-color: var(--field);
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
-
-  background-repeat: no-repeat;
-  background-position: right .8rem center;
-
-  padding-right: 2rem;
-}
-
-.fmChecks {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: .6rem;
-}
-
-.fmChk {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-
-  padding: .6rem .7rem;
-
-  background: var(--field);
-  border: 1px solid var(--ln);
-  border-radius: 10px;
-
-  cursor: pointer;
-  font-size: .92rem;
-  user-select: none;
-}
-
-.fmChk:hover {
-  background: var(--field-hover);
-  border-color: var(--line-strong);
-}
-
-.fmChk input {
-  width: 1.15rem;
-  height: 1.15rem;
-  accent-color: #6FCB8F;
-}
-
-/* =========================================================
-   DINHEIRO
-   ========================================================= */
-
-.moneyWrap {
-  display: flex;
-  align-items: stretch;
-
-  border: 1px solid var(--ln);
-  border-radius: 10px;
-
-  overflow: hidden;
-  background: var(--field);
-}
-
-.sinalBt {
-  width: 2.4rem;
-
-  border: 0;
-  border-right: 1px solid var(--ln);
-
-  background: #191C1F;
-  color: var(--vm);
-
-  font-size: 1.15rem;
-  font-weight: 700;
-
-  cursor: pointer;
-}
-
-.sinalBt:hover:not(:disabled) {
-  background: var(--red-soft);
-}
-
-.sinalBt.pos {
-  color: var(--vd);
-}
-
-.sinalBt.pos:hover:not(:disabled) {
-  background: var(--green-soft);
-}
-
-.sinalBt.neutro {
-  color: var(--mu);
-  cursor: default;
-}
-
-.sinalBt:disabled {
-  opacity: .6;
-}
-
-.moneyPrefix {
-  display: flex;
-  align-items: center;
-
-  padding: 0 .5rem;
-
-  background: #191C1F;
-  color: var(--mu);
-
-  font-weight: 600;
-  font-size: .9rem;
-}
-
-.moneyWrap input {
-  border: 0;
-  border-radius: 0;
-
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-
-  flex: 1;
-  min-width: 0;
-
-  color: var(--fg);
-  background: var(--field);
-}
-
-.moneyWrap input:focus {
-  outline: none;
-}
-
-.hintNeg {
-  color: var(--mu);
-  font-size: .74rem;
-}
-
-/* =========================================================
-   MENSAGEM DO MODAL
-   ========================================================= */
-
-.erroNovo {
-  color: var(--vm);
-  font-size: .85rem;
-  margin: 0;
-  min-height: 1.1rem;
-}
-
-.erroNovo.okNovo.ok {
-  color: var(--vd);
-}
-
-#fIsaWrap[hidden] {
-  display: none;
-}
-
-/* =========================================================
-   BOTÕES DO MODAL
-   ========================================================= */
-
-.modalActs {
-  display: flex;
-  gap: .7rem;
-  margin-top: .2rem;
-}
-
-.btSec,
-.btPri {
-  flex: 1;
-  padding: .75rem;
-  border-radius: 10px;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  border: 0;
-}
-
-.btSec {
-  background: var(--field);
-  color: var(--fg);
-  border: 1px solid var(--ln);
-}
-
-.btSec:hover {
-  background: var(--field-hover);
-  border-color: var(--line-strong);
-}
-
-.btPri {
-  background: var(--fg);
-  color: #111315;
-  width: 100%;
-  margin-top: .3rem;
-}
-
-.btPri:hover {
-  background: #FFFFFF;
-}
-
-.btPri:disabled {
-  opacity: .5;
-  cursor: default;
-}
-
-  .sd {
-  display: block;
-  font-size: .68rem;
-  font-weight: 400;
-  color: var(--mu);
-  margin-top: .1rem;
-}
-
-/* =========================================================
-   GRÁFICOS
-   ========================================================= */
-
-#modalGrafico {
-  width: min(44rem, 94vw);
-  max-height: 92vh;
-  padding: 1.5rem;
-}
-
-#modalGrafico .meta {
-  margin: .2rem 0 1rem;
-}
-
-#modalComparativo {
-  width: min(48rem, 94vw);
-  max-height: 92vh;
-  padding: 1.5rem;
-}
-
-#modalGrafico canvas,
-#modalComparativo canvas {
-  color: var(--fg);
-}
-
-/* =========================================================
-   SCROLLBAR
-   ========================================================= */
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #3B4147 transparent;
-}
-
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #363C42;
-  border-radius: 99px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #4A5259;
-}
-
-/* =========================================================
-   MOBILE
-   ========================================================= */
-
-@media (max-width: 640px) {
-  body {
-    padding: 1.2rem .9rem;
-  }
-
-  h1 {
-    font-size: 1.15rem;
-  }
-
-  .head {
-    gap: .5rem;
-  }
-
-  /* mobile nao usa gaveta */
-  .tool {
-    display: none;
-  }
-
-  /* esconde abas nao-Ciclo no combo Visao */
-  #visao option[value=k],
-  #visao option[value=p] {
-    display: none;
-  }
-
-  /* tabela com scroll horizontal */
-  .wrap {
-    overflow-x: auto;
-  }
-
-  #selbar {
-    left: .8rem;
-    right: .8rem;
-    bottom: .8rem;
-    padding: .7rem 1rem;
-  }
-
-  #selbar .val {
-    font-size: 1.2rem;
-  }
-
-  #abreNovo .lbl {
-    display: none;
-  }
-
-  #abreNovo {
-    padding: .5rem;
-    width: 2rem;
-    height: 2rem;
-    justify-content: center;
-  }
-
-  dialog#modalNovo {
-    width: 100vw;
-    max-width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
-    margin: 0;
-  }
-
-  #formNovo {
-    max-height: 100vh;
-    padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
-  }
-
-  .fmChecks {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  dialog#modalGrafico,
-  dialog#modalComparativo {
-    width: 100vw;
-    max-width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
-    margin: 0;
-    padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
-    overflow-y: auto;
-  }
-
-  #modalGrafico > div[style*=height],
-  #modalComparativo > div[style*=height] {
-    height: 320px !important;
-  }
-
-  .multiSelBtn {
-    min-width: 0;
-    max-width: 100%;
-  }
-}
-
-  .blk h3 .tog {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  margin-right: .35rem;
-  vertical-align: middle;
-
-  font: 400 .85rem/1 inherit;
-  color: var(--mu);
-  background: var(--field);
-  border: 1px solid var(--ln);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.blk h3 .tog:hover {
-  color: var(--fg);
-  border-color: var(--fg);
-}
-
-  .fr {
-  color: var(--vm);
-  font-weight: 700;
-  cursor: help;
-  margin-left: .25rem;
-}
-  
-.avisoFr {
-  margin: -.5rem 0 0;
-  padding: .5rem .7rem;
-  font-size: .82rem;
-  line-height: 1.35;
-  color: var(--fg);
-  background: var(--orange-soft);
-  border: 1px solid #6A5330;
-  border-radius: 9px;
-}
-
-
-.bkAviso {
-  margin: 0 0 1rem;
-  font-size: .82rem;
-  color: var(--mu);
-}
-  
-  
+    :root {
+      --bg: #111315;
+      --pa: #1A1D20;
+      --fg: #F1F3F4;
+      --mu: #9CA3AA;
+      --ln: #30353A;
+    
+      --vd: #4CCB78;
+      --vm: #F06A61;
+    
+      --bg-soft: #16191C;
+      --field: #202428;
+      --field-hover: #262B30;
+      --line-strong: #3A4046;
+    
+      --green-soft: #183023;
+      --green-hover: #1D3929;
+    
+      --red-soft: #351E1D;
+      --red-hover: #412321;
+    
+      --orange-soft: #33291F;
+    
+      --shadow: rgba(0, 0, 0, .42);
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    [hidden] {
+      display: none !important;
+    }
+    
+    html {
+      color-scheme: dark;
+    }
+    
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      padding: 2rem 1.4rem 7rem;
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    
+    /* =========================================================
+       CABEÇALHO
+       ========================================================= */
+    
+    h1 {
+      font: 700 1.35rem/1 inherit;
+      letter-spacing: -.02em;
+      margin: 0;
+      cursor: pointer;
+      display: inline-block;
+    }
+    
+    .head {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      margin: 0 0 1.8rem;
+    }
+    
+    .head .sub {
+      margin: 0;
+      flex: 1;
+      font-size: .85rem;
+      color: var(--mu);
+      font-style: italic;
+    }
+    
+    .head .sub b {
+      font-style: normal;
+      color: var(--fg);
+    }
+    
+    h1 .tt {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    
+    h1 .ic {
+      text-decoration: none;
+    }
+    
+    h1:hover .tt {
+      color: var(--mu);
+    }
+    
+    .sub {
+      font-size: .85rem;
+      color: var(--mu);
+      font-style: italic;
+      margin: 0 0 1.8rem;
+    }
+    
+    .sub a {
+      color: var(--fg);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    
+    /* =========================================================
+       BOTÕES DO CABEÇALHO
+       ========================================================= */
+    
+    #sair {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      color: var(--mu);
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    
+    #sair:hover {
+      color: var(--vm);
+      border-color: var(--vm);
+      background: var(--red-soft);
+    }
+    
+      #recarregar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      color: var(--mu);
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    
+    #recarregar:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+      background: var(--field-hover);
+    }
+    
+    #recarregar.carregando svg {
+      animation: girar 0.8s linear infinite;
+    }
+    
+    @keyframes girar {
+      from {
+        transform: rotate(0deg);
+      }
+    
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    
+    #abreNovo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      margin-left: auto;
+      color: #111315;
+      background: var(--fg);
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    
+    #abreNovo:hover {
+      background: #FFFFFF;
+      opacity: 1;
+    }
+    
+    /* =========================================================
+       FOCO
+       ========================================================= */
+    
+    :focus-visible {
+      outline: 2px solid #7BCF99;
+      outline-offset: 2px;
+    }
+    
+    /* =========================================================
+       FILTROS / TOOLBAR
+       ========================================================= */
+    
+    .tool {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--ln);
+    }
+    
+    .row {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    
+    .f {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+    
+    .f > span {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--mu);
+    }
+    
+    select {
+      font: inherit;
+      color: var(--fg);
+      background-color: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      padding: .42rem 1.9rem .42rem .7rem;
+      cursor: pointer;
+      appearance: none;
+    
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    
+      background-repeat: no-repeat;
+      background-position: right .7rem center;
+    }
+    
+    select:hover {
+      background-color: var(--field-hover);
+      border-color: var(--line-strong);
+    }
+    
+    select option {
+      background: var(--field);
+      color: var(--fg);
+    }
+    
+    .multiSel {
+      position: relative;
+    }
+    
+    .multiSelBtn {
+      font: inherit;
+      color: var(--fg);
+      background-color: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      padding: .42rem 1.9rem .42rem .7rem;
+      cursor: pointer;
+      text-align: left;
+      min-width: 11rem;
+      max-width: 16rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      appearance: none;
+    
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    
+      background-repeat: no-repeat;
+      background-position: right .7rem center;
+    }
+    
+    .multiSelBtn:hover {
+      background-color: var(--field-hover);
+      border-color: var(--line-strong);
+    }
+    
+    .multiSelDrop {
+      display: none;
+      position: absolute;
+      top: calc(100% + .3rem);
+      left: 0;
+      z-index: 25;
+    
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+      box-shadow: 0 12px 35px var(--shadow);
+    
+      padding: .4rem;
+      min-width: 14rem;
+      max-height: 16rem;
+      overflow-y: auto;
+    }
+    
+    .multiSelDrop.open {
+      display: block;
+    }
+    
+    .multiSelDrop label {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .35rem .5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .9rem;
+    }
+    
+    .multiSelDrop label:hover {
+      background: var(--bg-soft);
+    }
+    
+    .multiSelDrop input {
+      width: 1rem;
+      height: 1rem;
+      accent-color: #6FCB8F;
+    }
+    
+    .chk {
+      display: flex;
+      gap: 1.1rem;
+      align-items: center;
+      height: 2.1rem;
+    }
+    
+    .chk label {
+      display: flex;
+      gap: .4rem;
+      align-items: center;
+      font-size: .92rem;
+      cursor: pointer;
+    }
+    
+    /* =========================================================
+       BLOCOS
+       ========================================================= */
+    
+    .blk {
+      margin: 0 0 1.8rem;
+    }
+    
+    .blk h3 {
+      font: 700 1.05rem/1.3 inherit;
+      margin: 0;
+      color: var(--fg);
+    }
+    
+    .blk h3 b {
+      font-weight: 700;
+    }
+    
+    .blk .meta {
+      font-size: .85rem;
+      color: var(--mu);
+      font-style: italic;
+      margin: .1rem 0 .6rem;
+    }
+    
+    .empty {
+      color: var(--mu);
+      font-style: italic;
+      font-size: .9rem;
+      padding: .8rem;
+    }
+    
+    /* =========================================================
+       BOTÕES SECUNDÁRIOS
+       ========================================================= */
+    
+    .selTudoBt,
+    .verGraficoBt {
+      font: 400 .78rem/1 inherit;
+      vertical-align: middle;
+      color: var(--mu);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 7px;
+      padding: .25rem .55rem;
+      cursor: pointer;
+      margin-left: .3rem;
+    }
+    
+    .selTudoBt:hover,
+    .verGraficoBt:hover {
+      color: var(--fg);
+      background: var(--field-hover);
+      border-color: var(--fg);
+    }
+    
+    /* =========================================================
+       TABELAS
+       ========================================================= */
+    
+    .wrap {
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+    }
+    
+    .wx {
+      overflow: auto;
+      max-height: 78vh;
+    }
+    
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      background: var(--pa);
+    }
+    
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    
+      background: #1D2024;
+      color: var(--mu);
+    
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      text-align: left;
+    
+      padding: .55rem .7rem;
+      border-bottom: 1px solid var(--ln);
+    
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    
+    th:hover {
+      color: var(--fg);
+      background: #22262A;
+    }
+    
+    thead tr.filtros th {
+      position: sticky;
+      top: 1.9rem;
+      z-index: 1;
+      background: #1A1D20;
+      padding: .25rem .5rem .45rem;
+      border-bottom: 1px solid var(--ln);
+      cursor: default;
+    }
+    
+    thead tr.filtros input {
+      width: 100%;
+      font: 12px/1.3 inherit;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: normal;
+    
+      color: var(--fg);
+      background: var(--field);
+    
+      border: 1px solid var(--ln);
+      border-radius: 6px;
+      padding: .2rem .4rem;
+    }
+    
+    thead tr.filtros input:focus {
+      border-color: #68727A;
+      background: #24292E;
+      outline: none;
+    }
+    
+    thead tr.filtros input::placeholder {
+      color: #737B82;
+    }
+    
+    th .ar {
+      color: var(--fg);
+      font-style: normal;
+    }
+    
+    td {
+      padding: .5rem .7rem;
+      border-bottom: 1px solid var(--ln);
+      color: var(--fg);
+    }
+    
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+    
+    tbody tr:hover td {
+      background: #202428;
+    }
+    
+    .wrap {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .n {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    
+    /* =========================================================
+       CORES DE VALORES
+       ========================================================= */
+    
+    .vd {
+      color: var(--vd);
+      font-weight: 600;
+    }
+    
+    .vm {
+      color: var(--vm);
+      font-weight: 600;
+    }
+    
+    /* =========================================================
+       LINHA DE FATURA
+       ========================================================= */
+    
+    tbody tr.fat td {
+      background: var(--red-soft);
+    }
+    
+    tbody tr.fat:hover td {
+      background: var(--red-hover);
+    }
+    
+    /* =========================================================
+       TOTAL
+       ========================================================= */
+    
+    .tot td {
+      font-weight: 700;
+      border-top: 1px solid var(--line-strong);
+      border-bottom: 0;
+      background: #202428;
+    }
+    
+    .tot td:first-child {
+      border-radius: 0 0 0 10px;
+    }
+    
+    .tot td:last-child {
+      border-radius: 0 0 10px 0;
+    }
+    
+    /* =========================================================
+       SELEÇÃO DE LINHAS
+       ========================================================= */
+    
+    tbody tr.pick {
+      cursor: pointer;
+    }
+    
+    tbody tr.on td {
+      background: var(--green-soft);
+    }
+    
+    tbody tr.on:hover td {
+      background: var(--green-hover);
+    }
+    
+    /* =========================================================
+       PRIMEIRA COLUNA FIXA
+       ========================================================= */
+    
+    .wx td.c1,
+    .wx th.c1 {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--pa);
+    }
+    
+    .wx th.c1 {
+      background: #1D2024;
+    }
+    
+    .wx thead th.c1 {
+      z-index: 3;
+    }
+    
+    .wx tbody tr:hover td.c1 {
+      background: #202428;
+    }
+    
+    .wx tbody tr.on td.c1 {
+      background: var(--green-soft);
+    }
+    
+    .wx tbody tr.on:hover td.c1 {
+      background: var(--green-hover);
+    }
+    
+    .wx tr.tot td.c1 {
+      background: #202428;
+    }
+    
+    .wx td.c1 {
+      border-right: 1px solid var(--ln);
+    }
+    
+    /* =========================================================
+       RESUMO
+       ========================================================= */
+    
+    .sumr {
+      margin: .5rem 0 0;
+      font-size: .9rem;
+    }
+    
+    .sumr div {
+      display: flex;
+      justify-content: space-between;
+      padding: .3rem .1rem;
+      border-bottom: 1px solid var(--ln);
+    }
+    
+    .sumr div:last-child {
+      border-bottom: 0;
+      font-weight: 700;
+      border-top: 2px solid var(--fg);
+      padding-top: .4rem;
+    }
+    
+    .sumr span:last-child {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    
+    /* =========================================================
+       LOGIN
+       ========================================================= */
+    
+    #login {
+      max-width: 19rem;
+      margin: 16vh auto 0;
+      display: none;
+      flex-direction: column;
+      gap: .7rem;
+    }
+    
+    #login h1 {
+      cursor: default;
+    }
+    
+    #login h1 .tt {
+      text-decoration: none;
+    }
+    
+    #login input {
+      font: inherit;
+      color: var(--fg);
+      padding: .55rem .7rem;
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      background: var(--field);
+    }
+    
+    #login input::placeholder {
+      color: #747C83;
+    }
+    
+    #login input:focus {
+      border-color: #68727A;
+      background: #24292E;
+      outline: none;
+    }
+    
+    #login button {
+      font: inherit;
+      color: #111315;
+      background: var(--fg);
+      border: 0;
+      border-radius: 9px;
+      padding: .6rem;
+      cursor: pointer;
+    }
+    
+    #login button:hover {
+      background: #FFFFFF;
+    }
+    
+    #login .err {
+      color: var(--vm);
+      font-size: .85rem;
+      min-height: 1.1rem;
+    }
+    
+    #login .out {
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      font-size: .8rem;
+      color: var(--mu);
+    }
+    
+    #app {
+      display: none;
+    }
+    
+    /* =========================================================
+       BARRA DE SELEÇÃO
+       ========================================================= */
+    
+    #selbar {
+      position: fixed;
+      right: 1.6rem;
+      bottom: 1.6rem;
+    
+      display: none;
+      align-items: center;
+      gap: 1.4rem;
+    
+      background: rgba(32, 36, 40, .72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--fg);
+    
+      padding: .9rem 1.3rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+    
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .45);
+      z-index: 20;
+    }
+    
+    #selbar .info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    
+    #selbar .cnt {
+      font-size: .78rem;
+      color: var(--mu);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    
+    #selbar .val {
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    #selbar button {
+      font: inherit;
+      color: #111315;
+      background: var(--fg);
+      border: 0;
+      border-radius: 9px;
+      padding: .5rem .9rem;
+      cursor: pointer;
+    }
+    
+    #selbar button:hover {
+      background: #FFFFFF;
+    }
+    
+    #selbar #seldup {
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--line-strong);
+    }
+    
+    #selbar #seldup:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
+    }
+    
+    /* =========================================================
+       NAVEGAÇÃO DE CICLOS
+       ========================================================= */
+    
+    #fciclNav {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: .8rem;
+    
+      margin: 0 0 1.2rem;
+      padding: .3rem 0;
+      width: fit-content;
+    }
+    
+    #nomeCicloNav {
+      font: 700 1.05rem/1 inherit;
+    }
+    
+    .cicloNav {
+      display: flex;
+      gap: .4rem;
+    }
+    
+    .cicloNav button {
+      width: 2.2rem;
+      height: 2.2rem;
+      font-size: 1.2rem;
+      line-height: 1;
+    
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    
+    .cicloNav button:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
+    }
+    
+    .cicloNav button:disabled {
+      opacity: .3;
+      cursor: default;
+    }
+    
+    /* =========================================================
+       MODAL — NOVO LANÇAMENTO
+       ========================================================= */
+    
+    dialog#modalNovo,
+    dialog#modalGrafico,
+    dialog#modalComparativo {
+      color: var(--fg);
+      background: var(--pa);
+      border: 1px solid var(--ln);
+    }
+    
+    dialog#modalNovo {
+      border: 1px solid var(--ln);
+      border-radius: 16px;
+      padding: 0;
+      width: min(30rem, 92vw);
+      max-height: 88vh;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+    }
+    
+    dialog#modalNovo::backdrop,
+    dialog#modalGrafico::backdrop,
+    dialog#modalComparativo::backdrop {
+      background: rgba(0, 0, 0, .68);
+    }
+    
+    #formNovo {
+      display: flex;
+      flex-direction: column;
+      padding: 1.3rem;
+      gap: 1rem;
+      overflow-y: auto;
+      max-height: 88vh;
+    }
+    
+    .modalHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .modalHead h2 {
+      font: 700 1.1rem/1 inherit;
+      margin: 0;
+      color: var(--fg);
+    }
+    
+    #fechaNovo,
+    #fechaGrafico,
+    #fechaComparativo {
+      font-size: 1.5rem;
+      line-height: 1;
+    
+      background: transparent;
+      border: 0;
+      color: var(--mu);
+    
+      cursor: pointer;
+      padding: .2rem .4rem;
+    }
+    
+    #fechaNovo:hover,
+    #fechaGrafico:hover,
+    #fechaComparativo:hover {
+      color: var(--fg);
+    }
+    
+    /* =========================================================
+       FORMULÁRIO
+       ========================================================= */
+    
+    .fm {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+    
+    .fm > span {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--mu);
+    }
+    
+    .fm .req {
+      color: var(--vm);
+      font-weight: 700;
+    }
+    
+    .fm input[type=text],
+    .fm input[type=date],
+    .fm select {
+      font: 16px inherit;
+      color: var(--fg);
+    
+      padding: .65rem .8rem;
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+    
+      background: var(--field);
+      width: 100%;
+    }
+    
+    .fm input[type=text]::placeholder {
+      color: #747C83;
+    }
+    
+    .fm input[type=text]:focus,
+    .fm input[type=date]:focus,
+    .fm select:focus {
+      border-color: #68727A;
+      background: #24292E;
+      outline: none;
+    }
+    
+    .fm select {
+      appearance: none;
+      cursor: pointer;
+    
+      background-color: var(--field);
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    
+      background-repeat: no-repeat;
+      background-position: right .8rem center;
+    
+      padding-right: 2rem;
+    }
+    
+    .fmChecks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+    }
+    
+    .fmChk {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    
+      padding: .6rem .7rem;
+    
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+    
+      cursor: pointer;
+      font-size: .92rem;
+      user-select: none;
+    }
+    
+    .fmChk:hover {
+      background: var(--field-hover);
+      border-color: var(--line-strong);
+    }
+    
+    .fmChk input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: #6FCB8F;
+    }
+    
+    /* =========================================================
+       DINHEIRO
+       ========================================================= */
+    
+    .moneyWrap {
+      display: flex;
+      align-items: stretch;
+    
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+    
+      overflow: hidden;
+      background: var(--field);
+    }
+    
+    .sinalBt {
+      width: 2.4rem;
+    
+      border: 0;
+      border-right: 1px solid var(--ln);
+    
+      background: #191C1F;
+      color: var(--vm);
+    
+      font-size: 1.15rem;
+      font-weight: 700;
+    
+      cursor: pointer;
+    }
+    
+    .sinalBt:hover:not(:disabled) {
+      background: var(--red-soft);
+    }
+    
+    .sinalBt.pos {
+      color: var(--vd);
+    }
+    
+    .sinalBt.pos:hover:not(:disabled) {
+      background: var(--green-soft);
+    }
+    
+    .sinalBt.neutro {
+      color: var(--mu);
+      cursor: default;
+    }
+    
+    .sinalBt:disabled {
+      opacity: .6;
+    }
+    
+    .moneyPrefix {
+      display: flex;
+      align-items: center;
+    
+      padding: 0 .5rem;
+    
+      background: #191C1F;
+      color: var(--mu);
+    
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    
+    .moneyWrap input {
+      border: 0;
+      border-radius: 0;
+    
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    
+      flex: 1;
+      min-width: 0;
+    
+      color: var(--fg);
+      background: var(--field);
+    }
+    
+    .moneyWrap input:focus {
+      outline: none;
+    }
+    
+    .hintNeg {
+      color: var(--mu);
+      font-size: .74rem;
+    }
+    
+    /* =========================================================
+       MENSAGEM DO MODAL
+       ========================================================= */
+    
+    .erroNovo {
+      color: var(--vm);
+      font-size: .85rem;
+      margin: 0;
+      min-height: 1.1rem;
+    }
+    
+    .erroNovo.okNovo.ok {
+      color: var(--vd);
+    }
+    
+    #fIsaWrap[hidden] {
+      display: none;
+    }
+    
+    /* =========================================================
+       BOTÕES DO MODAL
+       ========================================================= */
+    
+    .modalActs {
+      display: flex;
+      gap: .7rem;
+      margin-top: .2rem;
+    }
+    
+    .btSec,
+    .btPri {
+      flex: 1;
+      padding: .75rem;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      border: 0;
+    }
+    
+    .btSec {
+      background: var(--field);
+      color: var(--fg);
+      border: 1px solid var(--ln);
+    }
+    
+    .btSec:hover {
+      background: var(--field-hover);
+      border-color: var(--line-strong);
+    }
+    
+    .btPri {
+      background: var(--fg);
+      color: #111315;
+      width: 100%;
+      margin-top: .3rem;
+    }
+    
+    .btPri:hover {
+      background: #FFFFFF;
+    }
+    
+    .btPri:disabled {
+      opacity: .5;
+      cursor: default;
+    }
+    
+      .sd {
+      display: block;
+      font-size: .68rem;
+      font-weight: 400;
+      color: var(--mu);
+      margin-top: .1rem;
+    }
+    
+    /* =========================================================
+       GRÁFICOS
+       ========================================================= */
+    
+    #modalGrafico {
+      width: min(44rem, 94vw);
+      max-height: 92vh;
+      padding: 1.5rem;
+    }
+    
+    #modalGrafico .meta {
+      margin: .2rem 0 1rem;
+    }
+    
+    #modalComparativo {
+      width: min(48rem, 94vw);
+      max-height: 92vh;
+      padding: 1.5rem;
+    }
+    
+    #modalGrafico canvas,
+    #modalComparativo canvas {
+      color: var(--fg);
+    }
+    
+    /* =========================================================
+       SCROLLBAR
+       ========================================================= */
+    
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #3B4147 transparent;
+    }
+    
+    ::-webkit-scrollbar {
+      width: 9px;
+      height: 9px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #363C42;
+      border-radius: 99px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4A5259;
+    }
+    
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+    
+    @media (max-width: 640px) {
+      body {
+        padding: 1.2rem .9rem;
+      }
+    
+      h1 {
+        font-size: 1.15rem;
+      }
+    
+      .head {
+        gap: .5rem;
+      }
+    
+      /* mobile nao usa gaveta */
+      .tool {
+        display: none;
+      }
+    
+      /* esconde abas nao-Ciclo no combo Visao */
+      #visao option[value=k],
+      #visao option[value=p] {
+        display: none;
+      }
+    
+      /* tabela com scroll horizontal */
+      .wrap {
+        overflow-x: auto;
+      }
+    
+      #selbar {
+        left: .8rem;
+        right: .8rem;
+        bottom: .8rem;
+        padding: .7rem 1rem;
+      }
+    
+      #selbar .val {
+        font-size: 1.2rem;
+      }
+    
+      #abreNovo .lbl {
+        display: none;
+      }
+    
+      #abreNovo {
+        padding: .5rem;
+        width: 2rem;
+        height: 2rem;
+        justify-content: center;
+      }
+    
+      dialog#modalNovo {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+      }
+    
+      #formNovo {
+        max-height: 100vh;
+        padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+      }
+    
+      .fmChecks {
+        grid-template-columns: 1fr 1fr;
+      }
+    
+      dialog#modalGrafico,
+      dialog#modalComparativo {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+        padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+        overflow-y: auto;
+      }
+    
+      #modalGrafico > div[style*=height],
+      #modalComparativo > div[style*=height] {
+        height: 320px !important;
+      }
+    
+      .multiSelBtn {
+        min-width: 0;
+        max-width: 100%;
+      }
+    }
+    
+      .blk h3 .tog {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.4rem;
+      height: 1.4rem;
+      margin-right: .35rem;
+      vertical-align: middle;
+    
+      font: 400 .85rem/1 inherit;
+      color: var(--mu);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    
+    .blk h3 .tog:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+    }
+    
+      .fr {
+      color: var(--vm);
+      font-weight: 700;
+      cursor: help;
+      margin-left: .25rem;
+    }
+      
+    .avisoFr {
+      margin: -.5rem 0 0;
+      padding: .5rem .7rem;
+      font-size: .82rem;
+      line-height: 1.35;
+      color: var(--fg);
+      background: var(--orange-soft);
+      border: 1px solid #6A5330;
+      border-radius: 9px;
+    }
+    
+    
+    .bkAviso {
+      margin: 0 0 1rem;
+      font-size: .82rem;
+      color: var(--mu);
+    }
+    
+    
+      .blk h3 .liq {
+      font-weight: 400;
+      font-size: .9rem;
+      color: var(--mu);
+      margin-left: .35rem;
+    }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <div id=login>
-  <input id=email type=email autocomplete=username>
-  <input id=senha type=password autocomplete=current-password>
-  <div id=login>
-  <input id=email type=email autocomplete=username placeholder="E-mail">
-  <input id=senha type=password autocomplete=current-password placeholder="Senha">
-  <div class=err id=lerr></div>
-</div>
-  <div class=err id=lerr></div>
+    <input id=email type=email autocomplete=username>
+    <input id=senha type=password autocomplete=current-password>
+    <div id=login>
+        <input id=email type=email autocomplete=username placeholder="E-mail">
+        <input id=senha type=password autocomplete=current-password placeholder="Senha">
+        <div class=err id=lerr></div>
+    </div>
+    <div class=err id=lerr></div>
 </div>
 
 <div id=app>
- <div class=head>
-  <button id=sair title="Encerrar" aria-label="Encerrar">
-  <svg viewBox="0 0 24 24" width=17 height=17 fill=none
-    stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-    <path d="M12 3v9" />
-    <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
-  </svg>
-</button>
+    <div class=head>
+        <button id=sair title="Encerrar" aria-label="Encerrar">
+            <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+                <path d="M12 3v9" />
+                <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+            </svg>
+        </button>
 
-<button id=recarregar title="Recarregar dados" aria-label="Recarregar dados">
-  <svg viewBox="0 0 24 24" width=17 height=17 fill=none
-    stroke="currentColor" stroke-width="2.2"
-    stroke-linecap="round" stroke-linejoin="round">
-    <path d="M20 11a8 8 0 0 0-14.9-4" />
-    <path d="M4 4v5h5" />
-    <path d="M4 13a8 8 0 0 0 14.9 4" />
-    <path d="M20 20v-5h-5" />
-  </svg>
-</button>
+        <button id=recarregar title="Recarregar dados" aria-label="Recarregar dados">
+            <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 11a8 8 0 0 0-14.9-4" />
+                <path d="M4 4v5h5" />
+                <path d="M4 13a8 8 0 0 0 14.9 4" />
+                <path d="M20 20v-5h-5" />
+            </svg>
+        </button>
 
 
-    <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
-    <svg viewBox="0 0 24 24" width=17 height=17 fill=none
-      stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
-      <line x1=12 y1=5 x2=12 y2=19 />
-      <line x1=5 y1=12 x2=19 y2=12 />
-    </svg>
-  </button>
-</div>
-  <p class=sub><span id=st></span></p>
-
-  <div class=f id=fciclNav>
-    <span id=nomeCicloNav>—</span>
-    <div class=cicloNav>
-      <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
-      <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
+        <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
+            <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
+                <line x1=12 y1=5 x2=12 y2=19 />
+                <line x1=5 y1=12 x2=19 y2=12 />
+            </svg>
+        </button>
     </div>
-  </div>
+    <p class=sub><span id=st></span></p>
 
-  <div class=tool>
-    <div class=row>
-      <label class=f id=fvisao><span>Visão</span>
-        <select id=visao>
-          <option value=c>Ciclo
-          <option value=k>Comparar
-          <option value=p>Balanço
-        </select></label>
-      <label class=f id=fciclo><span>Ciclo</span><select id=ciclo></select></label>
-      <label class=f id=forigem><span>Origem</span>
-        <select id=origem>
-          <option value=A>Tudo
-          <option value=D>Débito
-          <option value=F>Crédito
-        </select></label>
-      <label class=f id=ftit><span>Titular</span>
-        <select id=titular>
-          <option value=T>Todos
-          <option value=E>Eu
-          <option value=I>Isabella
-        </select></label>
-      <label class=f id=fgraf><span>&nbsp;</span>
-        <button type=button id=btGrafico class=multiSelBtn style="min-width:auto">Ver gráfico</button></label>
-      <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
-      <label class=f id=fde><span>De</span><select id=compDe></select></label>
-      <label class=f id=fate><span>Até</span><select id=compAte></select></label>
-    </div>
-    <div class=row id=fsit>
-      <label class=f><span>Pago</span>
-        <select id=fpago>
-          <option value=B>Ambos
-          <option value=S>Sim
-          <option value=N>Não
-        </select></label>
-      <label class=f><span>Ativo</span>
-        <select id=fativo>
-          <option value=S>Sim
-          <option value=B>Ambos
-          <option value=N>Não
-        </select></label>
-    </div>
-  </div>
-  <div id=out></div>
-    <div id=selbar><span id=selinfo class=info></span><button id=seldup>Duplicar</button><button id=selacao>Selecionar tudo</button></div>
-
-  <dialog id=modalNovo>
-    <form id=formNovo method=dialog>
-      <div class=modalHead>
-                <h2 id=tituloNovo>Novo lançamento</h2>
-        <button type=button id=fechaNovo aria-label="Fechar">×</button>
-      </div>
-
-      <div class=fmChecks>
-        <label class=fmChk><input type=checkbox id=fCred><span>Crédito</span></label>
-        <label class=fmChk id=fIsaWrap><input type=checkbox id=fIsa><span>Isabella</span></label>
-      </div>
-
-      <label class=fm><span>Nome <b class=req>*</b></span>
-        <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off></label>
-
-     <label class=fm><span>Data</span>
-        <input type=date id=fData></label>
-
-      <p class=avisoFr id=avisoFr hidden></p>
-
-      <label class=fm><span>Valor</span>
-        <div class=moneyWrap>
-          <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
-          <span class=moneyPrefix>R$</span>
-          <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
+    <div class=f id=fciclNav>
+        <span id=nomeCicloNav>—</span>
+        <div class=cicloNav>
+            <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
+            <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
         </div>
-      </label>
-
-      <label class=fm><span>Categoria <b class=req>*</b></span>
-        <select id=fCateg required></select></label>
-
-      <p class="erroNovo okNovo" id=erroNovo></p>
-
-      <button type=button id=salvaNovo class=btPri>Salvar</button>
-    </form>
-  </dialog>
-
-  <dialog id=modalGrafico>
-    <div class=modalHead>
-      <h2>Gastos do ciclo</h2>
-      <button type=button id=fechaGrafico aria-label="Fechar">×</button>
     </div>
-    <p class=meta id=graficoSubtitulo></p>
-    <div class=f id=fExcluirCat>
-      <span>Excluir categorias</span>
-      <div class=multiSel id=excluirCatWrap>
-        <button type=button id=excluirCatBtn class=multiSelBtn>Nenhuma excluída</button>
-        <div class=multiSelDrop id=excluirCatDrop></div>
-      </div>
-    </div>
-    <div style="position:relative;height:480px;margin-top:1rem">
-      <canvas id=canvasGraficoGastos role=img aria-label="Gráfico de pizza dos gastos por categoria no ciclo"></canvas>
-    </div>
-    <p class=empty id=graficoVazio hidden>Sem gastos neste ciclo.</p>
-  </dialog>
 
-  <dialog id=modalComparativo>
-    <div class=modalHead>
-      <h2>Ganho x gasto x aportado</h2>
-      <button type=button id=fechaComparativo aria-label="Fechar">×</button>
+    <div class=tool>
+        <div class=row>
+            <label class=f id=fvisao><span>Visão</span>
+                <select id=visao>
+                    <option value=c>Ciclo
+                        <option value=k>Comparar
+                            <option value=p>Balanço
+                </select>
+            </label>
+            <label class=f id=fciclo><span>Ciclo</span>
+                <select id=ciclo></select>
+            </label>
+            <label class=f id=forigem><span>Origem</span>
+                <select id=origem>
+                    <option value=A>Tudo
+                        <option value=D>Débito
+                            <option value=F>Crédito
+                </select>
+            </label>
+            <label class=f id=ftit><span>Titular</span>
+                <select id=titular>
+                    <option value=T>Todos
+                        <option value=E>Eu
+                            <option value=I>Isabella
+                </select>
+            </label>
+            <label class=f id=fgraf><span>&nbsp;</span>
+                <button type=button id=btGrafico class=multiSelBtn style="min-width:auto">Ver gráfico</button>
+            </label>
+            <label class=f id=fgrupo><span>Agrupar por</span>
+                <select id=grupo></select>
+            </label>
+            <label class=f id=fde><span>De</span>
+                <select id=compDe></select>
+            </label>
+            <label class=f id=fate><span>Até</span>
+                <select id=compAte></select>
+            </label>
+        </div>
+        <div class=row id=fsit>
+            <label class=f><span>Pago</span>
+                <select id=fpago>
+                    <option value=B>Ambos
+                        <option value=S>Sim
+                            <option value=N>Não
+                </select>
+            </label>
+            <label class=f><span>Ativo</span>
+                <select id=fativo>
+                    <option value=S>Sim
+                        <option value=B>Ambos
+                            <option value=N>Não
+                </select>
+            </label>
+        </div>
     </div>
-    <p class=meta>Verde: ganho do mês (fora Investimento) · Vermelho: gasto do mês (inclui resgate) · Laranja: aportado em Investimento</p>
-    <div style="position:relative;height:420px;margin-top:.6rem">
-      <canvas id=canvasEvolucao role=img aria-label="Gráfico de barras comparando ganho, gasto e aportado mês a mês"></canvas>
+    <div id=out></div>
+    <div id=selbar><span id=selinfo class=info></span>
+        <button id=seldup>Duplicar</button>
+        <button id=selacao>Selecionar tudo</button>
     </div>
-  </dialog>
+
+    <dialog id=modalNovo>
+        <form id=formNovo method=dialog>
+            <div class=modalHead>
+                <h2 id=tituloNovo>Novo lançamento</h2>
+                <button type=button id=fechaNovo aria-label="Fechar">×</button>
+            </div>
+
+            <div class=fmChecks>
+                <label class=fmChk>
+                    <input type=checkbox id=fCred><span>Crédito</span></label>
+                <label class=fmChk id=fIsaWrap>
+                    <input type=checkbox id=fIsa><span>Isabella</span></label>
+            </div>
+
+            <label class=fm><span>Nome <b class=req>*</b></span>
+                <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off>
+            </label>
+
+            <label class=fm><span>Data</span>
+                <input type=date id=fData>
+            </label>
+
+            <p class=avisoFr id=avisoFr hidden></p>
+
+            <label class=fm><span>Valor</span>
+                <div class=moneyWrap>
+                    <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
+                    <span class=moneyPrefix>R$</span>
+                    <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
+                </div>
+            </label>
+
+            <label class=fm><span>Categoria <b class=req>*</b></span>
+                <select id=fCateg required></select>
+            </label>
+
+            <p class="erroNovo okNovo" id=erroNovo></p>
+
+            <button type=button id=salvaNovo class=btPri>Salvar</button>
+        </form>
+    </dialog>
+
+    <dialog id=modalGrafico>
+        <div class=modalHead>
+            <h2>Gastos do ciclo</h2>
+            <button type=button id=fechaGrafico aria-label="Fechar">×</button>
+        </div>
+        <p class=meta id=graficoSubtitulo></p>
+        <div class=f id=fExcluirCat>
+            <span>Excluir categorias</span>
+            <div class=multiSel id=excluirCatWrap>
+                <button type=button id=excluirCatBtn class=multiSelBtn>Nenhuma excluída</button>
+                <div class=multiSelDrop id=excluirCatDrop></div>
+            </div>
+        </div>
+        <div style="position:relative;height:480px;margin-top:1rem">
+            <canvas id=canvasGraficoGastos role=img aria-label="Gráfico de pizza dos gastos por categoria no ciclo"></canvas>
+        </div>
+        <p class=empty id=graficoVazio hidden>Sem gastos neste ciclo.</p>
+    </dialog>
+
+    <dialog id=modalComparativo>
+        <div class=modalHead>
+            <h2>Ganho x gasto x aportado</h2>
+            <button type=button id=fechaComparativo aria-label="Fechar">×</button>
+        </div>
+        <p class=meta>Verde: ganho do mês (fora Investimento) · Vermelho: gasto do mês (inclui resgate) · Laranja: aportado em Investimento</p>
+        <div style="position:relative;height:420px;margin-top:.6rem">
+            <canvas id=canvasEvolucao role=img aria-label="Gráfico de barras comparando ganho, gasto e aportado mês a mês"></canvas>
+        </div>
+    </dialog>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-        // ===================================================================
+    // ===================================================================
   // CONFIG — credenciais do Supabase, e-mail do perfil restrito, e as
   // definicoes que moldam a interface (meses, colunas das tabelas)
   // ===================================================================
@@ -1540,8 +1566,8 @@ dialog#modalComparativo::backdrop {
   // colunas mostradas nas tabelas de lancamentos, na ordem em que aparecem.
   // [chave no objeto, rotulo exibido, tipo]  tipo: d=data, t=texto, n=numero, b=booleano
   const COLS = [
-    ['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['categ', 'Categoria', 't'],
-    ['freq', 'Frequência', 't'], ['valor', 'Valor', 'n'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n'],
+    ['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['valor', 'Valor', 'n'],
+    ['categ', 'Categoria', 't'], ['freq', 'Frequência', 't'], ['pago', 'Pago', 'b'], ['id', 'ID', 'n'],
   ];
   // no mobile a tabela mostra so o essencial: Data, Nome e Valor
   const COLS_MOBILE = [['data', 'Data', 'd'], ['nome', 'Nome', 't'], ['valor', 'Valor', 'n']];
@@ -2038,7 +2064,7 @@ dialog#modalComparativo::backdrop {
   // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
   // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
   // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
-  const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null) => {
+    const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null, extra = '') => {
     const fechado = !!Estado.fechados[idTabela];
     const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
     const btnGrafico = periodoIdxGrafico != null && !fechado
@@ -2046,7 +2072,7 @@ dialog#modalComparativo::backdrop {
       : '';
     // recolhido: mantem titulo, total e subtitulo — some so a tabela
     const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
-    return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${corpo}</div>`;
+    return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra} ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${corpo}</div>`;
   };
 
     // quantos itens estao parados no Backlog (sem data ou fora dos ciclos), separados por
@@ -2145,6 +2171,10 @@ dialog#modalComparativo::backdrop {
       montaLinhaFatura(true, 'Fatura do cartão (Isabella)'),
     ].filter(Boolean);
 
+        // total liquido do credito: o bruto menos o que ja foi antecipado. E' o mesmo numero
+    // que aparece na linha de fatura do bloco Debito — aqui so como referencia no titulo.
+    const totalFaturaLiquido = linhasFatura.reduce((s, r) => s + r.v, 0);
+
     const simples = modoSimples();
         const debitosComFatura = [...debitos, ...linhasFatura];
 
@@ -2159,10 +2189,12 @@ const blocoDebito = renderBloco(
     // Isabella VE o Credito normalmente (so o resto do "modo simples" e' escondido).
  if (Estado.restrito) return resumoBacklog() + blocoDebito;
 
-    const blocoCredito = renderBloco(
+        const blocoCredito = renderBloco(
       'Crédito', totalCredito,
       Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
-      creditos, 'cr', true
+      creditos, 'cr', true, null,
+      Math.abs(totalFaturaLiquido - totalCredito) > 0.005
+        ? `<span class=liq>(${brl(Math.abs(totalFaturaLiquido))} a pagar)</span>` : ''
     );
     
  return resumoBacklog() + blocoDebito + blocoCredito;
@@ -2857,12 +2889,4 @@ el('senha').onkeydown = e => {
 
   if (API.includes('SEUPROJETO')) { mostraTela(1); load(); }   // sem chaves configuradas: pula o login (modo dev)
   else boot();
-
-
-
-
-
-
-
-
 </script>

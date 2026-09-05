@@ -1556,6 +1556,13 @@ dialog#modalComparativo::backdrop {
     return d.toISOString().slice(0, 10);
   }
 
+  // 'ehIsa' restringe as antecipacoes ao titular da fatura: uma antecipacao lancada como
+  // Isabella so abate a fatura dela, e vice-versa.
+  const totalAntecipadoDaFatura = (linhas, idx, ehIsa) => linhas
+    .filter(r => !r.cred && r.data && !!r.isa === ehIsa &&
+      ehAntecipacaoFatura(r.categ) && periodoDoCredito(r.data, r.isa) === idx)
+    .reduce((s, r) => s - r.v, 0);
+
   // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'.
   // Ex.: periodo com fat=2026-07-06 se chama "Junho 2026" (o mes em que ele comecou).
   function nomePeriodo(fatStr) {
@@ -1873,26 +1880,31 @@ dialog#modalComparativo::backdrop {
     const creditos = filtrarLancamentos().filter(r => r.periodoIdx == i && r.cred);
     const totalCredito = creditos.reduce((s, r) => s + r.v, 0);
 
-const totalAntecipado = totalAntecipadoDaFatura(filtrarLancamentos(), i);
-    // soma (nao subtrai): fatura e' negativa, antecipado e' positivo — antecipar reduz
-    // o quanto ainda falta sair. Sem compras no credito nao ha fatura pra abater.
-    const totalFaturaLiquido = totalCredito ? totalCredito + totalAntecipado : 0;
-    // O vencimento da fatura exibida neste ciclo mora no periodo ANTERIOR: periodoDoCredito
-    // pega o 'venc' e joga a fatura no periodo cujo 'fat' e' o mes seguinte, entao quem
-    // aparece em Agosto (fat=set) venceu no 'venc' do periodo de fat=ago. Titular=Isabella
-    // usa venc_isa; Eu ou Todos usam o seu venc.
+    // Uma linha de fatura por titular: cada cartao tem fechamento, vencimento e
+    // antecipacoes proprios, entao juntar os dois numa linha so escondia informacao.
+    // O vencimento vem do periodo ANTERIOR (ver periodoDoCredito).
     const periodoDoVencimento = Estado.periodos[i - 1];
-    const dataVencimentoFatura = periodoDoVencimento && (el('titular').value == 'I'
-      ? (periodoDoVencimento.venc_isa || periodoDoVencimento.venc)
-      : (periodoDoVencimento.venc || periodoDoVencimento.venc_isa));
-    const linhaFatura = {
-      data: dataVencimentoFatura || periodo.fat, nome: 'Fatura do cartão', categ: 'Fatura',
-      freq: '', id: 0, v: totalFaturaLiquido, _fat: 1, _sid: 'fat:' + i,
+    const visiveis = filtrarLancamentos();
+    const montaLinhaFatura = (ehIsa, rotulo) => {
+      const total = creditos.filter(r => !!r.isa === ehIsa).reduce((s, r) => s + r.v, 0);
+      if (!total) return null;   // sem compras desse titular, sem linha
+      const liquido = total + totalAntecipadoDaFatura(visiveis, i, ehIsa);
+      const venc = periodoDoVencimento &&
+        (ehIsa ? periodoDoVencimento.venc_isa : periodoDoVencimento.venc);
+      const sid = `fat:${i}:${ehIsa ? 'isa' : 'eu'}`;
+      Estado.valorFaturaPorCiclo[sid] = liquido;
+      return {
+        data: venc || periodo.fat, nome: rotulo, categ: 'Fatura',
+        freq: '', id: 0, v: liquido, isa: ehIsa, _fat: 1, _sid: sid,
+      };
     };
-    Estado.valorFaturaPorCiclo[linhaFatura._sid] = totalFaturaLiquido;
+    const linhasFatura = [
+      montaLinhaFatura(false, 'Fatura do cartão'),
+      montaLinhaFatura(true, 'Fatura do cartão (Isabella)'),
+    ].filter(Boolean);
 
     const simples = modoSimples();
-    const debitosComFatura = [...debitos, linhaFatura];
+        const debitosComFatura = [...debitos, ...linhasFatura];
     // modo simples: sem selecao de linha, sem botao de grafico — so a tabela, ordenavel
     const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
@@ -2098,16 +2110,19 @@ const totalAntecipado = totalAntecipadoDaFatura(filtrarLancamentos(), i);
     );
     const doPeriodo = visiveis.filter(r => r.periodoIdx == idxPeriodo && !r.cred);
 
-    // fatura sintetica do credito, ja liquida de antecipacoes — igual ao bloco Debito
-    const totalCredito = Estado.lancamentos
-      .filter(r => r.periodoIdx == idxPeriodo && r.cred)
-      .reduce((s, r) => s + r.v, 0);
-    const faturaLiquida = totalCredito
-      ? totalCredito + totalAntecipadoDaFatura(visiveis, idxPeriodo)
-      : 0;
-    const linhas = faturaLiquida
-      ? [...doPeriodo, { categ: 'Fatura do cartão', v: faturaLiquida }]
-      : doPeriodo;
+    // fatura sintetica por titular, ja liquida de antecipacoes — igual ao bloco Debito
+    const creditosDoPeriodo = Estado.lancamentos.filter(r => r.periodoIdx == idxPeriodo && r.cred);
+    const fatiaFatura = (ehIsa, rotulo) => {
+      const total = creditosDoPeriodo.filter(r => !!r.isa === ehIsa).reduce((s, r) => s + r.v, 0);
+      if (!total) return null;
+      const liquido = total + totalAntecipadoDaFatura(visiveis, idxPeriodo, ehIsa);
+      return liquido ? { categ: rotulo, v: liquido } : null;
+    };
+    const linhas = [
+      ...doPeriodo,
+      fatiaFatura(false, 'Fatura do cartão'),
+      fatiaFatura(true, 'Fatura do cartão (Isabella)'),
+    ].filter(Boolean);
 
     const renda = linhas.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
     const porCategoria = {};

@@ -1482,7 +1482,9 @@ dialog#modalComparativo::backdrop {
   // nomes dos meses, usados por nomePeriodo() pra rotular cada periodo (ex: "Junho 2026")
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const SALDO_INICIAL = 0;
-
+  // Primeiro dia coberto pelo controle. Antes disso os lancamentos estao incompletos,
+  // entao o acumulado nao faria sentido — nem calcula, nem mostra.
+  const SALDO_DESDE = '2026-08-07';
   // colunas mostradas nas tabelas de lancamentos, na ordem em que aparecem.
   // [chave no objeto, rotulo exibido, tipo]  tipo: d=data, t=texto, n=numero, b=booleano
   const COLS = [
@@ -1908,7 +1910,7 @@ dialog#modalComparativo::backdrop {
     Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
     if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
     if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
-
+        if (!d || d < SALDO_DESDE) return;
     const ordenadas = ordenarLinhas(linhas, idTabela);
 
     // saldo do dia: so na tabela de Debito e so com data ASCENDENTE — em qualquer outra
@@ -1972,7 +1974,9 @@ dialog#modalComparativo::backdrop {
     });
 
     const eventos = [...base.filter(r => !r.cred && r.data).map(r => ({ data: dataISO(r.data), v: r.v })),
-      ...faturas].sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : 0);
+      ...faturas]
+      .filter(e => e.data >= SALDO_DESDE)
+      .sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : 0);
 
     const saldo = {};
     let acc = SALDO_INICIAL;

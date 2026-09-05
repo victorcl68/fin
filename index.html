@@ -1654,7 +1654,6 @@ dialog#modalComparativo::backdrop {
   //  3) a compra aparece no periodo cujo NOME bate com o mes/ano desse vencimento
   //     (nome do periodo = mes anterior ao seu 'fat', entao fat.mes = venc.mes + 1)
   // Se o vencimento nao estiver preenchido, retorna null (a compra cai no Backlog).
-  function periodoDoCredito(dataStr, ehIsabella) {
     function periodoDoCredito(dataStr, ehIsabella, nome) {
     const dataCompra = dataCaptura(dataStr, nome);
     const iFatura = Estado.periodos.findIndex(per => {
@@ -1766,7 +1765,7 @@ dialog#modalComparativo::backdrop {
       if (!r.data) {
         periodoIdx = null;                                   // sem data -> Backlog, sempre
       } else if (r.cred) {
-        periodoIdx = periodoDoCredito(r.data, r.isa);         // credito segue fechamento/vencimento do cartao
+        periodoIdx = periodoDoCredito(r.data, r.isa, r.nome);
       } else {
         periodoIdx = periodoDoDebito(dataISO(r.data));        // debito segue o intervalo do periodo
       }
@@ -1774,7 +1773,7 @@ dialog#modalComparativo::backdrop {
         ...r,
         v: +r.valor || 0,                                                    // valor numerico seguro
         inv: /^investimento$/i.test(String(r.categ || '').trim()),           // e da categoria Investimento?
-        periodoIdx = periodoDoCredito(r.data, r.isa, r.nome)
+        periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
       };
     });
 

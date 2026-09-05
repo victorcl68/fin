@@ -1345,6 +1345,15 @@ dialog#modalComparativo::backdrop {
   border: 1px solid #6A5330;
   border-radius: 9px;
 }
+
+
+.bkAviso {
+  margin: 0 0 1rem;
+  font-size: .82rem;
+  color: var(--mu);
+}
+  
+  
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1421,6 +1430,8 @@ dialog#modalComparativo::backdrop {
           <option value=E>Eu
           <option value=I>Isabella
         </select></label>
+      <label class=f id=fgraf><span>&nbsp;</span>
+        <button type=button id=btGrafico class=multiSelBtn style="min-width:auto">Ver gráfico</button></label>
       <label class=f id=fgrupo><span>Agrupar por</span><select id=grupo></select></label>
       <label class=f id=fde><span>De</span><select id=compDe></select></label>
       <label class=f id=fate><span>Até</span><select id=compAte></select></label>
@@ -2037,6 +2048,18 @@ dialog#modalComparativo::backdrop {
     return `<div class=blk><h3>${btnTog}${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${corpo}</div>`;
   };
 
+    // quantos itens estao parados no Backlog (sem data ou fora dos ciclos), separados por
+  // origem — serve de lembrete nos outros ciclos de que tem coisa esperando classificacao
+  function resumoBacklog() {
+    const linhas = filtrarLancamentos().filter(r => r.periodoIdx == null);
+    const deb = linhas.filter(r => !r.cred).length, cred = linhas.filter(r => r.cred).length;
+    if (!deb && !cred) return '';
+    const partes = [];
+    if (deb) partes.push(`${deb} débito${deb > 1 ? 's' : ''}`);
+    if (cred) partes.push(`${cred} crédito${cred > 1 ? 's' : ''}`);
+    return `<p class=bkAviso>Backlog: ${partes.join(' · ')}</p>`;
+  }
+
   // ===================================================================
   // AS TRÊS VISÕES: Ciclo, Comparar, Investimento
   // ===================================================================
@@ -2128,19 +2151,20 @@ dialog#modalComparativo::backdrop {
 const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
       `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-      debitosComFatura, 'db', true, simples ? null : i
+      debitosComFatura, 'db', true
     );
 
     // so a Isabella (perfil restrito) nao ve o bloco Credito. No mobile, quem nao e' a
     // Isabella VE o Credito normalmente (so o resto do "modo simples" e' escondido).
-    if (Estado.restrito) return blocoDebito;
+ if (Estado.restrito) return resumoBacklog() + blocoDebito;
 
     const blocoCredito = renderBloco(
       'Crédito', totalCredito,
       Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
       creditos, 'cr', true
     );
-    return blocoDebito + blocoCredito;
+    
+ return resumoBacklog() + blocoDebito + blocoCredito;
   }
 
   // Visão "Comparar": uma matriz [categoria/nome/etc × periodo], com totais por linha e coluna.
@@ -2232,9 +2256,14 @@ const blocoDebito = renderBloco(
       el('fsit').hidden = el('fvisao').hidden = true;
       el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
     }
+    const noBacklog = visao == 'c' && +el('ciclo').value < 0;
+    if (!simples) el('fativo').value = noBacklog ? 'B' : 'S';
     if (visao != 'k') el('origem').value = 'A';
     if (visao == 'p') el('titular').value = 'T';
 
+    el('fgraf').hidden = visao != 'c' || simples || +el('ciclo').value < 0;
+    el('btGrafico').dataset.idx = el('ciclo').value;
+    
     el('out').innerHTML = visao == 'c' ? vCiclo() : visao == 'k' ? vComp() : vInv();
     if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
@@ -2355,6 +2384,7 @@ const blocoDebito = renderBloco(
   }
   el('cicloAnterior').onclick = () => navegaCiclo(-1);
   el('cicloProximo').onclick = () => navegaCiclo(1);
+    el('btGrafico').onclick = () => abrirGraficoGastos(+el('btGrafico').dataset.idx);
 
   // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
   document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = desenhar);

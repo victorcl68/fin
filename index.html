@@ -775,7 +775,7 @@ tbody tr.on:hover td {
   background: #FFFFFF;
 }
 
-  #selbar #seldup {
+#selbar #seldup {
   color: var(--fg);
   background: var(--field);
   border: 1px solid var(--line-strong);
@@ -1150,6 +1150,14 @@ dialog#modalComparativo::backdrop {
   cursor: default;
 }
 
+  .sd {
+  display: block;
+  font-size: .68rem;
+  font-weight: 400;
+  color: var(--mu);
+  margin-top: .1rem;
+}
+
 /* =========================================================
    GRÁFICOS
    ========================================================= */
@@ -1394,7 +1402,7 @@ dialog#modalComparativo::backdrop {
     </div>
   </div>
   <div id=out></div>
-  <div id=selbar><span id=selinfo class=info></span><button id=seldup>Duplicar</button><button id=selclear>Limpar</button></div>
+    <div id=selbar><span id=selinfo class=info></span><button id=seldup>Duplicar</button><button id=selacao>Selecionar tudo</button></div>
 
   <dialog id=modalNovo>
     <form id=formNovo method=dialog>
@@ -1473,6 +1481,7 @@ dialog#modalComparativo::backdrop {
 
   // nomes dos meses, usados por nomePeriodo() pra rotular cada periodo (ex: "Junho 2026")
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const SALDO_INICIAL = 0;
 
   // colunas mostradas nas tabelas de lancamentos, na ordem em que aparecem.
   // [chave no objeto, rotulo exibido, tipo]  tipo: d=data, t=texto, n=numero, b=booleano
@@ -1813,6 +1822,15 @@ dialog#modalComparativo::backdrop {
     });
     return copia;
   }
+
+  // qual tabela contem as linhas selecionadas — a barra e' global, mas "selecionar tudo"
+  // so faz sentido dentro de uma tabela
+  function tabelaDaSelecao() {
+    const chave = [...Estado.selecionados.keys()][0];
+    if (!chave) return null;
+    return Object.keys(Estado.linhasVisiveis)
+      .find(id => (Estado.linhasVisiveis[id] || []).some(r => chaveSelecao(r) === chave)) || null;
+  }
   // monta o <tr> de cabecalho de uma tabela, com a setinha de ordenacao na coluna ativa
   function cabecalhoTabela(idTabela) {
     const cols = colunasAtivas();
@@ -1879,7 +1897,8 @@ dialog#modalComparativo::backdrop {
   const textoOuTraco = v => ehVazioTextual(v) ? '—' : v;
   // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
   const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
-    ? (isMobile() ? celValorMobile(r) : celValor(r.v))
+    ? (isMobile() ? celValorMobile(r) : celValor(r.v)).replace(/$/,
+        r._saldo != null ? `<span class=sd>${brl(r._saldo)}</span>` : '')
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
       : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data' ? (r.data ? dataBR(r.data) : '—') : textoOuTraco(r[chave])}`
   ).join('');
@@ -1900,19 +1919,49 @@ dialog#modalComparativo::backdrop {
   // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
   // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
   const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null) => {
-        const btnTudo = selecionavel && linhas.length && !modoSimples()
-      ? `<button type=button class=selTudoBt onclick="selecionarTudo('${idTabela}')">Selecionar tudo</button>`
-      : '';
     const btnGrafico = periodoIdxGrafico != null
       ? `<button type=button class=selTudoBt onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
       : '';
-    return `<div class=blk><h3>${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnTudo}${btnGrafico}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
+    return `<div class=blk><h3>${titulo} · <b class="${corSoma(total)}">${brl(Math.abs(total))}</b> ${btnGrafico}</h3><p class=meta>${subtitulo}</p>${renderTabela(linhas, idTabela, selecionavel)}</div>`;
   };
 
   // ===================================================================
   // AS TRÊS VISÕES: Ciclo, Comparar, Investimento
   // ===================================================================
 
+  // Saldo em conta ao fim de cada dia, acumulado desde SALDO_INICIAL. Considera o que
+  // de fato passa pela conta: os debitos (compra no credito nao sai da conta) mais as
+  // linhas sinteticas de fatura, que representam o que ainda vai sair no vencimento.
+  // Ignora o filtro de Titular — a conta e' uma so.
+  function saldoPorDia() {
+    const base = Estado.lancamentos.filter(r =>
+      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago));
+
+    // faturas em aberto de todos os ciclos, ja liquidas de antecipacao
+    const abat = { false: alocacaoAntecipacoes(base, false), true: alocacaoAntecipacoes(base, true) };
+    const faturas = [];
+    Estado.periodos.forEach((per, idx) => {
+      [false, true].forEach(ehIsa => {
+        const bruto = base
+          .filter(r => r.cred && !!r.isa === ehIsa && r.periodoIdx === idx)
+          .reduce((s, r) => s + r.v, 0);
+        if (!bruto) return;
+        const liquido = bruto + (abat[ehIsa][idx] || 0);
+        const ant = Estado.periodos[idx - 1];
+        const venc = ant && (ehIsa ? ant.venc_isa : ant.venc);
+        if (Math.abs(liquido) > 0.005) faturas.push({ data: dataISO(venc || per.fat), v: liquido });
+      });
+    });
+
+    const eventos = [...base.filter(r => !r.cred && r.data).map(r => ({ data: dataISO(r.data), v: r.v })),
+      ...faturas].sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : 0);
+
+    const saldo = {};
+    let acc = SALDO_INICIAL;
+    eventos.forEach(e => { acc += e.v; saldo[e.data] = acc; });
+    return saldo;
+  }
+  
   // Visão "Ciclo": mostra um periodo por vez, com os blocos Debito e Credito (ou o Backlog).
   function vCiclo() {
     const i = +el('ciclo').value;
@@ -1958,6 +2007,17 @@ dialog#modalComparativo::backdrop {
 
     const simples = modoSimples();
         const debitosComFatura = [...debitos, ...linhasFatura];
+
+    const ord = estadoOrdenacao('db');
+    if (ord.k == 'data') {
+      const saldo = saldoPorDia();
+      const porDia = {};
+      debitosComFatura.forEach(r => { const d = dataISO(r.data); if (d) porDia[d] = r; });
+      debitosComFatura.forEach(r => { r._saldo = null; });
+      Object.entries(porDia).forEach(([d, r]) => { r._saldo = saldo[d]; });
+    } else {
+      debitosComFatura.forEach(r => { r._saldo = null; });
+    }
     // modo simples: sem selecao de linha, sem botao de grafico — so a tabela, ordenavel
 const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
@@ -2077,17 +2137,18 @@ const blocoDebito = renderBloco(
   // ===================================================================
   // SELEÇÃO DE LINHAS (barra flutuante de soma)
   // ===================================================================
-    function atualizaBarraSelecao() {
+      function atualizaBarraSelecao() {
     if (!Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
 
-    // com UMA linha real selecionada, somar nao diz nada — a barra vira atalho de duplicar.
-    // a fatura sintetica ('fat:...') nao existe no banco, entao nao pode ser duplicada.
     const chaves = [...Estado.selecionados.keys()];
     const chaveUnica = chaves.length == 1 && !chaves[0].startsWith('fat:') ? chaves[0] : null;
 
-    // modo simples nunca soma: sem linha duplicavel selecionada, a barra nem aparece
     if (modoSimples() && !chaveUnica) { el('selbar').style.display = 'none'; return; }
+
+    // uma linha real: a barra e' so pra duplicar. Varias: e' pra somar e selecionar/limpar.
+    // Nunca os dois juntos — pra desmarcar uma linha unica, basta clicar nela de novo.
     el('seldup').hidden = !chaveUnica;
+    el('selacao').hidden = !!chaveUnica || modoSimples();
 
     if (chaveUnica) {
       const r = Estado.lancamentos.find(x => String(x.id) == chaveUnica);
@@ -2100,6 +2161,13 @@ const blocoDebito = renderBloco(
       el('selinfo').innerHTML =
         `<span class=cnt>${Estado.selecionados.size} selecionados</span>` +
         `<span class="val ${corSoma(soma)}">${brl(soma)}</span>`;
+
+      // o botao vira Limpar quando ja esta tudo marcado
+      const id = tabelaDaSelecao();
+      const todas = (Estado.linhasVisiveis[id] || []).map(chaveSelecao).filter(Boolean);
+      const tudoMarcado = todas.length > 0 && todas.every(c => Estado.selecionados.has(c));
+      el('selacao').textContent = tudoMarcado ? 'Limpar' : 'Selecionar tudo';
+      el('selacao').dataset.modo = tudoMarcado ? 'limpar' : 'tudo';
     }
 
     el('selbar').style.display = 'flex';
@@ -2135,10 +2203,10 @@ const blocoDebito = renderBloco(
     const linha = e.target.closest('tr[data-sid]');
     if (linha && linha.dataset.sid && !e.target.closest('th')) alternarSelecao(linha.dataset.sid);
   });
-  el('selclear').onclick = () => {
-    Estado.selecionados.clear();
-    document.querySelectorAll('tr.on').forEach(tr => tr.classList.remove('on'));
-    atualizaBarraSelecao();
+  el('selacao').onclick = () => {
+    if (el('selacao').dataset.modo == 'limpar') { Estado.selecionados.clear(); desenhar(); return; }
+    const id = tabelaDaSelecao();
+    if (id) selecionarTudo(id);
   };
   el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
 

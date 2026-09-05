@@ -2167,11 +2167,11 @@ const blocoDebito = renderBloco(
     const simples = modoSimples();
     const visao = simples ? 'c' : el('visao').value;   // modo simples so mostra Ciclo
 
-    el('fciclo').hidden = visao != 'c' || simples;   // modo simples usa o navegador anterior/proximo, nao o combo
+    el('fciclo').hidden = true;   // modo simples usa o navegador anterior/proximo, nao o combo
     el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
     el('ftit').hidden = visao == 'p' || simples;
-    el('fciclNav').hidden = !simples;   // navegador anterior/atual/proximo, so no modo simples
-    if (simples) atualizaNavegadorCiclo();   // mantem rotulo e disabled dos botoes em dia
+    el('fciclNav').hidden = true;   // navegador anterior/atual/proximo, so no modo simples
+    atualizaNavegadorCiclo();   // mantem rotulo e disabled dos botoes em dia
     if (simples) {
       el('fsit').hidden = el('fvisao').hidden = true;
       el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
@@ -2271,23 +2271,28 @@ const blocoDebito = renderBloco(
   };
   el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
 
-  // navegador anterior/atual/proximo (modo simples): anda pela lista Estado.usados,
-  // alcance fixo: so o ciclo de HOJE, o imediatamente anterior e o imediatamente seguinte
-  // (Estado.idxHoje - 1, Estado.idxHoje, Estado.idxHoje + 1) — nunca mais que isso,
-  // mesmo navegando repetidas vezes. Nao depende de Estado.usados (ter movimento ou nao).
+    // Alcance da navegacao: a Isabella fica presa aos tres ciclos em volta de hoje
+  // (anterior, atual, proximo); voce anda por todos os periodos, e o -1 e' o Backlog,
+  // que fica antes do primeiro ciclo.
+  function limitesNavegacao() {
+    if (Estado.restrito) return { min: Estado.idxHoje - 1, max: Estado.idxHoje + 1 };
+    return { min: -1, max: Estado.periodos.length - 1 };
+  }
+
   function atualizaNavegadorCiclo() {
     const idxAtual = +el('ciclo').value;
+    const { min, max } = limitesNavegacao();
     el('nomeCicloNav').textContent = idxAtual >= 0 && Estado.periodos[idxAtual]
       ? nomePeriodo(Estado.periodos[idxAtual].fat) : 'Backlog';
-    el('cicloAnterior').disabled = idxAtual <= Estado.idxHoje - 1;
-    el('cicloProximo').disabled = idxAtual >= Estado.idxHoje + 1 || Estado.idxHoje < 0;
+    el('cicloAnterior').disabled = idxAtual <= min || Estado.idxHoje < 0;
+    el('cicloProximo').disabled = idxAtual >= max || Estado.idxHoje < 0;
   }
+
   function navegaCiclo(direcao) {
-    const idxAtual = +el('ciclo').value;
-    const novoIdx = idxAtual + direcao;
-    const limiteInferior = Estado.idxHoje - 1, limiteSuperior = Estado.idxHoje + 1;
-    if (Estado.idxHoje < 0 || novoIdx < limiteInferior || novoIdx > limiteSuperior) return;
-    if (!Estado.periodos[novoIdx]) return;
+    const novoIdx = +el('ciclo').value + direcao;
+    const { min, max } = limitesNavegacao();
+    if (Estado.idxHoje < 0 || novoIdx < min || novoIdx > max) return;
+    if (novoIdx >= 0 && !Estado.periodos[novoIdx]) return;
     el('ciclo').value = novoIdx;
     Estado.selecionados.clear();
     desenhar();

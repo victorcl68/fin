@@ -2020,7 +2020,6 @@ dialog#modalComparativo::backdrop {
       const liquido = total + ((ehIsa ? abatidoIsa : abatidoEu)[i] || 0);
       // fatura quitada nao aparece: nao ha mais nada pra sair da conta
       if (Math.abs(liquido) < 0.005) return null;
-      const liquido = total + ((ehIsa ? abatidoIsa : abatidoEu)[i] || 0);
       const venc = periodoDoVencimento &&
         (ehIsa ? periodoDoVencimento.venc_isa : periodoDoVencimento.venc);
       const sid = `fat:${i}:${ehIsa ? 'isa' : 'eu'}`;

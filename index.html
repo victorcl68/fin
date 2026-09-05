@@ -1743,12 +1743,17 @@ dialog#modalComparativo::backdrop {
     const { k: coluna, d: direcao } = estadoOrdenacao(idTabela);
     const tipo = COLS.find(c => c[0] == coluna)[2];
     const copia = [...linhas];
-    copia.sort((a, b) => {
+      copia.sort((a, b) => {
       const A = a[coluna], B = b[coluna];
       const cmp = tipo == 'n' || tipo == 'b' ? ((+A || 0) - (+B || 0))
         : tipo == 'd' ? (timestamp(A) - timestamp(B))
         : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
-      return direcao == 1 ? cmp : -cmp;
+      const ordenado = direcao == 1 ? cmp : -cmp;
+      if (ordenado) return ordenado;
+      // desempate fixo: valor maior primeiro, entao entradas (positivas) vem antes das
+      // saidas no mesmo dia (ou mesma categoria, mesmo nome...). NAO inverte junto com a
+      // direcao — o desempate e' sempre o mesmo, so o criterio principal e' que vira.
+      return (b.v || 0) - (a.v || 0);
     });
     return copia;
   }

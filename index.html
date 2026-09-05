@@ -1669,20 +1669,26 @@ dialog#modalComparativo::backdrop {
   // ===================================================================
   // CARGA DE DADOS — busca no Supabase e processa (sem tocar na tela)
   // ===================================================================
+    // pega o token da sessao NA HORA: o supabase-js renova sozinho em background, entao
+  // guardar o token do login numa variavel garante 401 depois de ~1h. Se nao ha sessao,
+  // cai na chave publica (modo dev).
+  const tokenAtual = async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    return session?.access_token || KEY;
+  };
+
   const buscar = async tabela => {
     const r = await fetch(`${API}/rest/v1/${tabela}?select=*&limit=100000`,
-      { headers: { apikey: KEY, Authorization: 'Bearer ' + Estado.token } });
+      { headers: { apikey: KEY, Authorization: 'Bearer ' + await tokenAtual() } });
     if (!r.ok) throw Error(`${tabela}: ${r.status} ${await r.text()}`);
     return r.json();
   };
 
-  // insere uma linha em 'lancamentos' e devolve ela ja com o id gerado pelo banco
-  // (Prefer: return=representation faz o Supabase devolver a linha criada, nao so 201 vazio)
   const inserirLancamento = async payload => {
     const r = await fetch(`${API}/rest/v1/lancamentos`, {
       method: 'POST',
       headers: {
-        apikey: KEY, Authorization: 'Bearer ' + Estado.token,
+        apikey: KEY, Authorization: 'Bearer ' + await tokenAtual(),
         'Content-Type': 'application/json', Prefer: 'return=representation',
       },
       body: JSON.stringify(payload),
@@ -2011,6 +2017,9 @@ dialog#modalComparativo::backdrop {
     const montaLinhaFatura = (ehIsa, rotulo) => {
       const total = creditos.filter(r => !!r.isa === ehIsa).reduce((s, r) => s + r.v, 0);
       if (!total) return null;   // sem compras desse titular, sem linha
+      const liquido = total + ((ehIsa ? abatidoIsa : abatidoEu)[i] || 0);
+      // fatura quitada nao aparece: nao ha mais nada pra sair da conta
+      if (Math.abs(liquido) < 0.005) return null;
       const liquido = total + ((ehIsa ? abatidoIsa : abatidoEu)[i] || 0);
       const venc = periodoDoVencimento &&
         (ehIsa ? periodoDoVencimento.venc_isa : periodoDoVencimento.venc);

@@ -1908,8 +1908,26 @@ dialog#modalComparativo::backdrop {
     Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
     if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
     if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
+
+    const ordenadas = ordenarLinhas(linhas, idTabela);
+
+    // saldo do dia: so na tabela de Debito e so com data ASCENDENTE — em qualquer outra
+    // ordem "fim do dia" nao corresponde ao que esta na tela. Marca DEPOIS de ordenar,
+    // na ultima linha de cada dia como ela realmente aparece.
+    const ord = estadoOrdenacao(idTabela);
+    ordenadas.forEach(r => { r._saldo = null; });
+    if (idTabela == 'db' && ord.k == 'data' && ord.d == 1) {
+      const saldo = saldoPorDia();
+      ordenadas.forEach((r, i) => {
+        const d = dataISO(r.data);
+        if (!d) return;
+        const prox = ordenadas[i + 1];
+        if (!prox || dataISO(prox.data) !== d) r._saldo = saldo[d];   // ultima do dia
+      });
+    }
+
     return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
-      ordenarLinhas(linhas, idTabela).map(r => {
+      ordenadas.map(r => {
         const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
         return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
       }).join('') + '</tbody></table></div>';
@@ -2008,16 +2026,6 @@ dialog#modalComparativo::backdrop {
     const simples = modoSimples();
         const debitosComFatura = [...debitos, ...linhasFatura];
 
-    const ord = estadoOrdenacao('db');
-    if (ord.k == 'data') {
-      const saldo = saldoPorDia();
-      const porDia = {};
-      debitosComFatura.forEach(r => { const d = dataISO(r.data); if (d) porDia[d] = r; });
-      debitosComFatura.forEach(r => { r._saldo = null; });
-      Object.entries(porDia).forEach(([d, r]) => { r._saldo = saldo[d]; });
-    } else {
-      debitosComFatura.forEach(r => { r._saldo = null; });
-    }
     // modo simples: sem selecao de linha, sem botao de grafico — so a tabela, ordenavel
 const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),

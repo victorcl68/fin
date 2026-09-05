@@ -775,6 +775,17 @@ tbody tr.on:hover td {
   background: #FFFFFF;
 }
 
+  #selbar #seldup {
+  color: var(--fg);
+  background: var(--field);
+  border: 1px solid var(--line-strong);
+}
+
+#selbar #seldup:hover {
+  background: var(--field-hover);
+  border-color: var(--fg);
+}
+
 /* =========================================================
    NAVEGAÇÃO DE CICLOS
    ========================================================= */
@@ -1324,7 +1335,7 @@ dialog#modalComparativo::backdrop {
 </button>
 
 
-  <button id=tituloNovo title="Novo lançamento" aria-label="Novo lançamento">
+    <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
     <svg viewBox="0 0 24 24" width=17 height=17 fill=none
       stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
       <line x1=12 y1=5 x2=12 y2=19 />
@@ -1383,12 +1394,12 @@ dialog#modalComparativo::backdrop {
     </div>
   </div>
   <div id=out></div>
-  <div id=selbar><span id=selinfo class=info></span><button id=selclear>Limpar</button></div>
+  <div id=selbar><span id=selinfo class=info></span><button id=seldup>Duplicar</button><button id=selclear>Limpar</button></div>
 
   <dialog id=modalNovo>
     <form id=formNovo method=dialog>
       <div class=modalHead>
-        <h2>Novo lançamento</h2>
+                <h2 id=tituloNovo>Novo lançamento</h2>
         <button type=button id=fechaNovo aria-label="Fechar">×</button>
       </div>
 
@@ -2395,17 +2406,45 @@ const blocoDebito = renderBloco(
   });
 
   // ---- abrir modal: foco no Nome, categorias populares, Isa so pra quem nao e' a Isabella ----
-  function abreModalNovo() {
+  function abreModalNovo(prefill) {
     el('formNovo').reset();
     popularCategoriasNoForm();
     el('fCateg').selectedIndex = 0;
-    sinalPositivo = false; atualizaSinalUI();
+    sinalPositivo = false;
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
     el('fIsaWrap').hidden = Estado.restrito;   // Isabella nao lanca "pra" Isabella, ja e' o padrao dela
+    el('tituloNovo').textContent = prefill ? 'Duplicar lançamento' : 'Novo lançamento';
+
+    if (prefill) {
+      // copia tudo, inclusive data e valor: e' um ponto de partida, voce edita o que quiser
+      el('fNome').value = prefill.nome || '';
+      el('fCateg').value = prefill.categ || '';
+      el('fData').value = dataISO(prefill.data) || '';
+      el('fCred').checked = !!prefill.cred;
+      el('fIsa').checked = !!prefill.isa;
+      const bruto = Math.abs(prefill.v || 0);
+      if (bruto) {
+        el('fValor').value = formataMascaraDinheiro(String(Math.round(bruto * 100)));
+        sinalPositivo = (prefill.v || 0) > 0;
+      }
+    }
+    atualizaSinalUI();
 
     modalNovo.showModal();
-    setTimeout(() => el('fNome').focus(), 50);
+    // duplicando, o foco vai pro Valor (o que mais muda); do zero, vai pro Nome
+    setTimeout(() => el(prefill ? 'fValor' : 'fNome').focus(), 50);
   }
+  el('abreNovo').onclick = () => abreModalNovo();
+  el('fechaNovo').onclick = () => modalNovo.close();
+  el('salvaNovo').onclick = () => submeteNovoLancamento();
+  modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
+
+  // duplicar a linha selecionada: o modal abre pre-preenchido a partir dela
+  el('seldup').onclick = () => {
+    const chave = [...Estado.selecionados.keys()][0];
+    const r = Estado.lancamentos.find(x => String(x.id) == chave);
+    if (r) abreModalNovo(r);
+  };
   el('abreNovo').onclick = () => abreModalNovo();
   el('fechaNovo').onclick = () => modalNovo.close();
   el('salvaNovo').onclick = () => submeteNovoLancamento();

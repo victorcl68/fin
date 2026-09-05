@@ -1348,10 +1348,22 @@
       border-radius: 9px;
     }
     
-    
+.btFiltro {
+  font: inherit;
+  color: var(--fg);
+  background: var(--field);
+  border: 1px solid var(--ln);
+  border-radius: 9px;
+  padding: .42rem .9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
 
-    
-    
+.btFiltro:hover {
+  background: var(--field-hover);
+  border-color: var(--line-strong);
+}
+
 .blk h3 .bruto {
   font-weight: 400;
   font-size: .88rem;
@@ -1440,7 +1452,7 @@
                 </select>
             </label>
             <label class=f id=fgraf><span>&nbsp;</span>
-                <button type=button id=btGrafico class=multiSelBtn style="min-width:auto">Ver gráfico</button>
+              <button type=button id=btGrafico class=btFiltro>Ver gráfico</button></label>
             </label>
             <label class=f id=fgrupo><span>Agrupar por</span>
                 <select id=grupo></select>

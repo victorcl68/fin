@@ -1612,7 +1612,7 @@ dialog#modalComparativo::backdrop {
     const dataCompra = dataISO(dataStr);
     const iFatura = Estado.periodos.findIndex(per => {
       const fechamento = ehIsabella ? per.fecha_isa : per.fecha;
-      return fechamento && dataISO(fechamento) >= dataCompra;
+      return fechamento && dataISO(fechamento) > dataCompra;
     });
     if (iFatura < 0) return null;
     const vencimento = ehIsabella ? Estado.periodos[iFatura].venc_isa : Estado.periodos[iFatura].venc;

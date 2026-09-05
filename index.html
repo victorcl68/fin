@@ -1910,7 +1910,6 @@ dialog#modalComparativo::backdrop {
     Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
     if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
     if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
-        if (!d || d < SALDO_DESDE) return;
     const ordenadas = ordenarLinhas(linhas, idTabela);
 
     // saldo do dia: so na tabela de Debito e so com data ASCENDENTE — em qualquer outra
@@ -1918,11 +1917,11 @@ dialog#modalComparativo::backdrop {
     // na ultima linha de cada dia como ela realmente aparece.
     const ord = estadoOrdenacao(idTabela);
     ordenadas.forEach(r => { r._saldo = null; });
-    if (idTabela == 'db' && ord.k == 'data' && ord.d == 1) {
+        if (idTabela == 'db' && ord.k == 'data' && ord.d == 1) {
       const saldo = saldoPorDia();
       ordenadas.forEach((r, i) => {
         const d = dataISO(r.data);
-        if (!d) return;
+        if (!d || d < SALDO_DESDE) return;
         const prox = ordenadas[i + 1];
         if (!prox || dataISO(prox.data) !== d) r._saldo = saldo[d];   // ultima do dia
       });

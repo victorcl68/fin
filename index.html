@@ -1324,7 +1324,7 @@ dialog#modalComparativo::backdrop {
 </button>
 
 
-  <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
+  <button id=tituloNovo title="Novo lançamento" aria-label="Novo lançamento">
     <svg viewBox="0 0 24 24" width=17 height=17 fill=none
       stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round>
       <line x1=12 y1=5 x2=12 y2=19 />
@@ -1841,7 +1841,7 @@ dialog#modalComparativo::backdrop {
   // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
   // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
   const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null) => {
-    const btnTudo = selecionavel && linhas.length
+        const btnTudo = selecionavel && linhas.length && !modoSimples()
       ? `<button type=button class=selTudoBt onclick="selecionarTudo('${idTabela}')">Selecionar tudo</button>`
       : '';
     const btnGrafico = periodoIdxGrafico != null
@@ -1896,10 +1896,10 @@ dialog#modalComparativo::backdrop {
     const simples = modoSimples();
         const debitosComFatura = [...debitos, ...linhasFatura];
     // modo simples: sem selecao de linha, sem botao de grafico — so a tabela, ordenavel
-    const blocoDebito = renderBloco(
+const blocoDebito = renderBloco(
       'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
       `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-      debitosComFatura, 'db', !simples, simples ? null : i
+      debitosComFatura, 'db', true, simples ? null : i
     );
 
     // so a Isabella (perfil restrito) nao ve o bloco Credito. No mobile, quem nao e' a
@@ -1909,7 +1909,7 @@ dialog#modalComparativo::backdrop {
     const blocoCredito = renderBloco(
       'Crédito', totalCredito,
       Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
-      creditos, 'cr', !simples
+      creditos, 'cr', true
     );
     return blocoDebito + blocoCredito;
   }
@@ -2006,20 +2006,38 @@ dialog#modalComparativo::backdrop {
     if (visao == 'p') el('titular').value = 'T';
 
     el('out').innerHTML = visao == 'c' ? vCiclo() : visao == 'k' ? vComp() : vInv();
-    if (visao != 'c' || simples) Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
+    if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
   }
 
   // ===================================================================
   // SELEÇÃO DE LINHAS (barra flutuante de soma)
   // ===================================================================
-  function atualizaBarraSelecao() {
-    if (modoSimples() || !Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
-    let soma = 0;
-    for (const v of Estado.selecionados.values()) soma += v;
-    el('selinfo').innerHTML =
-      `<span class=cnt>${Estado.selecionados.size} ${Estado.selecionados.size == 1 ? 'selecionado' : 'selecionados'}</span>` +
-      `<span class="val ${corSoma(soma)}">${brl(soma)}</span>`;
+    function atualizaBarraSelecao() {
+    if (!Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
+
+    // com UMA linha real selecionada, somar nao diz nada — a barra vira atalho de duplicar.
+    // a fatura sintetica ('fat:...') nao existe no banco, entao nao pode ser duplicada.
+    const chaves = [...Estado.selecionados.keys()];
+    const chaveUnica = chaves.length == 1 && !chaves[0].startsWith('fat:') ? chaves[0] : null;
+
+    // modo simples nunca soma: sem linha duplicavel selecionada, a barra nem aparece
+    if (modoSimples() && !chaveUnica) { el('selbar').style.display = 'none'; return; }
+    el('seldup').hidden = !chaveUnica;
+
+    if (chaveUnica) {
+      const r = Estado.lancamentos.find(x => String(x.id) == chaveUnica);
+      el('selinfo').innerHTML =
+        `<span class=cnt>Selecionado</span>` +
+        `<span class="val ${corValor(r?.v || 0)}">${escapeHtml(r?.nome ?? '')}</span>`;
+    } else {
+      let soma = 0;
+      for (const v of Estado.selecionados.values()) soma += v;
+      el('selinfo').innerHTML =
+        `<span class=cnt>${Estado.selecionados.size} selecionados</span>` +
+        `<span class="val ${corSoma(soma)}">${brl(soma)}</span>`;
+    }
+
     el('selbar').style.display = 'flex';
   }
   // valor de uma linha a partir da sua chave de selecao (linha real ou fatura sintetica)
@@ -2030,9 +2048,13 @@ dialog#modalComparativo::backdrop {
   }
   function alternarSelecao(chave) {
     if (!chave) return;
-    Estado.selecionados.has(chave) ? Estado.selecionados.delete(chave) : Estado.selecionados.set(chave, valorDaChave(chave));
-    document.querySelectorAll(`tr[data-sid="${chave}"]`).forEach(tr => tr.classList.toggle('on', Estado.selecionados.has(chave)));
-    atualizaBarraSelecao();
+    const jaEstava = Estado.selecionados.has(chave);
+    // no modo simples a selecao serve so pra duplicar, entao e' exclusiva: escolher
+    // outra linha troca, nunca acumula (somar varias linhas nao existe aqui).
+    if (modoSimples()) Estado.selecionados.clear();
+    if (jaEstava) Estado.selecionados.delete(chave);
+    else Estado.selecionados.set(chave, valorDaChave(chave));
+    desenhar();
   }
   // marca/desmarca de uma vez todas as linhas visiveis de uma tabela (respeita filtro de texto ativo).
   // se todas ja estao marcadas, desmarca tudo (toggle); senao, marca as que faltam.

@@ -2286,10 +2286,18 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
 
           // sobrou dinheiro num ciclo em que voce ja aportou: sugere guardar o resto tambem
     const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
-    const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
-      ? [{ data: dataISO(periodo.fat), nome: 'Investimento sugerido', categ: 'Investimento',
-                   freq: '', id: -5, v: 0, valor: totalCiclo, _sug: totalCiclo }]
-      : [];
+const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
+  ? [{
+      data: dataISO(periodo.fat),
+      nome: 'Aporte sugerido',
+      categ: 'Investimento',
+      freq: '',
+      id: -5,
+      v: -totalCiclo,
+      valor: -totalCiclo,
+      _sug: totalCiclo
+    }]
+  : [];
 
         const linhasDebito = [...debitosComFatura, ...linhaResgate, ...linhaSugestao];
     const guardado = guardadoAte(i);

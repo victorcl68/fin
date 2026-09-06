@@ -1476,8 +1476,8 @@ tbody tr.res:hover td {
                             <option value=I>Isabella
                 </select>
             </label>
-            <label class=f id=fgraf><span>&nbsp;</span>
-              <button type=button id=btGrafico class=btFiltro>Ver gráfico</button></label>
+              <label class=f id=fevol><span>&nbsp;</span>
+                <button type=button id=btEvolucao class=btFiltro>Ver evolução</button></label>
             </label>
             <label class=f id=fgrupo><span>Agrupar por</span>
                 <select id=grupo></select>
@@ -1627,6 +1627,7 @@ tbody tr.res:hover td {
     token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
     usados: [],                 // indices de periodos com movimento, na ordem — usado pelo navegador anterior/proximo
+      ordComp: { k: 'total', d: 2 },
   };
 
   // "modo simples": mobile funciona identico ao perfil restrito da Isabella — so ciclo
@@ -1958,9 +1959,8 @@ tbody tr.res:hover td {
         : String(A ?? '').localeCompare(String(B ?? ''), 'pt');
       const ordenado = direcao == 1 ? cmp : -cmp;
       if (ordenado) return ordenado;
-      // desempate fixo: valor maior primeiro, entao entradas (positivas) vem antes das
-      // saidas no mesmo dia (ou mesma categoria, mesmo nome...). NAO inverte junto com a
-      // direcao — o desempate e' sempre o mesmo, so o criterio principal e' que vira.
+      // saldo anterior sempre encabeca o dia: ele e' o ponto de partida, nao um evento
+      if (a._sal !== b._sal) return a._sal ? -1 : 1;
       return (b.v || 0) - (a.v || 0);
     });
     return copia;
@@ -2035,6 +2035,15 @@ tbody tr.res:hover td {
     desenhar();
   };
 
+      // clique no header da matriz Comparar: alterna asc/desc na mesma coluna, ou troca
+  // de coluna comecando por desc (o mais relevante costuma ser o maior valor)
+  window.sortComp = k => {
+    const oc = Estado.ordComp;
+    if (oc.k != k) { oc.k = k; oc.d = k == 'chave' ? 1 : 2; }
+    else oc.d = oc.d == 1 ? 2 : 1;
+    desenhar();
+  };
+
    ['fData', 'fNome', 'fCred', 'fIsa'].forEach(id =>
     el(id).addEventListener('change', atualizaAvisoFronteira));
   el('fNome').addEventListener('input', atualizaAvisoFronteira);
@@ -2043,7 +2052,7 @@ tbody tr.res:hover td {
   // RENDERIZAÇÃO DE TABELAS
   // ===================================================================
   // chave de selecao de uma linha: usa o _sid sintetico (linha de fatura) ou o id real
-  const chaveSelecao = r => r._sid ? r._sid : (r.id != null && r.id !== 0 ? String(r.id) : '');
+  const chaveSelecao = r => r._sid ? r._sid : (r.id > 0 ? String(r.id) : '');
   // no mobile a cor do Valor muda de sentido: nao e' mais sinal (saida/entrada), e' status de
   // pagamento (pago = verde, em aberto = vermelho). No desktop continua sendo o sinal (celValor).
   // a linha sintetica "Fatura do cartao" nao tem 'pago' (nao vem do banco) -> cai em vermelho
@@ -2106,6 +2115,7 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const btnGrafico = periodoIdxGrafico != null && !fechado
       ? `<button type=button class=selTudoBt onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
       : '';
+      el('btEvolucao').onclick = () => abrirGraficoEvolucao(+el('compDe').value, +el('compAte').value);
     // recolhido: mantem titulo, total e subtitulo — some so a tabela
     const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
     const n = linhas.length;   // quantas linhas essa tabela tem
@@ -2233,9 +2243,9 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
         (ehIsa ? periodoDoVencimento.venc_isa : periodoDoVencimento.venc);
       const sid = `fat:${i}:${ehIsa ? 'isa' : 'eu'}`;
       Estado.valorFaturaPorCiclo[sid] = liquido;
-      return {
+            return {
         data: venc || periodo.fat, nome: rotulo, categ: 'Fatura',
-        freq: '', id: 0, v: liquido, isa: ehIsa, _fat: 1, _sid: sid,
+        freq: '', id: ehIsa ? -4 : -3, v: liquido, valor: liquido, isa: ehIsa, _fat: 1, _sid: sid,
       };
     };
     const linhasFatura = [
@@ -2253,8 +2263,8 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const anterior = saldoDoCiclo(i - 1);
     const linhaAnterior = Math.abs(anterior) > 0.005 && Estado.periodos[i - 1] &&
       dataISO(Estado.periodos[i - 1].fat) >= SALDO_DESDE
-      ? [{ data: periodo.ini, nome: 'Saldo do mês anterior', categ: 'Saldo',
-           freq: '', id: 0, v: anterior, _sal: 1, _sid: `sal:${i}` }]
+        ? [{ data: dataISO(periodo.fat), nome: 'Resgate necessário', categ: 'Investimento',
+           freq: '', id: -2, v: -totalCiclo, valor: -totalCiclo, _res: 1 }]
       : [];
 
     const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
@@ -2264,7 +2274,14 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     // voce lanca o resgate de verdade, porque ai o dinheiro entra como entrada real.
     const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
       ? [{ data: dataISO(periodo.fat), nome: 'Resgate necessário', categ: 'Investimento',
-           freq: '', id: 0, v: -totalCiclo, _res: 1, _sid: `res:${i}` }]
+           freq: '', id: -2, v: -totalCiclo, _res: 1 }]
+      : [];
+
+          // sobrou dinheiro num ciclo em que voce ja aportou: sugere guardar o resto tambem
+    const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
+    const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
+      ? [{ data: dataISO(periodo.fat), nome: 'Investimento sugerido', categ: 'Investimento',
+           freq: '', id: -5, v: 0, valor: 0, _sug: totalCiclo }]
       : [];
 
     const linhasDebito = [...debitosComFatura, ...linhaResgate];
@@ -2318,10 +2335,22 @@ if (Estado.restrito) return blocoDebito;
     });
     const totalDaChave = chave => Object.values(matriz[chave]).reduce((a, b) => a + b, 0);
 
-    const cabecalho = `<tr><th class=c1>${capitaliza(coluna)}` +
-      periodosUsados.map(i => `<th class=n>${nomePeriodo(Estado.periodos[i].fat)}`).join('') + '<th class=n>Total</thead>';
+    const oc = Estado.ordComp;
+    const seta = k => oc.k == k ? (oc.d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
 
-    const corpo = Object.keys(matriz).sort((a, b) => totalDaChave(b) - totalDaChave(a)).map(chave =>
+    const cabecalho = `<tr><th class=c1 onclick="sortComp('chave')">${capitaliza(coluna)}${seta('chave')}` +
+      periodosUsados.map(i => `<th class=n onclick="sortComp('${i}')">${nomePeriodo(Estado.periodos[i].fat)}${seta(String(i))}`).join('') +
+      `<th class=n onclick="sortComp('total')">Total${seta('total')}</thead>`;
+
+    // ordena pela coluna escolhida: 'chave' e' alfabetica, 'total' e as colunas de
+    // periodo sao numericas (celula vazia conta como zero)
+    const valorDaLinha = chave => oc.k == 'total' ? totalDaChave(chave) : (matriz[chave][+oc.k] || 0);
+    const corpo = Object.keys(matriz).sort((a, b) => {
+      const cmp = oc.k == 'chave'
+        ? String(a).localeCompare(String(b), 'pt')
+        : valorDaLinha(a) - valorDaLinha(b);
+      return oc.d == 1 ? cmp : -cmp;
+    }).map(chave =>
       `<tr><td class=c1>${chave}` +
       periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celSoma(matriz[chave][i])).join('') +
       celSoma(totalDaChave(chave))
@@ -2334,7 +2363,7 @@ if (Estado.restrito) return blocoDebito;
       celSoma(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
 
     const btnEvolucao = `<button type=button class=selTudoBt onclick="abrirGraficoEvolucao(${de},${ate})">Ver evolução</button>`;
-    return `<p class=meta style="margin:0 0 .6rem">${btnEvolucao}</p><div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
+    return `<div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
   }
 
   
@@ -2370,7 +2399,8 @@ if (Estado.restrito) return blocoDebito;
     if (visao != 'k') el('origem').value = 'A';
 
     el('fgraf').hidden = visao != 'c' || simples || +el('ciclo').value < 0;
-    el('btGrafico').dataset.idx = el('ciclo').value;
+        el('fevol').hidden = visao != 'k' || simples || !el('compDe').value || !el('compAte').value;
+      el('btGrafico').dataset.idx = el('ciclo').value;
     
     el('out').innerHTML = visao == 'c' ? vCiclo() : vComp();
     if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao

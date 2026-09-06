@@ -2295,20 +2295,25 @@ const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
 // Verifica se houve algum aporte real neste ciclo.
 const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
 
-// Aporte sugerido: saída de dinheiro.
-// Portanto o valor real é NEGATIVO.
-const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
-  ? [{
-      data: dataISO(periodo.fat),
-      nome: 'Aporte sugerido',
-      categ: 'Investimento',
-      freq: '',
-      id: -5,
-      v: -totalCiclo,
-      valor: -totalCiclo,
-      _sug: -totalCiclo
-    }]
-  : [];
+const podeSugerirAporte =
+  dataISO(periodo.fat) >= SALDO_DESDE;
+
+const linhaSugestao =
+  podeSugerirAporte &&
+  totalCiclo > 0.005 &&
+  aportouNoCiclo &&
+  !Estado.restrito
+    ? [{
+        data: dataISO(periodo.fat),
+        nome: 'Aporte sugerido',
+        categ: 'Investimento',
+        freq: '',
+        id: -5,
+        v: -totalCiclo,
+        valor: -totalCiclo,
+        _sug: -totalCiclo
+      }]
+    : [];
 
 const linhasDebito = [
   ...debitosComFatura,

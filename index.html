@@ -2074,9 +2074,9 @@ tbody tr.sug:hover td {
   // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
   const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
     ? (r._sug != null
-        ? `<td class="n vd">${brl(r._sug)}`
-        : (isMobile() ? celValorMobile(r) : celValor(r.v))).replace(/$/,
-        r._saldo != null ? `<span class=sd>${brl(r._saldo)}</span>` : '')
+    ? `<td class="n ${corValor(r._sug)}">${brl(r._sug)}`
+    : (isMobile() ? celValorMobile(r) : celValor(r.v))).replace(/$/,
+    r._saldo != null ? `<span class=sd>${brl(r._saldo)}</span>` : '')
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data'
           ? (r.data ? dataBR(r.data) + (ehFronteira(r) ? '<span class=fr title="Compra no dia do fechamento: capturada em D+1, entrou na fatura seguinte">*</span>' : '') : '—')
@@ -2301,7 +2301,7 @@ const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
       id: -5,
       v: -totalCiclo,
       valor: -totalCiclo,
-      _sug: totalCiclo
+      _sug: -totalCiclo
     }]
   : [];
 

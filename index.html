@@ -1675,7 +1675,10 @@ tbody tr.sug:hover td {
   // categoria dedicada pra antecipacao de fatura: um debito nessa categoria abate o
   // quanto ainda falta sair da conta na linha dinamica "Fatura do cartao" (nao duplica
   // o lancamento — ele continua aparecendo normal na tabela de Debito).
-  const ehAntecipacaoFatura = categ => semAcento(categ).trim() === 'antecipacao fatura';
+  const ehAntecipacaoFatura = categ => {
+  const c = semAcento(categ).trim();
+  return c.includes('antecipacao') && c.includes('fatura');
+};
  // Antecipacao e' TRANSFERENCIA, nao gasto: a despesa ja foi contada na compra do
   // credito. Entra no fluxo de caixa (bloco Debito) e fica fora das analises de gasto
   // (Comparar, Balanco, evolucao, pizza) — senao a mesma despesa conta duas vezes.
@@ -2162,11 +2165,14 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
         if (Math.abs(liquido) > 0.005) faturas.push({ data: dataISO(venc || per.fat), v: liquido });
       });
     });
-
-    const eventos = [...base.filter(r => !r.cred && r.data).map(r => ({ data: dataISO(r.data), v: r.v })),
-      ...faturas]
-      .filter(e => e.data >= SALDO_DESDE)
-      .sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : 0);
+const eventos = [
+  ...base
+    .filter(r => !r.cred && r.data && !ehTransferenciaFatura(r))
+    .map(r => ({ data: dataISO(r.data), v: r.v })),
+  ...faturas
+]
+  .filter(e => e.data >= SALDO_DESDE)
+  .sort((a, b) => a.data < b.data ? -1 : a.data > b.data ? 1 : 0);
 
     const saldo = {};
     let acc = SALDO_INICIAL;

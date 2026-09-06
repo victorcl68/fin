@@ -2181,29 +2181,58 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
   // Memoizado porque a cascata reprocessa os mesmos ciclos varias vezes por render.
   const _cacheSaldo = {};
   function saldoDoCiclo(idx) {
-    if (idx < 0 || !Estado.periodos[idx]) return 0;
-    if (dataISO(Estado.periodos[idx].fat) < SALDO_DESDE) return 0;
-    if (_cacheSaldo[idx] != null) return _cacheSaldo[idx];
+  if (idx < 0 || !Estado.periodos[idx]) return 0;
+  if (dataISO(Estado.periodos[idx].fat) < SALDO_DESDE) return 0;
+  if (_cacheSaldo[idx] != null) return _cacheSaldo[idx];
 
-    _cacheSaldo[idx] = 0;   // corta recursao infinita se algo der errado
-    const base = filtrarLancamentos();
-    const doCiclo = base
-      .filter(r => r.periodoIdx === idx && !r.cred && !r.inv)
+  _cacheSaldo[idx] = 0;
+
+  const base = filtrarLancamentos();
+
+  const doCiclo = base
+    .filter(r =>
+      r.periodoIdx === idx &&
+      !r.cred &&
+      !ehTransferenciaFatura(r)
+    )
+    .reduce((s, r) => s + r.v, 0);
+
+  const abat = {
+    false: alocacaoAntecipacoes(base, false),
+    true: alocacaoAntecipacoes(base, true)
+  };
+
+  let fatura = 0;
+
+  [false, true].forEach(ehIsa => {
+    const bruto = base
+      .filter(r =>
+        r.cred &&
+        !!r.isa === ehIsa &&
+        r.periodoIdx === idx
+      )
       .reduce((s, r) => s + r.v, 0);
 
-    // fatura liquida de cada titular, igual ao que a linha sintetica mostra
-    const abat = { false: alocacaoAntecipacoes(base, false), true: alocacaoAntecipacoes(base, true) };
-    let fatura = 0;
-    [false, true].forEach(ehIsa => {
-      const bruto = base.filter(r => r.cred && !!r.isa === ehIsa && r.periodoIdx === idx)
-        .reduce((s, r) => s + r.v, 0);
-      if (bruto) fatura += bruto + (abat[ehIsa][idx] || 0);
-    });
+    if (bruto) {
+      fatura += bruto + (abat[ehIsa][idx] || 0);
+    }
+  });
 
-    const total = saldoDoCiclo(idx - 1) + doCiclo + fatura;
-    _cacheSaldo[idx] = total;
-    return total;
-  }
+  const anterior =
+    idx > 0 &&
+    dataISO(Estado.periodos[idx - 1].fat) >= SALDO_DESDE
+      ? saldoDoCiclo(idx - 1)
+      : 0;
+
+  const total =
+    anterior +
+    doCiclo +
+    fatura;
+
+  _cacheSaldo[idx] = total;
+
+  return total;
+}
 
   // Quanto esta guardado no fim do ciclo: todos os aportes menos todos os resgates,
   // de todos os ciclos ate este. Nao entra no saldo da conta — e' patrimonio separado.
@@ -2274,14 +2303,21 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
            freq: '', id: -1, v: anterior, valor: anterior, _sal: 1 }]
       : [];
 
-    const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
-    const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
+      const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
+
+const movimentosDoSaldo = [
+  ...linhaAnterior,
+  ...debitos.filter(r => !ehTransferenciaFatura(r)),
+  ...linhasFatura
+];
+
+const totalCiclo = movimentosDoSaldo.reduce((s, r) => s + r.v, 0);
 
 const podeCalcularInvestimentos =
   dataISO(periodo.fat) >= SALDO_DESDE;
 
 const linhaResgate =
-  podeCalcularInvestimentos &&
+  dataISO(periodo.fat) >= SALDO_DESDE &&
   totalCiclo < -0.005 &&
   !Estado.restrito
     ? [{
@@ -2299,7 +2335,7 @@ const linhaResgate =
 const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
 
 const linhaSugestao =
-  podeCalcularInvestimentos &&
+  dataISO(periodo.fat) >= SALDO_DESDE &&
   totalCiclo > 0.005 &&
   aportouNoCiclo &&
   !Estado.restrito

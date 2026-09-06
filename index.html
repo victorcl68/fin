@@ -2319,7 +2319,8 @@ const movimentosDoSaldo = [
 ];
 
 const totalCiclo = movimentosDoSaldo.reduce((s, r) => s + r.v, 0);
-
+console.log({totalCiclo});
+      
 const podeCalcularInvestimentos =
   dataISO(periodo.fat) >= SALDO_DESDE;
 

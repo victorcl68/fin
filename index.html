@@ -2198,9 +2198,9 @@ const eventos = [
   const doCiclo = base
     .filter(r =>
       r.periodoIdx === idx &&
-      !r.cred &&
-      !ehTransferenciaFatura(r) &&
-      !r.inv
+      !r.cred
+      // !ehTransferenciaFatura(r) &&
+      // !r.inv
     )
     .reduce((s, r) => s + r.v, 0);
 

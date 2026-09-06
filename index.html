@@ -2277,8 +2277,11 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
     const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
 
-    // fechou negativo: mostra quanto teria que sair da caixinha. Some sozinha quando
-    // voce lanca o resgate de verdade, porque ai o dinheiro entra como entrada real.
+      const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
+const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
+
+// Resgate necessário: entrada de dinheiro.
+// Aparece positivo porque reduz o déficit do ciclo.
 const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
   ? [{
       data: dataISO(periodo.fat),
@@ -2292,6 +2295,11 @@ const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
     }]
   : [];
 
+// Verifica se houve algum aporte real neste ciclo.
+const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
+
+// Aporte sugerido: saída de dinheiro.
+// Portanto o valor real é NEGATIVO.
 const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
   ? [{
       data: dataISO(periodo.fat),
@@ -2305,7 +2313,11 @@ const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
     }]
   : [];
 
-        const linhasDebito = [...debitosComFatura, ...linhaResgate, ...linhaSugestao];
+const linhasDebito = [
+  ...debitosComFatura,
+  ...linhaResgate,
+  ...linhaSugestao
+];
     const guardado = guardadoAte(i);
     const extraDebito = !Estado.restrito && Math.abs(guardado) > 0.005
       ? `<span class=bruto>${brl(guardado)} guardado</span>` : '';

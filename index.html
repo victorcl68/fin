@@ -2056,7 +2056,7 @@ tbody tr.sug:hover td {
   // RENDERIZAÇÃO DE TABELAS
   // ===================================================================
   // chave de selecao de uma linha: usa o _sid sintetico (linha de fatura) ou o id real
-  const chaveSelecao = r => r._sid ? r._sid : (r.id > 0 ? String(r.id) : '');
+  const chaveSelecao = r => r._sid ? r._sid : (r.id != null ? String(r.id) : '');
   // no mobile a cor do Valor muda de sentido: nao e' mais sinal (saida/entrada), e' status de
   // pagamento (pago = verde, em aberto = vermelho). No desktop continua sendo o sinal (celValor).
   // a linha sintetica "Fatura do cartao" nao tem 'pago' (nao vem do banco) -> cai em vermelho
@@ -2453,10 +2453,23 @@ if (Estado.restrito) return blocoDebito;
   }
   // valor de uma linha a partir da sua chave de selecao (linha real ou fatura sintetica)
   function valorDaChave(chave) {
-    if (chave.startsWith('fat:')) return Estado.valorFaturaPorCiclo[chave] || 0;
-    const r = Estado.lancamentos.find(x => String(x.id) == chave);
-    return r ? r.v : 0;
+  // Fatura sintetica
+  if (chave.startsWith('fat:')) {
+    return Estado.valorFaturaPorCiclo[chave] || 0;
   }
+
+  // Procura primeiro nas linhas atualmente renderizadas.
+  // Isso inclui Saldo do mês anterior, Resgate necessário
+  // e Investimento sugerido, que não existem em Estado.lancamentos.
+  for (const linhas of Object.values(Estado.linhasVisiveis)) {
+    const r = linhas.find(x => chaveSelecao(x) === chave);
+    if (r) return r._sug != null ? r._sug : (r.v || 0);
+  }
+
+  // Linha real vinda do banco
+  const r = Estado.lancamentos.find(x => String(x.id) === chave);
+  return r ? (r.v || 0) : 0;
+}
   function alternarSelecao(chave) {
     if (!chave) return;
     const jaEstava = Estado.selecionados.has(chave);

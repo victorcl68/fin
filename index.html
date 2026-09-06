@@ -2277,29 +2277,29 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
     const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
 
-// Resgate necessário: entrada de dinheiro.
-// Aparece positivo porque reduz o déficit do ciclo.
-const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
-  ? [{
-      data: dataISO(periodo.fat),
-      nome: 'Resgate necessário',
-      categ: 'Investimento',
-      freq: '',
-      id: -2,
-      v: -totalCiclo,
-      valor: -totalCiclo,
-      _res: 1
-    }]
-  : [];
-
-// Verifica se houve algum aporte real neste ciclo.
-const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
-
-const podeSugerirAporte =
+const podeCalcularInvestimentos =
   dataISO(periodo.fat) >= SALDO_DESDE;
 
+const linhaResgate =
+  podeCalcularInvestimentos &&
+  totalCiclo < -0.005 &&
+  !Estado.restrito
+    ? [{
+        data: dataISO(periodo.fat),
+        nome: 'Resgate necessário',
+        categ: 'Investimento',
+        freq: '',
+        id: -2,
+        v: -totalCiclo,
+        valor: -totalCiclo,
+        _res: 1
+      }]
+    : [];
+
+const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
+
 const linhaSugestao =
-  podeSugerirAporte &&
+  podeCalcularInvestimentos &&
   totalCiclo > 0.005 &&
   aportouNoCiclo &&
   !Estado.restrito

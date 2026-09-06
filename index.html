@@ -2285,7 +2285,7 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     // voce lanca o resgate de verdade, porque ai o dinheiro entra como entrada real.
     const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
       ? [{ data: dataISO(periodo.fat), nome: 'Resgate necessário', categ: 'Investimento',
-          freq: '', id: -2, v: -totalCiclo, valor: -totalCiclo, _res: 1 }] }]
+          freq: '', id: -2, v: -totalCiclo, valor: -totalCiclo, _res: 1 }] 
       : [];
 
           // sobrou dinheiro num ciclo em que voce ja aportou: sugere guardar o resto tambem

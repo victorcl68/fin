@@ -1243,8 +1243,7 @@
       }
     
       /* esconde abas nao-Ciclo no combo Visao */
-      #visao option[value=k],
-      #visao option[value=p] {
+    #visao option[value=k] {
         display: none;
       }
     
@@ -1382,6 +1381,24 @@
 .blk h3 .bruto s {
   text-decoration: none;
 }
+
+    tbody tr.sal td {
+  background: #1C2530;
+  font-style: italic;
+}
+
+tbody tr.sal:hover td {
+  background: #212C39;
+}
+
+tbody tr.res td {
+  background: var(--orange-soft);
+  font-weight: 600;
+}
+
+tbody tr.res:hover td {
+  background: #3D3124;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1439,7 +1456,6 @@
             <label class=f id=fvisao><span>Visão</span>
                 <select id=visao>
                     <option value=c>Ciclo
-                    <option value=p>Balanço
                     <option value=k>Comparar
                 </select>
             </label>
@@ -2078,14 +2094,14 @@
     return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
       ordenadas.map(r => {
         const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
-        return `<tr class="${r._fat ? 'fat ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
+      return `<tr class="${r._fat ? 'fat ' : ''}${r._sal ? 'sal ' : ''}${r._res ? 'res ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
       }).join('') + '</tbody></table></div>';
   };
 
   // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
   // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
   // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
-    const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null, extra = '') => {
+const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null, extra = '') => {
     const fechado = !!Estado.fechados[idTabela];
     const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
     const btnGrafico = periodoIdxGrafico != null && !fechado
@@ -2096,7 +2112,8 @@
     const n = linhas.length;   // quantas linhas essa tabela tem
     // 'extra' preenchido substitui o total no destaque: o titulo passa a exibir o que
     // falta pagar em evidencia, com o bruto de lado, apagado.
-    const valor = extra || `<b class="${corSoma(total)}">${brl(Math.abs(total))}</b>`;
+        const valor = extra.startsWith('<b') ? extra
+      : `<b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra}`;
     return `<div class=blk><h3>${btnTog}${titulo} · ${valor} ${btnGrafico}</h3><p class=meta>${n} ${n == 1 ? 'linha' : 'linhas'} · ${subtitulo}</p>${corpo}</div>`;
   };
 
@@ -2140,7 +2157,48 @@
     eventos.forEach(e => { acc += e.v; saldo[e.data] = acc; });
     return saldo;
   }
-  
+
+
+      // Total do bloco Debito de um ciclo: lancamentos + fatura + saldo do ciclo anterior.
+  // E' recursivo — cada ciclo carrega o anterior — e para no SALDO_DESDE, onde comeca
+  // do zero. Ignora Investimento: aportar nao e' gasto, e' o dinheiro mudando de bolso.
+  // Memoizado porque a cascata reprocessa os mesmos ciclos varias vezes por render.
+  const _cacheSaldo = {};
+  function saldoDoCiclo(idx) {
+    if (idx < 0 || !Estado.periodos[idx]) return 0;
+    if (dataISO(Estado.periodos[idx].fat) < SALDO_DESDE) return 0;
+    if (_cacheSaldo[idx] != null) return _cacheSaldo[idx];
+
+    _cacheSaldo[idx] = 0;   // corta recursao infinita se algo der errado
+    const base = filtrarLancamentos();
+    const doCiclo = base
+      .filter(r => r.periodoIdx === idx && !r.cred && !r.inv)
+      .reduce((s, r) => s + r.v, 0);
+
+    // fatura liquida de cada titular, igual ao que a linha sintetica mostra
+    const abat = { false: alocacaoAntecipacoes(base, false), true: alocacaoAntecipacoes(base, true) };
+    let fatura = 0;
+    [false, true].forEach(ehIsa => {
+      const bruto = base.filter(r => r.cred && !!r.isa === ehIsa && r.periodoIdx === idx)
+        .reduce((s, r) => s + r.v, 0);
+      if (bruto) fatura += bruto + (abat[ehIsa][idx] || 0);
+    });
+
+    const total = saldoDoCiclo(idx - 1) + doCiclo + fatura;
+    _cacheSaldo[idx] = total;
+    return total;
+  }
+
+  // Quanto esta guardado no fim do ciclo: todos os aportes menos todos os resgates,
+  // de todos os ciclos ate este. Nao entra no saldo da conta — e' patrimonio separado.
+  function guardadoAte(idx) {
+    return filtrarLancamentos()
+      .filter(r => r.inv && r.periodoIdx != null && r.periodoIdx <= idx)
+      .reduce((s, r) => s - r.v, 0);
+  }
+    
+
+    
   // Visão "Ciclo": mostra um periodo por vez, com os blocos Debito e Credito (ou o Backlog).
   function vCiclo() {
     const i = +el('ciclo').value;
@@ -2191,13 +2249,36 @@
     const totalFaturaLiquido = linhasFatura.reduce((s, r) => s + r.v, 0);
 
     const simples = modoSimples();
-        const debitosComFatura = [...debitos, ...linhasFatura];
+            const simples = modoSimples();
 
-    // modo simples: sem selecao de linha, sem botao de grafico — so a tabela, ordenavel
-const blocoDebito = renderBloco(
-      'Débito', debitosComFatura.reduce((s, r) => s + r.v, 0),
+    // saldo que veio do ciclo anterior — positivo ou negativo, entra como uma linha
+    // normal no comeco do bloco
+    const anterior = saldoDoCiclo(i - 1);
+    const linhaAnterior = Math.abs(anterior) > 0.005 && Estado.periodos[i - 1] &&
+      dataISO(Estado.periodos[i - 1].fat) >= SALDO_DESDE
+      ? [{ data: periodo.ini, nome: 'Saldo do mês anterior', categ: 'Saldo',
+           freq: '', id: 0, v: anterior, _sal: 1, _sid: `sal:${i}` }]
+      : [];
+
+    const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
+    const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
+
+    // fechou negativo: mostra quanto teria que sair da caixinha. Some sozinha quando
+    // voce lanca o resgate de verdade, porque ai o dinheiro entra como entrada real.
+    const linhaResgate = totalCiclo < -0.005 && !Estado.restrito
+      ? [{ data: dataISO(periodo.fat), nome: 'Resgate necessário', categ: 'Investimento',
+           freq: '', id: 0, v: -totalCiclo, _res: 1, _sid: `res:${i}` }]
+      : [];
+
+    const linhasDebito = [...debitosComFatura, ...linhaResgate];
+    const guardado = guardadoAte(i);
+    const extraDebito = !Estado.restrito && Math.abs(guardado) > 0.005
+      ? `<span class=bruto>${brl(guardado)} guardado</span>` : '';
+
+    const blocoDebito = renderBloco(
+      'Débito', linhasDebito.reduce((s, r) => s + r.v, 0),
       `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-      debitosComFatura, 'db', true
+      linhasDebito, 'db', true, null, extraDebito
     );
 
     // so a Isabella (perfil restrito) nao ve o bloco Credito. No mobile, quem nao e' a
@@ -2212,7 +2293,7 @@ if (Estado.restrito) return blocoDebito;
       'Crédito', totalCredito,
       Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
       creditos, 'cr', true, null,
-      houveAbatimento && faltaPagar > 0.005
+            houveAbatimento && faltaPagar > 0.005
         ? `<b class="${corSoma(totalFaturaLiquido)}">${brl(faltaPagar)}</b><span class=bruto>de ${brl(Math.abs(totalCredito))}</span>`
         : ''
     );
@@ -2259,32 +2340,7 @@ if (Estado.restrito) return blocoDebito;
     return `<p class=meta style="margin:0 0 .6rem">${btnEvolucao}</p><div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
   }
 
-  // Visão "Investimento": balanço de entradas/saídas por período (Sobra, Aportado,
-  // Resgatado, Guardado, Acumulado). Gasto por categoria fica a cargo da visão Comparar
-  // (Agrupar por → Categoria), que já cobre isso de forma mais completa.
-  function vInv() {
-    const linhas = Estado.lancamentos.filter(r =>
-      passaFiltroTriEstado('fativo', r.ativo) && passaFiltroTriEstado('fpago', r.pago) &&
-      r.periodoIdx != null && !ehTransferenciaFatura(r)
-    );
-    if (!linhas.length) return '<p class=empty>Vazio</p>';
-
-    let acumulado = 0;
-    const corpo = [...new Set(linhas.map(r => r.periodoIdx))].sort((a, b) => a - b).map(i => {
-      const doPeriodo = linhas.filter(r => r.periodoIdx == i);
-      const investimentos = doPeriodo.filter(r => r.inv);
-      const aportado = investimentos.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
-      const resgatado = investimentos.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
-      acumulado += aportado - resgatado;
-
-      return `<tr><td class=c1>${nomePeriodo(Estado.periodos[i].fat)}` +
-        celSoma(doPeriodo.reduce((s, r) => s + r.v, 0)) +   // sobra do periodo (tudo somado)
-        celSoma(aportado) + celSoma(resgatado) + celSoma(aportado - resgatado) + celSoma(acumulado);
-    }).join('');
-
-    return '<div class="wrap wx"><table><thead><tr><th class=c1>Ciclo<th class=n>Sobra<th class=n>Aportado<th class=n>Resgatado' +
-      '<th class=n>Guardado<th class=n>Acumulado</thead><tbody>' + corpo + '</tbody></table></div>';
-  }
+  
 
   // ===================================================================
   // PERFIL RESTRITO (Isabella) e DESENHO GERAL DA TELA
@@ -2297,6 +2353,7 @@ if (Estado.restrito) return blocoDebito;
 
   // redesenha a tela conforme a visao ativa, escondendo/mostrando os filtros que fazem sentido nela
   function desenhar() {
+    Object.keys(_cacheSaldo).forEach(k => delete _cacheSaldo[k]);
     const simples = modoSimples();
     const visao = simples ? 'c' : el('visao').value;   // modo simples so mostra Ciclo
 
@@ -2314,12 +2371,11 @@ if (Estado.restrito) return blocoDebito;
     const noBacklog = visao == 'c' && +el('ciclo').value < 0;
     if (!simples) el('fativo').value = noBacklog ? 'B' : 'S';
     if (visao != 'k') el('origem').value = 'A';
-    if (visao == 'p') el('titular').value = 'T';
 
     el('fgraf').hidden = visao != 'c' || simples || +el('ciclo').value < 0;
     el('btGrafico').dataset.idx = el('ciclo').value;
     
-    el('out').innerHTML = visao == 'c' ? vCiclo() : visao == 'k' ? vComp() : vInv();
+    el('out').innerHTML = visao == 'c' ? vCiclo() : vComp();
     if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
   }

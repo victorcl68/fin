@@ -2277,9 +2277,6 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
     const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
 
-      const debitosComFatura = [...linhaAnterior, ...debitos, ...linhasFatura];
-const totalCiclo = debitosComFatura.reduce((s, r) => s + r.v, 0);
-
 // Resgate necessário: entrada de dinheiro.
 // Aparece positivo porque reduz o déficit do ciclo.
 const linhaResgate = totalCiclo < -0.005 && !Estado.restrito

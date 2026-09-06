@@ -1399,6 +1399,15 @@ tbody tr.res td {
 tbody tr.res:hover td {
   background: #3D3124;
 }
+
+    tbody tr.sug td {
+  background: var(--green-soft);
+  font-style: italic;
+}
+
+tbody tr.sug:hover td {
+  background: var(--green-hover);
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2069,7 +2078,9 @@ tbody tr.res:hover td {
   const textoOuTraco = v => ehVazioTextual(v) ? '—' : v;
   // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
   const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
-    ? (isMobile() ? celValorMobile(r) : celValor(r.v)).replace(/$/,
+    ? (r._sug != null
+        ? `<td class="n vd">${brl(r._sug)}`
+        : (isMobile() ? celValorMobile(r) : celValor(r.v))).replace(/$/,
         r._saldo != null ? `<span class=sd>${brl(r._saldo)}</span>` : '')
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
      : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data'
@@ -2102,7 +2113,7 @@ tbody tr.res:hover td {
     return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
       ordenadas.map(r => {
         const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
-      return `<tr class="${r._fat ? 'fat ' : ''}${r._sal ? 'sal ' : ''}${r._res ? 'res ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
+        return `<tr class="${r._fat ? 'fat ' : ''}${r._sal ? 'sal ' : ''}${r._res ? 'res ' : ''}${r._sug != null ? 'sug ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
       }).join('') + '</tbody></table></div>';
   };
 
@@ -2281,10 +2292,10 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const aportouNoCiclo = debitos.some(r => r.inv && r.v < 0);
     const linhaSugestao = totalCiclo > 0.005 && aportouNoCiclo && !Estado.restrito
       ? [{ data: dataISO(periodo.fat), nome: 'Investimento sugerido', categ: 'Investimento',
-           freq: '', id: -5, v: 0, valor: 0, _sug: totalCiclo }]
+                   freq: '', id: -5, v: 0, valor: totalCiclo, _sug: totalCiclo }]
       : [];
 
-    const linhasDebito = [...debitosComFatura, ...linhaResgate];
+        const linhasDebito = [...debitosComFatura, ...linhaResgate, ...linhaSugestao];
     const guardado = guardadoAte(i);
     const extraDebito = !Estado.restrito && Math.abs(guardado) > 0.005
       ? `<span class=bruto>${brl(guardado)} guardado</span>` : '';
@@ -2384,7 +2395,7 @@ if (Estado.restrito) return blocoDebito;
 
     el('fciclo').hidden = true;   // modo simples usa o navegador anterior/proximo, nao o combo
     el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
-    el('ftit').hidden = visao == simples;
+    el('ftit').hidden = simples;
     // navegador de ciclos so faz sentido na visao Ciclo — Comparar usa De/Ate e o
     // Balanco mostra todos os periodos de uma vez
     el('fciclNav').hidden = visao != 'c';

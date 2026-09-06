@@ -2119,8 +2119,9 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     const fechado = !!Estado.fechados[idTabela];
     const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
     const btnGrafico = periodoIdxGrafico != null && !fechado
-      ? `<button type=button class=selTudoBt onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
-      : '';
+  ? `<button type="button" class="selTudoBt" onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
+  : '';
+
       
     // recolhido: mantem titulo, total e subtitulo — some so a tabela
     const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
@@ -2403,9 +2404,9 @@ if (Estado.restrito) return blocoDebito;
     if (!simples) el('fativo').value = noBacklog ? 'B' : 'S';
     if (visao != 'k') el('origem').value = 'A';
 
-    el('fgraf').hidden = visao != 'c' || simples || +el('ciclo').value < 0;
+    // el('fgraf').hidden = visao != 'c' || simples || +el('ciclo').value < 0;
         el('fevol').hidden = visao != 'k' || simples || !el('compDe').value || !el('compAte').value;
-      el('btGrafico').dataset.idx = el('ciclo').value;
+      // el('btGrafico').dataset.idx = el('ciclo').value;
     
     el('out').innerHTML = visao == 'c' ? vCiclo() : vComp();
     if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao

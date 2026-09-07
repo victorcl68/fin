@@ -1779,36 +1779,73 @@ el('modalGrafico').addEventListener('click', e => {
 });
 
 // ===================================================================
-// GRÁFICO DE EVOLUÇÃO (Comparar) — ganho x gasto x aportado, mês a mês
+// GRÁFICO DE EVOLUÇÃO (Comparar) — ganho x gasto x aportado x resgatado, mês a mês
 // ===================================================================
 // Regra por período:
-//   Ganho    = soma dos positivos, exceto categoria Investimento
-//   Aportado = soma dos negativos DA categoria Investimento (invertido pra positivo),
-//              incluindo o Aporte sugerido do ciclo (se houver)
-//   Gasto    = soma dos negativos exceto Investimento, MAIS os positivos de
-//              Investimento (resgate conta como gasto, nao como ganho), incluindo o
-//              Resgate necessario do ciclo (se houver)
+//   Ganho     = soma dos positivos, exceto categoria Investimento (nao inclui Resgate
+//               real nem o Resgate necessario hipotetico)
+//   Aportado  = soma dos negativos DA categoria Investimento (invertido pra positivo),
+//               incluindo o Aporte sugerido do ciclo (se houver)
+//   Resgatado = soma dos positivos DA categoria Investimento, incluindo o Resgate
+//               necessario hipotetico do ciclo (se houver)
+//   Gasto     = soma dos negativos, exceto categoria Investimento (nao inclui Aporte
+//               real nem o Aporte sugerido hipotetico)
 let graficoEvolucaoChart = null;
 
 function dadosEvolucao(de, ate) {
     const periodosUsados = [];
     for (let i = de; i <= ate; i++) if (Estado.periodos[i]) periodosUsados.push(i);
 
+    const { base, abat } = baseEAbatFiltrados();
+
     const porPeriodo = periodosUsados.map(i => {
-        const linhas = filtrarLancamentos().filter(r => r.periodoIdx == i && !ehTransferenciaFatura(r));
+        // compras no CREDITO nao entram uma a uma: o que sai da conta no mes e' a fatura
+        // LIQUIDA (bruto + antecipacao ja paga), a mesma linha sintetica que o bloco Debito
+        // da visao Ciclo mostra. Somar o bruto de cada compra inflava o Gasto pela
+        // antecipacao — ex: R$5.008,42 em compras que viram R$3.026,14 a pagar.
+        const linhas = base.filter(r => r.periodoIdx == i && !r.cred && !ehTransferenciaFatura(r));
         const investimento = linhas.filter(r => r.inv);
         const resto = linhas.filter(r => !r.inv);
 
-        const ganho = resto.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
-        const gastoResto = resto.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
-        let resgate = investimento.filter(r => r.v > 0).reduce((s, r) => s + r.v, 0);
-        let aportado = investimento.filter(r => r.v < 0).reduce((s, r) => s - r.v, 0);
+        // guarda as linhas que compoem cada barra (nao so o total) pra o clique na barra
+        // poder abrir o detalhamento item a item — sem isso, uma divergencia entre o
+        // grafico e a soma manual do bloco Debito nao tem como ser conferida na tela.
+        const linhasDe = {
+            Ganho: resto.filter(r => r.v > 0),
+            Gasto: resto.filter(r => r.v < 0),
+            Resgatado: investimento.filter(r => r.v > 0),
+            Aportado: investimento.filter(r => r.v < 0),
+        };
 
+        // uma linha de fatura por titular, liquida de antecipacao (mesmo criterio de vCiclo:
+        // fatura ja quitada — liquido ~0 — nao vira linha nenhuma)
+        [[false, 'Fatura do cartão'], [true, 'Fatura do cartão (Isabella)']].forEach(([ehIsa, rotulo]) => {
+            const bruto = base
+                .filter(r => r.cred && !!r.isa === ehIsa && r.periodoIdx == i)
+                .reduce((s, r) => s + r.v, 0);
+            if (!bruto) return;
+            const liquido = bruto + (abat[ehIsa][i] || 0);
+            if (Math.abs(liquido) < 0.005) return;
+            linhasDe[liquido < 0 ? 'Gasto' : 'Ganho'].push({
+                data: dataISO(Estado.periodos[i].fat), nome: rotulo, categ: 'Fatura', v: liquido,
+            });
+        });
+
+        // o Resgate necessario / Aporte sugerido do ciclo entra como uma linha sintetica na
+        // barra correspondente, do mesmo jeito que aparece no bloco Debito da visao Ciclo
         const ajuste = ajusteDoCiclo(i);
-        if (ajuste?.tipo == 'resgate') resgate += ajuste.v;
-        else if (ajuste?.tipo == 'aporte') aportado += -ajuste.v;
+        if (ajuste) {
+            linhasDe[ajuste.tipo == 'resgate' ? 'Resgatado' : 'Aportado'].push({
+                data: dataISO(Estado.periodos[i].fat), nome: ajuste.nome, categ: ajuste.categ, v: ajuste.v,
+            });
+        }
 
-        return { nome: nomePeriodo(Estado.periodos[i].fat), ganho, gasto: gastoResto + resgate, aportado };
+        const soma = k => linhasDe[k].reduce((s, r) => s + Math.abs(r.v), 0);
+        return {
+            nome: nomePeriodo(Estado.periodos[i].fat), periodoIdx: i, linhasDe,
+            ganho: soma('Ganho'), gasto: soma('Gasto'),
+            aportado: soma('Aportado'), resgatado: soma('Resgatado'),
+        };
     });
     return porPeriodo;
 }
@@ -1825,11 +1862,15 @@ function desenhaGraficoEvolucao(dados) {
         type: 'bar',
         data: {
             labels: dados.map(d => d.nome),
+            // duas colunas por mes, cada uma empilhando duas barras:
+            //   entrada = Ganho (verde) + Resgatado (azul) em cima  -> tudo que entrou na conta
+            //   saida   = Gasto (vermelho) + Aportado (laranja) em cima -> tudo que saiu
+            // com as duas na mesma altura, o mes fechou equalizado — da' pra ver de relance.
             datasets: [
-                { label: 'Ganho', data: dados.map(d => d.ganho), backgroundColor: '#35B982' },
-                { label: 'Gasto', data: dados.map(d => d.gasto), backgroundColor: '#E95F59' },
-                { label: 'Aportado', data: dados.map(d => d.aportado), backgroundColor: '#F0A83A' },
-
+                { label: 'Ganho', data: dados.map(d => d.ganho), backgroundColor: '#35B982', stack: 'entrada' },
+                { label: 'Resgatado', data: dados.map(d => d.resgatado), backgroundColor: '#4C9BE8', stack: 'entrada' },
+                { label: 'Gasto', data: dados.map(d => d.gasto), backgroundColor: '#E95F59', stack: 'saida' },
+                { label: 'Aportado', data: dados.map(d => d.aportado), backgroundColor: '#F0A83A', stack: 'saida' },
             ],
         },
         options: {
@@ -1849,9 +1890,37 @@ function desenhaGraficoEvolucao(dados) {
                     }
                 },
             },
-            scales: { y: { ticks: { callback: v => brl(v) } } },
+            // `stacked` nos dois eixos e' o que faz o `stack` dos datasets valer: sem isso o
+            // Chart.js ignora os grupos e desenha as 4 barras lado a lado.
+            scales: {
+                x: { stacked: true },
+                y: { stacked: true, ticks: { callback: v => brl(v) } },
+            },
+            // clique numa barra abre o detalhamento item a item daquela barra (mesmo modal
+            // do clique numa celula da matriz Comparar), pra dar pra conferir de onde vem
+            // cada total — e bater com a soma manual do bloco Debito quando divergirem.
+            onClick: (_evt, elementos) => {
+                if (!elementos.length) return;
+                const { datasetIndex, index } = elementos[0];
+                const rotulo = graficoEvolucaoChart.data.datasets[datasetIndex].label;
+                abrirDetalheBarraEvolucao(dados[index], rotulo);
+            },
         },
     });
+    el('canvasEvolucao').style.cursor = 'pointer';
+}
+
+// detalhamento de uma barra do grafico de evolucao: reaproveita o modal (e a tabela
+// ordenavel) do detalhamento de celula da matriz Comparar.
+function abrirDetalheBarraEvolucao(dadoDoPeriodo, rotulo) {
+    Estado._detalheAtual = {
+        categoria: rotulo,
+        periodoIdx: dadoDoPeriodo.periodoIdx,
+        linhas: dadoDoPeriodo.linhasDe[rotulo] || [],
+        ord: { k: 'valor', d: 2 },   // maior primeiro: e' o que ajuda a achar a divergencia
+    };
+    renderizaDetalheCel();
+    el('modalDetalheCel').showModal();
 }
 
 el('fechaComparativo').onclick = () => el('modalComparativo').close();

@@ -1803,7 +1803,14 @@ function dadosEvolucao(de, ate) {
         // LIQUIDA (bruto + antecipacao ja paga), a mesma linha sintetica que o bloco Debito
         // da visao Ciclo mostra. Somar o bruto de cada compra inflava o Gasto pela
         // antecipacao — ex: R$5.008,42 em compras que viram R$3.026,14 a pagar.
-        const linhas = base.filter(r => r.periodoIdx == i && !r.cred && !ehTransferenciaFatura(r));
+        //
+        // A ANTECIPACAO de fatura entra normalmente (regime de caixa): ela saiu da conta
+        // NESTE mes, entao conta como gasto aqui — e a fatura que ela quita ja vem abatida
+        // do mesmo valor (alocacaoAntecipacoes), no mes seguinte. Sem dupla contagem: o
+        // desembolso aparece uma vez, no mes em que aconteceu. Excluir a antecipacao (como
+        // a pizza de categorias faz, onde ela e' transferencia e nao gasto) sumia com o
+        // dinheiro do grafico — nem no mes do pagamento nem no da fatura.
+        const linhas = base.filter(r => r.periodoIdx == i && !r.cred);
         const investimento = linhas.filter(r => r.inv);
         const resto = linhas.filter(r => !r.inv);
 

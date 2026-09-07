@@ -21,22 +21,16 @@
   <div id=app>
     <div class=head>
       <div class=f id=fciclNav>
-        <div id=navCiclo>
-          <div class=cicloNav>
-            <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
-            <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
-            <button type=button id=cicloHoje class=btHoje>Atual</button>
-          </div>
-          <span id=nomeCicloNav>—</span>
-        </div>
         <div id=navComparar>
           <label class=fInline id=fde><span class=srOnly>De</span>
             <select id=compDe aria-label="De"></select>
           </label>
-          <span class=navCompararAte>até</span>
+          <span class=navCompararAte id=navCompararAte>até</span>
           <label class=fInline id=fate><span class=srOnly>Até</span>
             <select id=compAte aria-label="Até"></select>
           </label>
+          <button type=button id=cicloHoje class=btHoje title="Ir para o ciclo atual"
+            aria-label="Ir para o ciclo atual">Atual</button>
         </div>
       </div>
 
@@ -70,17 +64,6 @@
 
     <div class=tool>
       <div class=row>
-        <label class=f id=fvisao><span>Visão</span>
-          <select id=visao hidden>
-            <option value=c>Ciclo
-            <option value=k>Comparar
-          </select>
-          <div class=segCtl id=segVisao role=tablist aria-label="Visão">
-            <span class=segThumb></span>
-            <button type=button class=segOpt data-valor=c role=tab>Ciclo</button>
-            <button type=button class=segOpt data-valor=k role=tab>Comparar</button>
-          </div>
-        </label>
         <label class=f id=ftit><span>Titular</span>
           <select id=titular>
             <option value=T>Todos
@@ -114,9 +97,6 @@
             <option value=D>Débito
             <option value=F>Crédito
           </select>
-        </label>
-        <label class=f id=fgrupo><span>Agrupar</span>
-          <select id=grupo></select>
         </label>
         <label class=f id=fdif><span>Linhas</span>
           <select id=somenteDif hidden>
@@ -269,6 +249,15 @@
         <canvas id=canvasEvolucao role=img
           aria-label="Gráfico de barras comparando ganho, gasto e aportado mês a mês"></canvas>
       </div>
+    </dialog>
+
+    <dialog id=modalDetalheCel>
+      <div class=modalHead>
+        <h2 id=tituloDetalheCel>Detalhamento</h2>
+        <button type=button id=fechaDetalheCel aria-label="Fechar">×</button>
+      </div>
+      <p class=meta id=subDetalheCel></p>
+      <div class=wrap id=corpoDetalheCel></div>
     </dialog>
     <script src="./script.js" defer></script>
   </div>

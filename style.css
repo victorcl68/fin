@@ -949,9 +949,8 @@
        NAVEGAÇÃO DE CICLOS
        ========================================================= */
 
-  /* #fciclNav e' um slot fixo em .head: mostra #navCiclo OU #navComparar (nunca os
-     dois), conforme a visao ativa (Ciclo/Comparar) — trocar de visao so troca o
-     conteudo desse slot, sem mexer na posicao/altura do cabecalho ao redor. */
+  /* #fciclNav e' o slot fixo em .head que mostra os seletores De/Ate (#navComparar) —
+     sempre visiveis, nunca escondidos (Backlog e' so' mais uma opcao do De). */
   #fciclNav {
       display: flex;
       flex-direction: row;
@@ -964,7 +963,6 @@
       padding: .3rem 0;
   }
 
-  #navCiclo,
   #navComparar {
       display: flex;
       flex-direction: row;
@@ -972,19 +970,25 @@
       gap: .8rem;
   }
 
-  #navCiclo {
-      gap: .5rem;
+  #navComparar .btHoje {
+      height: 2.2rem;
+      padding: 0 .8rem;
+      font-size: .85rem;
+
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
   }
 
-  #nomeCicloNav {
-      font: 700 1.05rem/1 inherit;
-      min-width: 9.5rem;
-      display: inline-block;
+  #navComparar .btHoje:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
   }
 
-  /* visualmente escondido mas ainda lido por leitor de tela — usado no "De"/"Até" do
-     navComparar, que agora dispensa rotulo visivel (so' o select) pra bater exatamente
-     na mesma altura dos botoes .cicloNav (2.2rem) e nao esticar a linha do cabecalho */
+  /* visualmente escondido mas ainda lido por leitor de tela — usado no "De"/"Até", que
+     dispensa rotulo visivel (so' o select) pra ficar compacto no cabecalho */
   .srOnly {
       position: absolute;
       width: 1px;
@@ -1007,43 +1011,15 @@
       padding-bottom: 0;
   }
 
-  .navCompararAte {
-      font-size: .8rem;
-      color: var(--mu);
-  }
-
-  .cicloNav {
-      display: flex;
-      gap: .4rem;
-  }
-
-  .cicloNav button {
-      width: 2.2rem;
-      height: 2.2rem;
-      font-size: 1.2rem;
-      line-height: 1;
-
-      color: var(--fg);
-      background: var(--field);
-      border: 1px solid var(--ln);
-      border-radius: 9px;
-      cursor: pointer;
-  }
-
-  .cicloNav button:hover {
-      background: var(--field-hover);
-      border-color: var(--fg);
-  }
-
-  .cicloNav button:disabled {
-      opacity: .3;
+  /* Até desabilitado quando De=Backlog (nao da' pra comparar Backlog com outro periodo) */
+  .fInline select:disabled {
+      opacity: .4;
       cursor: default;
   }
 
-  .cicloNav .btHoje {
-      width: auto;
-      padding: 0 .8rem;
-      font-size: .85rem;
+  .navCompararAte {
+      font-size: .8rem;
+      color: var(--mu);
   }
 
   /* =========================================================
@@ -1053,7 +1029,8 @@
   dialog#modalNovo,
   dialog#modalCalc,
   dialog#modalGrafico,
-  dialog#modalComparativo {
+  dialog#modalComparativo,
+  dialog#modalDetalheCel {
       color: var(--fg);
       background: var(--pa);
       border: 1px solid var(--ln);
@@ -1078,7 +1055,8 @@
   dialog#modalNovo::backdrop,
   dialog#modalCalc::backdrop,
   dialog#modalGrafico::backdrop,
-  dialog#modalComparativo::backdrop {
+  dialog#modalComparativo::backdrop,
+  dialog#modalDetalheCel::backdrop {
       background: rgba(0, 0, 0, .68);
   }
 
@@ -1537,6 +1515,30 @@
   #modalGrafico canvas,
   #modalComparativo canvas {
       color: var(--fg);
+  }
+
+  /* =========================================================
+       DETALHAMENTO DE CÉLULA (visão Comparar)
+       ========================================================= */
+
+  #modalDetalheCel {
+      width: min(28rem, 92vw);
+      max-height: 88vh;
+      padding: 1.3rem;
+      overflow-y: auto;
+  }
+
+  #modalDetalheCel .meta {
+      margin: .2rem 0 .8rem;
+  }
+
+  /* celula da matriz Comparar com detalhamento clicavel */
+  .celClicavel {
+      cursor: pointer;
+  }
+
+  .celClicavel:hover {
+      background: var(--field-hover);
   }
 
   /* =========================================================

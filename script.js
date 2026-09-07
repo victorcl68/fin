@@ -84,6 +84,10 @@ const hojeISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4
 const timestamp = s => Date.parse(dataISO(s)) || 0;                                                             // YYYY-MM-DD -> numero, pra comparar/ordenar
 const dataBR = s => { const p = dataISO(s).split('-'); return p.length == 3 ? `${p[2]}/${p[1]}/${p[0]}` : s };  // YYYY-MM-DD -> DD/MM/YYYY
 const capitaliza = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+// nome de exibicao de uma coluna do lancamento ('nome'/'categ') — normaliza 'categ' pra
+// "Categoria" (capitaliza() sozinho faria "Categ") em todo lugar que rotula essa coluna:
+// combo "Agrupar por", cabecalho da matriz Comparar e o subtitulo dela.
+const nomeColuna = c => c == 'categ' ? 'Categoria' : capitaliza(c);
 const semAcento = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');   // escapa aspas/&/<> pra nao quebrar o HTML se algum valor do banco tiver esses caracteres
 
@@ -307,24 +311,32 @@ function atualizarCombos(lancamentosCrus) {
     el('ciclo').value = valorEscolhido;
 
     Estado.usados = usados;         // lista de indices navegaveis (usada pelo combo Ciclo no modo completo)
-    Estado.idxHoje = idxAtual;      // ancora fixa do navegador anterior/proximo (D-1, D, D+1 de hoje)
-    atualizaNavegadorCiclo();
+    Estado.idxHoje = idxAtual;      // ancora do pre-preenchimento inicial de De/Ate (ciclo atual + proximo)
 
-    // combo "Agrupar por": todas as colunas do lancamento, com 'nome' pre-selecionado
-    el('grupo').innerHTML = Object.keys(lancamentosCrus[0] || {})
-        .map(c => `<option value=${c}${c == 'nome' ? ' selected' : ''}>${capitaliza(c)}`).join('');
+    // Comparar sempre agrupa por Categoria agora (sem filtro "Agrupar por" na toolbar) —
+    // ver vComp(), que fixa coluna='categ' direto.
 
     // Categoria do formulario e' populada por popularCategoriasNoForm() (ordenada por uso
     // recente), chamada toda vez que o modal abre — nao precisa duplicar aqui.
 
-    // combos De/Até da visao Comparar: mesma lista de periodos usados, sem a opcao Backlog. "Todos" (value vazio) e' a opcao padrao — a matriz so recorta quando o usuario escolhe explicitamente um De ou Ate, nunca vem pre-preenchida sozinha.
-    const opcoesPeriodo = '<option value="">Todos</option>' + usados.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
+    // combos De/Até: a Isabella (perfil restrito) fica presa aos tres ciclos em volta de
+    // hoje (anterior, atual, proximo — mesma janela de antes do navegador ‹›Atual), sem
+    // Backlog; o resto ve todos os periodos usados. "Todos" (value vazio) e' a opcao
+    // padrao — a matriz so recorta quando o usuario escolhe explicitamente um De ou Ate,
+    // nunca vem pre-preenchida sozinha. Backlog so' existe no De (nao faz sentido comparar
+    // Backlog com outro periodo) — escolher Backlog desabilita e ignora o Ate (ver desenhar()).
+    const usadosNaveg = Estado.restrito
+        ? usados.filter(i => Math.abs(i - idxAtual) <= 1)
+        : usados;
+    const opcoesPeriodo = '<option value="">Todos</option>' + usadosNaveg.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
+    const opcoesPeriodoDe = Estado.restrito ? opcoesPeriodo
+        : '<option value="">Todos</option><option value=-1>Backlog' + usadosNaveg.map(i => `<option value=${i}>${nomePeriodo(Estado.periodos[i].fat)}`).join('');
     const deAnterior = el('compDe').value, ateAnterior = el('compAte').value;
 
-    el('compDe').innerHTML = opcoesPeriodo;
+    el('compDe').innerHTML = opcoesPeriodoDe;
     el('compAte').innerHTML = opcoesPeriodo;
-    el('compDe').value = usados.includes(+deAnterior) ? deAnterior : '';
-    el('compAte').value = usados.includes(+ateAnterior) ? ateAnterior : '';
+    el('compDe').value = (deAnterior == '-1' && !Estado.restrito) || usadosNaveg.includes(+deAnterior) ? deAnterior : '';
+    el('compAte').value = usadosNaveg.includes(+ateAnterior) ? ateAnterior : '';
 }
 
 // Fluxo completo de carga: busca dados, atualiza os combos, mostra o contador e desenha a tela.
@@ -753,6 +765,22 @@ function guardadoAte(idx) {
     return reais + hipotetico;
 }
 
+// HTML do saldo de um ciclo com o mesmo tratamento usado no titulo do bloco Debito: ciclo
+// equalizado (saldo ~0) vira destaque verde de sucesso — "Mês equalizado ✓" sem nada
+// guardado, ou so' o valor guardado quando houver (o guardado ja fala por si, sem repetir
+// o texto). Saldo negativo (faltou) continua mostrando o valor normal, sem tratamento
+// especial. Usado tanto no titulo do bloco Debito (vCiclo) quanto na linha Total da
+// matriz Comparar, pra os dois lugares sempre concordarem sobre o mesmo mes.
+function celulaSaldoCiclo(idx) {
+    const total = saldoDoCiclo(idx);
+    const guardado = guardadoAte(idx);
+    const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
+    if (Math.abs(total) < 0.005) {
+        return temGuardado ? `<b class=vd>${brl(guardado)} guardado</b>` : `<b class=vd>Mês equalizado ✓</b>`;
+    }
+    return `<span class="${corSoma(total)}">${brl(total)}</span>`;
+}
+
 
 
 // Visão "Ciclo": mostra um periodo por vez, com os blocos Debito e Credito (ou o Backlog).
@@ -912,21 +940,64 @@ function vComp() {
     // depois de trocar De/Ate pra um intervalo que nao tem mais 2 periodos)
     Estado._comparacao2Periodos = false;
 
-    const coluna = el('grupo').value;
+    const coluna = 'categ';   // Comparar sempre agrupa por Categoria — sem filtro "Agrupar por" na toolbar
     // so mostra a matriz depois que o usuario escolhe De E Ate — nunca vem preenchida sozinha
     const deTexto = el('compDe').value, ateTexto = el('compAte').value;
-    if (!deTexto || !ateTexto) return '<p class=empty>Escolha o período (De / Até) para comparar.</p>';
+    if (!deTexto || !ateTexto || deTexto == '-1') return '<p class=empty>Escolha o período (De / Até) para comparar.</p>';
 
     const de = +deTexto, ate = +ateTexto;
     const dentroDoIntervalo = i => i >= de && i <= ate;
 
-    const reais = filtrarLancamentos().filter(r => r.periodoIdx != null && !ehTransferenciaFatura(r));
+    // rede de seguranca: desenhar() ja decide "modo blocos" (De==Ate) e chama vCiclo()
+    // direto nesse caso, entao vComp() normalmente nunca chega aqui com de==ate — mas se
+    // for chamada de outro lugar no futuro, continua se comportando corretamente.
+    if (de == ate) {
+        el('ciclo').value = de;
+        return vCiclo();
+    }
 
-    // injeta Resgate necessario / Aporte sugerido de cada ciclo do intervalo como linha
-    // sintetica (categoria "Investimento"), com a mesma regra usada no resto do app.
+    const visiveis = filtrarLancamentos();
+    // NAO exclui ehTransferenciaFatura aqui: a antecipacao e' uma TRANSFERENCIA (nao gasto
+    // de analise), mas ainda e' uma SAIDA DE CAIXA real, e vCiclo() a inclui normalmente
+    // dentro de `debitos` (ver bloco Debito). Excluir esse debito e so' recolocar o
+    // abatimento (linha "Antecipação Fatura" abaixo) deixava a soma da matriz R$ igual ao
+    // valor antecipado A MAIS do que o Total (saldoDoCiclo) — faltava o lado debito.
+    const reais = visiveis.filter(r => r.periodoIdx != null);
+
+    // abatido[idxDoCiclo] = quanto foi antecipado daquela fatura (mesma logica usada em
+    // vCiclo() pro bloco Credito) — as compras no credito ja entram em `reais` por
+    // categoria, BRUTAS; sem essa injecao a soma da matriz ficaria sem o abatimento.
+    const abatidoEu = alocacaoAntecipacoes(visiveis, false);
+    const abatidoIsa = alocacaoAntecipacoes(visiveis, true);
+
+    // injeta as MESMAS linhas sinteticas que a visao Ciclo usa, senao o Total da matriz
+    // (saldo equalizado, igual ao Ciclo) nao bate com a soma das categorias mostradas:
+    // "Saldo do mês anterior" (categoria "Saldo"), Resgate/Aporte (categoria "Investimento")
+    // e "Antecipação Fatura" (categoria "Fatura", o abatimento das antecipacoes na fatura
+    // que vence naquele periodo — sem essa linha a fatura ficaria bruta, sem abater).
     const sinteticas = [];
     Estado.periodos.forEach((per, idx) => {
         if (!dentroDoIntervalo(idx)) return;
+        const anterior = saldoDoCiclo(idx - 1);
+        if (Math.abs(anterior) > 0.005 && Estado.periodos[idx - 1] && dataISO(Estado.periodos[idx - 1].fat) >= SALDO_DESDE) {
+            sinteticas.push({
+                nome: 'Saldo do mês anterior', categ: 'Saldo', freq: '', pago: null,
+                id: -1, data: per.ini, isa: null, cred: false, ativo: true,
+                v: anterior, valor: anterior, periodoIdx: idx,
+            });
+        }
+        // abatimento da fatura: cancela o valor BRUTO da(s) compra(s) de credito que ja
+        // entraram em `reais` (por categoria original, ex. "Mercado") — a saida de caixa
+        // real da antecipacao ja esta em `reais` tambem, na propria categoria dela.
+        [[abatidoEu, false, ''], [abatidoIsa, true, ' (Isabella)']].forEach(([abat, ehIsa, sufixo]) => {
+            const valor = abat[idx];
+            if (!valor) return;   // valor abatido e' positivo; entra como CREDITO na fatura (v positivo abate o debito)
+            sinteticas.push({
+                nome: 'Abatimento de fatura' + sufixo, categ: 'Abatimento de fatura', freq: '', pago: null,
+                id: -6, data: dataISO(per.fat), isa: ehIsa, cred: false, ativo: true,
+                v: valor, valor: valor, periodoIdx: idx,
+            });
+        });
         const ajuste = ajusteDoCiclo(idx);
         if (!ajuste) return;
         sinteticas.push({
@@ -941,11 +1012,17 @@ function vComp() {
 
     const periodosUsados = [...new Set(linhas.map(r => r.periodoIdx))].filter(dentroDoIntervalo).sort((a, b) => a - b);
     const matriz = {};
+    // guarda tambem os LANCAMENTOS individuais de cada celula (categoria x periodo), pra
+    // abrir o detalhamento (nome + valor) ao clicar. Chave = "<categoria>||<periodoIdx>".
+    const linhasDaCelula = {};
     linhas.filter(r => dentroDoIntervalo(r.periodoIdx)).forEach(r => {
         const chave = textoOuTraco(r[coluna]);
         (matriz[chave] = matriz[chave] || {})[r.periodoIdx] = (matriz[chave][r.periodoIdx] || 0) + r.v;
+        const chaveCelula = chave + '||' + r.periodoIdx;
+        (linhasDaCelula[chaveCelula] = linhasDaCelula[chaveCelula] || []).push(r);
     });
     const totalDaChave = chave => Object.values(matriz[chave]).reduce((a, b) => a + b, 0);
+    Estado._detalheComparar = { matriz: linhasDaCelula, coluna };   // lido por abreDetalheCelComparar()
 
     const oc = Estado.ordComp;
     const seta = k => oc.k == k ? (oc.d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
@@ -978,13 +1055,18 @@ function vComp() {
     const chavesFiltradas = Object.keys(matriz).filter(chave =>
         !somenteDif || deixouDePagar(chave) || comecouAPagar(chave));
 
-    const cabecalho = `<tr><th class=c1 onclick="sortComp('chave')">${capitaliza(coluna)}${seta('chave')}` +
+    // com so' 1 periodo no intervalo a coluna Total seria identica a unica coluna de
+    // periodo — redundante, entao some nesse caso
+    const mostraColTotal = periodosUsados.length > 1;
+
+    const cabecalho = `<tr><th class=c1 onclick="sortComp('chave')">${nomeColuna(coluna)}${seta('chave')}` +
         (comparacao2Periodos
             ? `<th class="n colDif" title="Tinha em ${nomeMes1}, não tem mais em ${nomeMes2}" onclick="sortComp('dif1')">Somente ${nomeMes1}${seta('dif1')}</th>` +
             `<th class="n colDif" title="Não tinha em ${nomeMes1}, passou a ter em ${nomeMes2}" onclick="sortComp('dif2')">Somente ${nomeMes2}${seta('dif2')}</th>`
             : '') +
         periodosUsados.map(i => `<th class=n onclick="sortComp('${i}')">${nomePeriodo(Estado.periodos[i].fat)}${seta(String(i))}`).join('') +
-        `<th class=n onclick="sortComp('total')">Total${seta('total')}</thead>`;
+        (mostraColTotal ? `<th class=n onclick="sortComp('total')">Total${seta('total')}` : '') +
+        `</thead>`;
 
     // ordena pela coluna escolhida: 'chave' e' alfabetica; 'dif1'/'dif2' sao booleanos
     // (deixou/comecou a pagar primeiro); 'total' e as colunas de periodo sao numericas
@@ -994,26 +1076,48 @@ function vComp() {
             : oc.k == 'dif1' ? (deixouDePagar(chave) ? 1 : 0)
                 : oc.k == 'dif2' ? (comecouAPagar(chave) ? 1 : 0)
                     : (matriz[chave][+oc.k] || 0);
+    // cada linha de categoria vira selecionavel igual as tabelas do Ciclo (clique marca,
+    // shift-click marca intervalo, soma na barra flutuante) — o valor usado e' o Total da
+    // categoria no intervalo (totalDaChave), nao uma celula especifica. `_sid` prefixado
+    // com "cp:" pra nao colidir com as chaves sinteticas de fatura ("fat:") do Ciclo.
+    const linhasSelecionaveis = [];
     const corpo = chavesFiltradas.sort((a, b) => {
         const cmp = oc.k == 'chave'
             ? String(a).localeCompare(String(b), 'pt')
             : valorDaLinha(a) - valorDaLinha(b);
         return oc.d == 1 ? cmp : -cmp;
-    }).map(chave =>
-        `<tr><td class=c1>${chave}` +
-        (comparacao2Periodos
-            ? `<td class="n colDif">${deixouDePagar(chave) ? '<span class=difOk>✓</span>' : ''}</td><td class="n colDif">${comecouAPagar(chave) ? '<span class=difNovo>✓</span>' : ''}</td>`
-            : '') +
-        periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celSoma(matriz[chave][i])).join('') +
-        celSoma(totalDaChave(chave))
-    ).join('');
+    }).map(chave => {
+        const sid = 'cp:' + chave;
+        linhasSelecionaveis.push({ _sid: sid, nome: chave, v: totalDaChave(chave) });
+        const marcada = Estado.selecionados.has(sid);
+        return `<tr class="${marcada ? 'on' : ''} pick" data-sid="${escapeHtml(sid)}"><td class=c1>${chave}` +
+            (comparacao2Periodos
+                ? `<td class="n colDif">${deixouDePagar(chave) ? '<span class=difOk>✓</span>' : ''}</td><td class="n colDif">${comecouAPagar(chave) ? '<span class=difNovo>✓</span>' : ''}</td>`
+                : '') +
+            periodosUsados.map(i => {
+                if (matriz[chave][i] == null) return '<td class=n>·';
+                const v = matriz[chave][i];
+                const chaveJs = escapeHtml(chave).replace(/'/g, '&#39;');
+                return `<td class="n ${corSoma(v)} celClicavel" onclick="event.stopPropagation();abrirDetalheCelComparar('${chaveJs}',${i})">${brl(v)}`;
+            }).join('') +
+            (mostraColTotal ? celSoma(totalDaChave(chave)) : '');
+    }).join('');
+    Estado.linhasVisiveis['cp'] = linhasSelecionaveis;
 
     const linhasNoIntervalo = linhas.filter(r => dentroDoIntervalo(r.periodoIdx));
-    const totalPorPeriodo = i => linhasNoIntervalo.filter(r => r.periodoIdx == i).reduce((s, r) => s + r.v, 0);
+    // Total = mesmo saldo "equalizado" da visao Ciclo (saldo do mes anterior + movimentos
+    // do ciclo + ajuste de Resgate/Aporte). Bate com a soma das categorias mostradas
+    // ACIMA porque "Saldo do mês anterior" e "Resgate/Aporte" agora entram como linhas
+    // sinteticas na matriz (ver injeção de `sinteticas` mais acima) — sem elas, um mes
+    // zerado na visao Ciclo apareceria com saldo bruto (nao-zero) aqui no Comparar.
+    // cada celula usa o MESMO tratamento do titulo do bloco Debito na visao Ciclo: mes
+    // equalizado (saldo ~0) vira "Mês equalizado ✓" ou o valor guardado, em vez do
+    // "R$ 0,00" sem graca — os dois lugares (aqui e o bloco Debito) sempre concordam.
+    const celTotalPeriodo = i => `<td class=n>${celulaSaldoCiclo(i)}`;
     const linhaTotal = '<tr class=tot><td class=c1>Total' +
         (comparacao2Periodos ? '<td class="n colDif"><td class="n colDif">' : '') +
-        periodosUsados.map(i => celSoma(totalPorPeriodo(i))).join('') +
-        celSoma(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
+        periodosUsados.map(celTotalPeriodo).join('') +
+        (mostraColTotal ? celTotalPeriodo(periodosUsados.at(-1)) : '');
 
     // subtitulo: quantas linhas a matriz tem (varia com o "Agrupar por" — cada valor
     // distinto da coluna escolhida vira uma linha) e o intervalo de datas do periodo
@@ -1024,7 +1128,7 @@ function vComp() {
     const iniPeriodo = Estado.periodos[periodosUsados[0]];
     const fimPeriodo = Estado.periodos[periodosUsados.at(-1)];
     const subtitulo =
-        `${nGrupos} ${nGrupos == 1 ? capitaliza(coluna) : capitaliza(coluna) + 's'}` +
+        `${nGrupos} ${nGrupos == 1 ? nomeColuna(coluna) : nomeColuna(coluna) + 's'}` +
         (iniPeriodo && fimPeriodo ? ` · ${dataBR(iniPeriodo.ini)} a ${dataBR(fimPeriodo.fat)}` : '');
 
     // titulo no mesmo estilo dos blocos Debito/Credito
@@ -1044,13 +1148,13 @@ function vComp() {
 // ===================================================================
 // PERFIL RESTRITO (Isabella) e DESENHO GERAL DA TELA
 // ===================================================================
-// aplicado uma vez, logo apos o login: trava a visao em Ciclo e some com os demais filtros
-function aplicaPerfil() {
-    if (!Estado.restrito) return;
-    el('visao').value = 'c';   // o resto (esconder filtros, forcar Pago/Ativo) e' feito em desenhar()
-}
+// perfil restrito (Isabella): desenhar() ja forca sozinho o "modo blocos" (De==Ate) e
+// esconde os demais filtros quando modoSimples() e' true — nao ha mais nada especifico
+// pra aplicar aqui no login, a funcao fica so' documentando esse ponto de entrada.
+function aplicaPerfil() { }
 
-// redesenha a tela conforme a visao ativa, escondendo/mostrando os filtros que fazem sentido nela
+// redesenha a tela conforme o modo ativo (blocos Debito/Credito vs matriz de comparacao),
+// escondendo/mostrando os filtros que fazem sentido em cada um
 function desenhar() {
     console.time('[diag] desenhar');
     Object.keys(_cacheSaldo).forEach(k => delete _cacheSaldo[k]);
@@ -1059,60 +1163,91 @@ function desenhar() {
     Object.keys(_cacheAjusteUnico).forEach(k => delete _cacheAjusteUnico[k]);
     _baseFiltrada = _abatFiltrada = _baseUnica = _abatUnica = null;   // recalcula 1x neste render
     const simples = modoSimples();
-    const visao = simples ? 'c' : el('visao').value;   // modo simples so mostra Ciclo
 
-    el('fciclo').hidden = true;   // modo simples usa o navegador anterior/proximo, nao o combo
-    // Origem/Agrupar por so fazem sentido na visao Comparar — somem de verdade (hidden)
-    // fora do fluxo, sem deixar buraco reservado, mas com um fade suave em vez de corte
-    // seco (mesma sensacao do fade do #out ao trocar de visao).
-    mostraComFade('forigem', visao == 'k' && !simples);
-    mostraComFade('fgrupo', visao == 'k' && !simples);
-    el('ftit').hidden = simples;
-    // #fciclNav e' um slot fixo em .head: mostra o navegador de ciclo na visao Ciclo,
-    // ou os seletores De/Ate na visao Comparar — nunca os dois, mas sempre no MESMO
-    // container, pra trocar de visao nao mexer na posicao/altura do cabecalho.
-    el('navCiclo').hidden = visao != 'c';
-    el('navComparar').hidden = visao != 'k';
-    if (visao == 'c') atualizaNavegadorCiclo();
-    // ao entrar em Comparar sem De/Ate escolhidos ainda, pre-preenche com o ciclo ATUAL
-    // (o que contem hoje) e o PROXIMO — assim a matriz ja aparece de cara, sem precisar
-    // escolher os dois manualmente toda vez que troca de visao
-    if (visao == 'k' && !el('compDe').value && !el('compAte').value && Estado.idxHoje >= 0) {
-        const proximo = Estado.usados.find(idx => idx > Estado.idxHoje);
+    el('fciclo').hidden = true;   // #ciclo e' so' a fonte de verdade interna que vCiclo() le, nunca aparece
+
+    // ao nao ter De/Ate escolhidos ainda (1a carga), pre-preenche com o ciclo ATUAL nos
+    // dois — abre direto no modo blocos do mes corrente (De=Ate=atual), igual o botao
+    // "Atual" faz e igual a visao Ciclo antiga sempre abria
+    if (!el('compDe').value && !el('compAte').value && Estado.idxHoje >= 0) {
         el('compDe').value = Estado.idxHoje;
-        el('compAte').value = proximo ?? Estado.idxHoje;
+        el('compAte').value = Estado.idxHoje;
     }
+
+    // "modo blocos" (De==Ate, De=Backlog, ou modo simples — mobile/Isabella sempre
+    // navegam ciclo a ciclo) delega a tela pra vCiclo() (via vComp()); fora disso e'
+    // "modo matriz". So' existe esse UM criterio — a antiga visao "Ciclo"/"Comparar"
+    // separada foi removida, unificada dentro do fluxo Comparar (De==Ate cobre
+    // exatamente o que a visao Ciclo cobria), e o navegador ‹›Atual tambem saiu — De/Ate
+    // ficam sempre visiveis, e Backlog e' so' mais uma opcao do De.
+    if (simples && el('compDe').value !== el('compAte').value) {
+        // simples troca pro ciclo ATUAL (nunca deixa De != Ate escapar pro modo simples)
+        const idx = Estado.idxHoje >= 0 ? Estado.idxHoje : 0;
+        el('compDe').value = idx; el('compAte').value = idx;
+    }
+    const ehBacklog = el('compDe').value == '-1';
+    const modoBlocos = ehBacklog || (!!el('compDe').value && el('compDe').value == el('compAte').value);
+    // Backlog nao compara com outro periodo — o Ate fica desabilitado e ignorado
+    // enquanto o De for Backlog (nao da' pra escolher um Ate junto com Backlog).
+    el('compAte').disabled = ehBacklog;
+    if (modoBlocos) el('ciclo').value = ehBacklog ? -1 : el('compDe').value;   // vCiclo() le o combo interno
+
+    // Origem so faz sentido comparando a matriz de verdade (2+ periodos) — some de
+    // verdade (hidden) fora do fluxo, sem deixar buraco reservado, mas com um fade suave
+    // em vez de corte seco.
+    mostraComFade('forigem', !modoBlocos && !simples);
+    if (modoBlocos) el('origem').value = 'A';
+    el('ftit').hidden = simples;
     if (simples) {
-        el('fsit').hidden = el('fativoWrap').hidden = el('fvisao').hidden = true;
+        el('fsit').hidden = el('fativoWrap').hidden = true;
         el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
     }
-    const noBacklog = visao == 'c' && +el('ciclo').value < 0;
+    const noBacklog = modoBlocos && +el('ciclo').value < 0;
     if (!simples) el('fativo').value = noBacklog ? 'B' : 'S';
-    if (visao != 'k') el('origem').value = 'A';
+    if (!modoBlocos) el('origem').value = 'A';
 
-    // "Ver gráfico" so faz sentido na visao Ciclo, com um ciclo de verdade selecionado
-    // (fora do Backlog, que nao tem periodo pra desenhar a pizza)
-    mostraComFade('fgraf', visao == 'c' && !simples && !noBacklog);
+    // "Ver gráfico" so faz sentido com um ciclo de verdade selecionado (fora do Backlog,
+    // que nao tem periodo pra desenhar a pizza).
+    mostraComFade('fgraf', modoBlocos && !simples && !noBacklog);
     el('btGrafico').dataset.idx = el('ciclo').value;
-    mostraComFade('fevol', visao == 'k' && !simples && !!el('compDe').value && !!el('compAte').value);
+    mostraComFade('fevol', !modoBlocos && !simples && !!el('compDe').value && !!el('compAte').value);
 
-    // fade suave SO quando a visao mudou de verdade (Ciclo <-> Comparar) — nao em todo
-    // redesenho (ex: digitar num filtro de texto), senao a tela piscaria a cada tecla
-    const trocouVisao = Estado._ultimaVisao != null && Estado._ultimaVisao != visao;
-    Estado._ultimaVisao = visao;
-    el('out').innerHTML = visao == 'c' ? vCiclo() : vComp();
+    // fade suave SO' quando muda de modo (blocos <-> matriz) — nao em todo redesenho
+    // (ex: digitar num filtro de texto), senao a tela piscaria a cada tecla
+    const trocouModo = Estado._modoBlocosAnterior != null && Estado._modoBlocosAnterior != modoBlocos;
+    Estado._modoBlocosAnterior = modoBlocos;
+    // #out.innerHTML e' reescrito do zero a cada desenhar() (ex: a cada linha marcada
+    // no shift-click) — sem isso, o scroll INTERNO de cada tabela (.wx/.wrap tem
+    // overflow:auto proprio) e' perdido a cada redesenho, dando a impressao de que a
+    // tabela "reseta" a visao no meio de um shift-click. Guarda a posicao de cada
+    // container rolavel (por indice — o mesmo modo gera os mesmos blocos, na mesma
+    // ordem, entre um redesenho e outro) e restaura depois, exceto ao trocar de modo
+    // de verdade (blocos <-> matriz), onde nao ha posicao antiga que faca sentido.
+    const scrollsAntigos = [...el('out').querySelectorAll('.wx, .wrap')].map(e => [e.scrollTop, e.scrollLeft]);
+    el('out').innerHTML = modoBlocos ? vCiclo() : vComp();
+    if (!trocouModo) {
+        [...el('out').querySelectorAll('.wx, .wrap')].forEach((e, i) => {
+            if (!scrollsAntigos[i]) return;
+            [e.scrollTop, e.scrollLeft] = scrollsAntigos[i];
+        });
+    }
     // "Somente Diferentes" so faz sentido comparando EXATAMENTE 2 periodos — vComp()
     // deixa a informacao pronta em Estado._comparacao2Periodos como efeito colateral,
     // porque so' ali se sabe quantos periodos a matriz de fato usou.
-    mostraComFade('fdif', visao == 'k' && !simples && !!Estado._comparacao2Periodos);
-    if (trocouVisao) {
+    mostraComFade('fdif', !modoBlocos && !simples && !!Estado._comparacao2Periodos);
+    if (trocouModo) {
         el('out').classList.remove('fadeIn');
         void el('out').offsetWidth;   // forca reflow pra reiniciar a animacao mesmo se ja rodou antes
         el('out').classList.add('fadeIn');
     }
-    if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
+    // limpa a selecao SO' na troca de modo (blocos <-> matriz) — as chaves de selecao de
+    // um lado nao existem no outro (linhas reais do Ciclo vs categorias "cp:" do Comparar),
+    // mas dentro do MESMO modo a selecao tem que sobreviver a redesenhos normais (trocar
+    // filtro, digitar em busca, etc), senao a barra de soma nunca fica de pe' no Comparar.
+    if (trocouModo) Estado.selecionados.clear();
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
     if (typeof reposicionaSegCtls == 'function') reposicionaSegCtls();
+    if (typeof atualizaBtCicloHoje == 'function') atualizaBtCicloHoje();
     console.timeEnd('[diag] desenhar');
 }
 
@@ -1123,17 +1258,24 @@ function atualizaBarraSelecao() {
     if (!Estado.selecionados.size) { el('selbar').style.display = 'none'; return; }
 
     const chaves = [...Estado.selecionados.keys()];
-    const chaveUnica = chaves.length == 1 && !chaves[0].startsWith('fat:') ? chaves[0] : null;
+    // linhas sinteticas (fatura do Ciclo "fat:" ou categoria da matriz Comparar "cp:") nao
+    // sao lancamentos reais — nao tem o que duplicar, entao ficam fora de chaveUnica
+    // (mostrar nome+valor sozinho continua fazendo sentido, so' sem o botao Duplicar).
+    const ehSintetica = c => c.startsWith('fat:') || c.startsWith('cp:');
+    const chaveUnica = chaves.length == 1 ? chaves[0] : null;
+    const chaveUnicaReal = chaveUnica && !ehSintetica(chaveUnica) ? chaveUnica : null;
 
-    if (modoSimples() && !chaveUnica) { el('selbar').style.display = 'none'; return; }
-
-    // uma linha real: a barra e' so pra duplicar. Varias: e' pra somar e selecionar/limpar.
-    // Nunca os dois juntos — pra desmarcar uma linha unica, basta clicar nela de novo.
-    el('seldup').hidden = !chaveUnica;
-    el('selacao').hidden = !!chaveUnica || modoSimples();
+    // uma linha real: a barra e' so pra duplicar. Varias (ou uma sintetica sozinha): e'
+    // pra somar e selecionar/limpar. Nunca os dois juntos — pra desmarcar uma linha unica,
+    // basta clicar nela de novo. Selecao multipla + soma funciona igual em qualquer
+    // tela/perfil (mobile e Isabella inclusive) — nao depende mais de modoSimples().
+    el('seldup').hidden = !chaveUnicaReal;
+    el('selacao').hidden = !!chaveUnicaReal;
 
     if (chaveUnica) {
-        const r = Estado.lancamentos.find(x => String(x.id) == chaveUnica);
+        const r = chaveUnica.startsWith('cp:')
+            ? (Estado.linhasVisiveis['cp'] || []).find(x => chaveSelecao(x) === chaveUnica)
+            : Estado.lancamentos.find(x => String(x.id) == chaveUnica);
         el('selinfo').innerHTML =
             `<span class=cnt>Selecionado</span>` +
             `<span class="val ${corValor(r?.v || 0)}">${escapeHtml(r?.nome ?? '')}</span>`;
@@ -1170,9 +1312,6 @@ function valorDaChave(chave) {
 function alternarSelecao(chave) {
     if (!chave) return;
     const jaEstava = Estado.selecionados.has(chave);
-    // no modo simples a selecao serve so pra duplicar, entao e' exclusiva: escolher
-    // outra linha troca, nunca acumula (somar varias linhas nao existe aqui).
-    if (modoSimples()) Estado.selecionados.clear();
     if (jaEstava) Estado.selecionados.delete(chave);
     else Estado.selecionados.set(chave, valorDaChave(chave));
     Estado.ultimaClicada = chave;
@@ -1213,7 +1352,7 @@ el('out').addEventListener('click', e => {
     const linha = e.target.closest('tr[data-sid]');
     if (!linha || !linha.dataset.sid || e.target.closest('th')) return;
     if (e.shiftKey) { const s = getSelection(); if (s) s.removeAllRanges(); }   // limpa a selecao de texto nativa do shift-click
-    if (e.shiftKey && !modoSimples() && Estado.ultimaClicada) {
+    if (e.shiftKey && !isMobile() && Estado.ultimaClicada) {
         const idTabela = Object.keys(Estado.linhasVisiveis)
             .find(id => (Estado.linhasVisiveis[id] || []).some(r => chaveSelecao(r) === linha.dataset.sid));
         if (idTabela) { selecionarIntervalo(idTabela, linha.dataset.sid); return; }
@@ -1222,48 +1361,41 @@ el('out').addEventListener('click', e => {
 });
 el('selacao').onclick = () => { Estado.selecionados.clear(); desenhar(); };
 el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
-
-// Alcance da navegacao: a Isabella fica presa aos tres ciclos em volta de hoje
-// (anterior, atual, proximo); voce anda por todos os periodos, e o -1 e' o Backlog,
-// que fica antes do primeiro ciclo.
-function limitesNavegacao() {
-    if (Estado.restrito) return { min: Estado.idxHoje - 1, max: Estado.idxHoje + 1 };
-    return { min: -1, max: Estado.periodos.length - 1 };
-}
-
-function atualizaNavegadorCiclo() {
-    const idxAtual = +el('ciclo').value;
-    const { min, max } = limitesNavegacao();
-    el('nomeCicloNav').textContent = idxAtual >= 0 && Estado.periodos[idxAtual]
-        ? nomePeriodo(Estado.periodos[idxAtual].fat) : 'Backlog';
-    el('cicloAnterior').disabled = idxAtual <= min || Estado.idxHoje < 0;
-    el('cicloProximo').disabled = idxAtual >= max || Estado.idxHoje < 0;
-    el('cicloHoje').disabled = Estado.idxHoje < 0 || idxAtual === Estado.idxHoje;
-}
-
-function navegaCiclo(direcao) {
-    const novoIdx = +el('ciclo').value + direcao;
-    const { min, max } = limitesNavegacao();
-    if (Estado.idxHoje < 0 || novoIdx < min || novoIdx > max) return;
-    if (novoIdx >= 0 && !Estado.periodos[novoIdx]) return;
-    el('ciclo').value = novoIdx;
-    Estado.selecionados.clear();
-    desenhar();
-}
-el('cicloAnterior').onclick = () => navegaCiclo(-1);
-el('cicloProximo').onclick = () => navegaCiclo(1);
-
-// volta pro ciclo que contem a data de hoje. Fica desabilitado quando voce ja esta
-// nele (ou quando hoje nao cai em periodo nenhum).
-el('cicloHoje').onclick = () => {
-    if (Estado.idxHoje < 0) return;
-    el('ciclo').value = Estado.idxHoje;
-    Estado.selecionados.clear();
-    desenhar();
-};
+// trocar De/Ate refaz a matriz do zero (outras categorias/periodos podem entrar ou sair)
+// — limpa a selecao pelo mesmo motivo que trocar o combo Ciclo limpa, acima.
+// Intervalo invertido (De > Ate) nao faz sentido: o campo que o usuario ACABOU de
+// escolher "ganha", empurrando o outro pra igualar ele — mexeu no De e ficou maior que
+// o Ate? o Ate sobe junto. Mexeu no Ate e ficou menor que o De? o De desce junto.
+el('compDe').addEventListener('change', () => {
+    if (el('compDe').value && el('compDe').value != '-1' && el('compAte').value
+        && +el('compDe').value > +el('compAte').value) {
+        el('compAte').value = el('compDe').value;
+    }
+    Estado.selecionados.clear(); atualizaBarraSelecao();
+});
+el('compAte').addEventListener('change', () => {
+    if (el('compDe').value && el('compDe').value != '-1' && el('compAte').value
+        && +el('compAte').value < +el('compDe').value) {
+        el('compDe').value = el('compAte').value;
+    }
+    Estado.selecionados.clear(); atualizaBarraSelecao();
+});
 
 el('btGrafico').onclick = () => abrirGraficoGastos(+el('btGrafico').dataset.idx);
 el('btEvolucao').onclick = () => abrirGraficoEvolucao(+el('compDe').value, +el('compAte').value);
+
+// volta pro ciclo atual (De=Ate=hoje) — mesmo padrao com que a pagina abre. Fica
+// desabilitado quando hoje nao cai em periodo nenhum.
+function atualizaBtCicloHoje() {
+    el('cicloHoje').disabled = Estado.idxHoje < 0;
+}
+el('cicloHoje').onclick = () => {
+    if (Estado.idxHoje < 0) return;
+    el('compDe').value = Estado.idxHoje;
+    el('compAte').value = Estado.idxHoje;
+    Estado.selecionados.clear();
+    desenhar();
+};
 
 // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
 // >>> LOG TEMP: try/catch aqui so pra diagnostico — sem isso, um erro no desenhar()
@@ -1360,14 +1492,14 @@ function ligaSegCtl(idSelect, idSeg) {
     seg._posiciona = posicionaThumb;   // exposto pra recalcular quando o container reaparece (estava hidden)
     posicionaThumb();
 }
-['visao', 'somenteDif'].forEach(id => ligaSegCtl(id, 'seg' + capitaliza(id)));
+['somenteDif'].forEach(id => ligaSegCtl(id, 'seg' + capitaliza(id)));
 
-// o select fica hidden quando o modo simples esconde o filtro de visao — reposiciona
-// o thumb (chamado no fim de desenhar(), depois que os hidden ja foram decididos),
-// cobrindo o caso de o container acabar de reaparecer na tela (offsetLeft/offsetWidth
-// so' sao corretos com o elemento visivel)
+// o select fica hidden quando o filtro nao se aplica — reposiciona o thumb (chamado no
+// fim de desenhar(), depois que os hidden ja foram decididos), cobrindo o caso de o
+// container acabar de reaparecer na tela (offsetLeft/offsetWidth so' sao corretos com
+// o elemento visivel)
 function reposicionaSegCtls() {
-    ['segVisao', 'segSomenteDif'].forEach(id => {
+    ['segSomenteDif'].forEach(id => {
         const s = el(id);
         if (s && !s.closest('[hidden]') && s._posiciona) s._posiciona();
     });
@@ -1417,6 +1549,62 @@ function dadosDoGraficoCiclo(idxPeriodo) {
     });
     return { periodo, renda, porCategoria };
 }
+
+// clique numa celula da matriz Comparar (categoria x periodo): abre o detalhamento dos
+// lancamentos individuais (nome + valor) que somam aquele total. Estado._detalheComparar.
+// matriz e' preenchido em vComp() a cada redesenho; Estado._detalheAtual guarda as linhas
+// e a ordenacao ativa do modal aberto, pra sortDetalheCel() poder reordenar sem reabrir.
+window.abrirDetalheCelComparar = (categoria, periodoIdx) => {
+    const info = Estado._detalheComparar;
+    if (!info) return;
+    const linhas = info.matriz[categoria + '||' + periodoIdx] || [];
+
+    Estado._detalheAtual = { categoria, periodoIdx, linhas, ord: { k: 'data', d: 2 } };   // padrao: mais recente primeiro
+    renderizaDetalheCel();
+    el('modalDetalheCel').showModal();
+};
+
+// redesenha a mini-tabela do modal de detalhamento com a ordenacao atual de Estado._detalheAtual.ord
+function renderizaDetalheCel() {
+    const info = Estado._detalheAtual;
+    if (!info) return;
+    const { categoria, periodoIdx, linhas, ord } = info;
+    const periodo = Estado.periodos[periodoIdx];
+
+    el('tituloDetalheCel').textContent = categoria;
+    el('subDetalheCel').textContent =
+        `${nomePeriodo(periodo.fat)} · ${linhas.length} ${linhas.length == 1 ? 'lançamento' : 'lançamentos'}`;
+
+    const seta = k => ord.k == k ? (ord.d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
+    const valorOrd = { data: r => timestamp(r.data), nome: r => semAcento(r.nome ?? ''), valor: r => r.v };
+    const ordenadas = [...linhas].sort((a, b) => {
+        const A = valorOrd[ord.k](a), B = valorOrd[ord.k](b);
+        const cmp = typeof A == 'string' ? A.localeCompare(B, 'pt') : A - B;
+        return ord.d == 1 ? cmp : -cmp;
+    });
+
+    const total = linhas.reduce((s, r) => s + r.v, 0);
+    el('corpoDetalheCel').innerHTML =
+        `<table><thead><tr>` +
+        `<th onclick="sortDetalheCel('data')">Data${seta('data')}` +
+        `<th onclick="sortDetalheCel('nome')">Nome${seta('nome')}` +
+        `<th class=n onclick="sortDetalheCel('valor')">Valor${seta('valor')}` +
+        `</thead><tbody>` +
+        ordenadas.map(r => `<tr><td>${r.data ? dataBR(r.data) : '—'}<td>${escapeHtml(r.nome ?? '')}${celValor(r.v)}`).join('') +
+        `<tr class=tot><td colspan=2>Total${celSoma(total)}</tbody></table>`;
+}
+
+// clique no header da mini-tabela do modal: mesma logica de sortComp (1o clique ordena
+// desc — mais relevante primeiro — clique de novo alterna asc/desc)
+window.sortDetalheCel = k => {
+    const ord = Estado._detalheAtual.ord;
+    if (ord.k != k) { ord.k = k; ord.d = 2; }
+    else ord.d = ord.d == 1 ? 2 : 1;
+    renderizaDetalheCel();
+};
+
+el('fechaDetalheCel').onclick = () => el('modalDetalheCel').close();
+el('modalDetalheCel').addEventListener('click', e => { if (e.target == el('modalDetalheCel')) el('modalDetalheCel').close(); });
 
 window.abrirGraficoGastos = idxPeriodo => {
     const { periodo, renda, porCategoria } = dadosDoGraficoCiclo(idxPeriodo);
@@ -1732,6 +1920,7 @@ function calcInsere(texto) {
     const ini = calcInput.selectionStart ?? calcInput.value.length;
     const fim = calcInput.selectionEnd ?? calcInput.value.length;
     calcInput.setRangeText(texto, ini, fim, 'end');
+    calcFormataMilharAoRedorDoCursor();
     calcRenderiza();
 }
 function calcApaga() {
@@ -1739,7 +1928,45 @@ function calcApaga() {
     const fim = calcInput.selectionEnd ?? calcInput.value.length;
     if (ini == fim) { if (ini == 0) return; calcInput.setRangeText('', ini - 1, ini, 'end'); }
     else calcInput.setRangeText('', ini, fim, 'end');
+    calcFormataMilharAoRedorDoCursor();
     calcRenderiza();
+}
+
+// re-formata SO' o numero onde o cursor esta (nunca a expressao inteira) com ponto de
+// milhar automatico na parte inteira — ex: digitar 1234567 vira "1.234.567" sozinho — e
+// so' poe virgula decimal quando o proprio usuario digita ela (nunca insere sozinha).
+// O numero e' o trecho contiguo de digitos/pontos/virgula ao redor do cursor, delimitado
+// por operador, parenteses ou borda da string (os outros numeros da expressao ficam
+// intocados). O cursor e' reposicionado contando quantos DIGITOS reais (sem os pontos de
+// milhar, que sao so' formatacao) havia antes dele, pra nao pular de lugar ao digitar.
+function calcFormataMilharAoRedorDoCursor() {
+    const valor = calcInput.value;
+    const pos = calcInput.selectionStart ?? valor.length;
+    const delimitador = /[+\-×÷()]/;
+
+    let ini = pos; while (ini > 0 && !delimitador.test(valor[ini - 1])) ini--;
+    let fim = pos; while (fim < valor.length && !delimitador.test(valor[fim])) fim++;
+
+    const numero = valor.slice(ini, fim);
+    if (!/\d/.test(numero)) return;   // nada de numero aqui (ex: cursor logo apos um operador)
+
+    // quantos digitos reais (sem pontos de milhar) ficam antes do cursor, dentro do numero
+    const digitosAntes = numero.slice(0, pos - ini).replace(/\./g, '').length;
+
+    const [parteInteira, ...resto] = numero.split(',');
+    const inteiraFormatada = parteInteira.replace(/\./g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const numeroFormatado = inteiraFormatada + (resto.length ? ',' + resto.join(',') : '');
+
+    calcInput.value = valor.slice(0, ini) + numeroFormatado + valor.slice(fim);
+
+    // recoloca o cursor apos os mesmos N digitos reais de antes, contando os pontos
+    // de milhar que agora existem no caminho (eles nao contam como "digito andado")
+    let novoPos = ini, digitosVistos = 0;
+    while (digitosVistos < digitosAntes && novoPos < ini + numeroFormatado.length) {
+        if (/\d/.test(calcInput.value[novoPos])) digitosVistos++;
+        novoPos++;
+    }
+    calcInput.setSelectionRange(novoPos, novoPos);
 }
 
 // mostra, numa linha abaixo, o resultado parcial em tempo real (so quando a expressao
@@ -1768,9 +1995,11 @@ function calcTokeniza(expr) {
 // expressao ou vier antes de um operador/fecha-parenteses, e' percentual do numero
 // anterior sozinho (ex: 50%+10 = 0,5+10). Precisao de ponto flutuante corrigida no final.
 function calcAvalia(expr) {
-    // visor usa os simbolos matematicos de verdade (× ÷) e virgula decimal — a avaliacao
-    // interna usa os operadores JS (* /) e ponto
-    const tokens = calcTokeniza(expr.replace(/,/g, '.').replace(/×/g, '*').replace(/÷/g, '/'));
+    // visor usa os simbolos matematicos de verdade (× ÷), ponto de milhar automatico
+    // e virgula decimal — a avaliacao interna usa os operadores JS (* /) e ponto decimal.
+    // ORDEM IMPORTA: primeiro tira os pontos de MILHAR (senao "1.234,56" viraria
+    // "1.234.56" depois de trocar a virgula por ponto), so' depois troca ',' por '.'.
+    const tokens = calcTokeniza(expr.replace(/(\d)\.(?=\d{3}(\D|$))/g, '$1').replace(/,/g, '.').replace(/×/g, '*').replace(/÷/g, '/'));
     if (!tokens.length) return null;
 
     const precedencia = { '+': 1, '-': 1, '*': 2, '/': 2 };

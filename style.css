@@ -1,1 +1,1404 @@
+  :root {
+      --bg: #111315;
+      --pa: #1A1D20;
+      --fg: #F1F3F4;
+      --mu: #9CA3AA;
+      --ln: #30353A;
 
+      --vd: #4CCB78;
+      --vm: #F06A61;
+
+      --bg-soft: #16191C;
+      --field: #202428;
+      --field-hover: #262B30;
+      --line-strong: #3A4046;
+
+      --green-soft: #183023;
+      --green-hover: #1D3929;
+
+      --red-soft: #351E1D;
+      --red-hover: #412321;
+
+      --orange-soft: #33291F;
+
+      --shadow: rgba(0, 0, 0, .42);
+  }
+
+  * {
+      box-sizing: border-box;
+  }
+
+  [hidden] {
+      display: none !important;
+  }
+
+  html {
+      color-scheme: dark;
+  }
+
+  body {
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      padding: 2rem 1.4rem 7rem;
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  /* =========================================================
+       CABEÇALHO
+       ========================================================= */
+
+  h1 {
+      font: 700 1.35rem/1 inherit;
+      letter-spacing: -.02em;
+      margin: 0;
+      cursor: pointer;
+      display: inline-block;
+  }
+
+  .head {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      margin: 0 0 1.8rem;
+  }
+
+  .head .sub {
+      margin: 0;
+      flex: 1;
+      font-size: .85rem;
+      color: var(--mu);
+      font-style: italic;
+  }
+
+  .head .sub b {
+      font-style: normal;
+      color: var(--fg);
+  }
+
+  h1 .tt {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+  }
+
+  h1 .ic {
+      text-decoration: none;
+  }
+
+  h1:hover .tt {
+      color: var(--mu);
+  }
+
+  .sub {
+      font-size: .85rem;
+      color: var(--mu);
+      font-style: italic;
+      margin: 0 0 1.8rem;
+  }
+
+  .sub a {
+      color: var(--fg);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+  }
+
+  /* =========================================================
+       BOTÕES DO CABEÇALHO
+       ========================================================= */
+
+  #sair {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      color: var(--mu);
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+  }
+
+  #sair:hover {
+      color: var(--vm);
+      border-color: var(--vm);
+      background: var(--red-soft);
+  }
+
+  #recarregar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      color: var(--mu);
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+  }
+
+  #recarregar:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+      background: var(--field-hover);
+  }
+
+  #recarregar.carregando svg {
+      animation: girar 0.8s linear infinite;
+  }
+
+  @keyframes girar {
+      from {
+          transform: rotate(0deg);
+      }
+
+      to {
+          transform: rotate(360deg);
+      }
+  }
+
+
+  #abreNovo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      margin-left: auto;
+      color: #111315;
+      background: var(--fg);
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+  }
+
+  #abreNovo:hover {
+      background: #FFFFFF;
+      opacity: 1;
+  }
+
+  /* =========================================================
+       FOCO
+       ========================================================= */
+
+  :focus-visible {
+      outline: 2px solid #7BCF99;
+      outline-offset: 2px;
+  }
+
+  /* =========================================================
+       FILTROS / TOOLBAR
+       ========================================================= */
+
+  .tool {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--ln);
+  }
+
+  .row {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+  }
+
+  .f {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+  }
+
+  .f>span {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--mu);
+  }
+
+  select {
+      font: inherit;
+      color: var(--fg);
+      background-color: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      padding: .42rem 1.9rem .42rem .7rem;
+      cursor: pointer;
+      appearance: none;
+
+      background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+
+      background-repeat: no-repeat;
+      background-position: right .7rem center;
+  }
+
+  select:hover {
+      background-color: var(--field-hover);
+      border-color: var(--line-strong);
+  }
+
+  select option {
+      background: var(--field);
+      color: var(--fg);
+  }
+
+  .multiSel {
+      position: relative;
+  }
+
+  .multiSelBtn {
+      font: inherit;
+      color: var(--fg);
+      background-color: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      padding: .42rem 1.9rem .42rem .7rem;
+      cursor: pointer;
+      text-align: left;
+      min-width: 11rem;
+      max-width: 16rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      appearance: none;
+
+      background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+
+      background-repeat: no-repeat;
+      background-position: right .7rem center;
+  }
+
+  .multiSelBtn:hover {
+      background-color: var(--field-hover);
+      border-color: var(--line-strong);
+  }
+
+  .multiSelDrop {
+      display: none;
+      position: absolute;
+      top: calc(100% + .3rem);
+      left: 0;
+      z-index: 25;
+
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+      box-shadow: 0 12px 35px var(--shadow);
+
+      padding: .4rem;
+      min-width: 14rem;
+      max-height: 16rem;
+      overflow-y: auto;
+  }
+
+  .multiSelDrop.open {
+      display: block;
+  }
+
+  .multiSelDrop label {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .35rem .5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .9rem;
+  }
+
+  .multiSelDrop label:hover {
+      background: var(--bg-soft);
+  }
+
+  .multiSelDrop input {
+      width: 1rem;
+      height: 1rem;
+      accent-color: #6FCB8F;
+  }
+
+  .chk {
+      display: flex;
+      gap: 1.1rem;
+      align-items: center;
+      height: 2.1rem;
+  }
+
+  .chk label {
+      display: flex;
+      gap: .4rem;
+      align-items: center;
+      font-size: .92rem;
+      cursor: pointer;
+  }
+
+  /* =========================================================
+       BLOCOS
+       ========================================================= */
+
+  .blk {
+      margin: 0 0 1.8rem;
+  }
+
+  .blk h3 {
+      font: 700 1.05rem/1.3 inherit;
+      margin: 0;
+      color: var(--fg);
+  }
+
+  .blk h3 b {
+      font-weight: 700;
+  }
+
+  .blk .meta {
+      font-size: .85rem;
+      color: var(--mu);
+      font-style: italic;
+      margin: .1rem 0 .6rem;
+  }
+
+  .empty {
+      color: var(--mu);
+      font-style: italic;
+      font-size: .9rem;
+      padding: .8rem;
+  }
+
+  /* =========================================================
+       BOTÕES SECUNDÁRIOS
+       ========================================================= */
+
+  .selTudoBt,
+  .verGraficoBt {
+      font: 400 .78rem/1 inherit;
+      vertical-align: middle;
+      color: var(--mu);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 7px;
+      padding: .25rem .55rem;
+      cursor: pointer;
+      margin-left: .3rem;
+  }
+
+  .selTudoBt:hover,
+  .verGraficoBt:hover {
+      color: var(--fg);
+      background: var(--field-hover);
+      border-color: var(--fg);
+  }
+
+  /* =========================================================
+       TABELAS
+       ========================================================= */
+
+  .wrap {
+      background: var(--pa);
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+  }
+
+  .wx {
+      overflow: auto;
+      max-height: 78vh;
+  }
+
+  table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      background: var(--pa);
+  }
+
+  th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+
+      background: #1D2024;
+      color: var(--mu);
+
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      text-align: left;
+
+      padding: .55rem .7rem;
+      border-bottom: 1px solid var(--ln);
+
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+  }
+
+  th:hover {
+      color: var(--fg);
+      background: #22262A;
+  }
+
+  thead tr.filtros th {
+      position: sticky;
+      top: 1.9rem;
+      z-index: 1;
+      background: #1A1D20;
+      padding: .25rem .5rem .45rem;
+      border-bottom: 1px solid var(--ln);
+      cursor: default;
+  }
+
+  thead tr.filtros input {
+      width: 100%;
+      font: 12px/1.3 inherit;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: normal;
+
+      color: var(--fg);
+      background: var(--field);
+
+      border: 1px solid var(--ln);
+      border-radius: 6px;
+      padding: .2rem .4rem;
+  }
+
+  thead tr.filtros input:focus {
+      border-color: #68727A;
+      background: #24292E;
+      outline: none;
+  }
+
+  thead tr.filtros input::placeholder {
+      color: #737B82;
+  }
+
+  th .ar {
+      color: var(--fg);
+      font-style: normal;
+  }
+
+  td {
+      padding: .5rem .7rem;
+      border-bottom: 1px solid var(--ln);
+      color: var(--fg);
+  }
+
+  tbody tr:last-child td {
+      border-bottom: 0;
+  }
+
+  tbody tr:hover td {
+      background: #202428;
+  }
+
+  .wrap {
+      -webkit-overflow-scrolling: touch;
+  }
+
+  .n {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+  }
+
+  /* =========================================================
+       CORES DE VALORES
+       ========================================================= */
+
+  .vd {
+      color: var(--vd);
+      font-weight: 600;
+  }
+
+  .vm {
+      color: var(--vm);
+      font-weight: 600;
+  }
+
+  /* =========================================================
+       LINHA DE FATURA
+       ========================================================= */
+
+  tbody tr.fat td {
+      background: var(--red-soft);
+  }
+
+  tbody tr.fat:hover td {
+      background: var(--red-hover);
+  }
+
+  /* =========================================================
+       TOTAL
+       ========================================================= */
+
+  .tot td {
+      font-weight: 700;
+      border-top: 1px solid var(--line-strong);
+      border-bottom: 0;
+      background: #202428;
+  }
+
+  .tot td:first-child {
+      border-radius: 0 0 0 10px;
+  }
+
+  .tot td:last-child {
+      border-radius: 0 0 10px 0;
+  }
+
+  /* =========================================================
+       SELEÇÃO DE LINHAS
+       ========================================================= */
+
+  tbody tr.pick {
+      cursor: pointer;
+  }
+
+  tbody tr.on td {
+      background: var(--green-soft);
+  }
+
+  tbody tr.on:hover td {
+      background: var(--green-hover);
+  }
+
+  /* =========================================================
+       PRIMEIRA COLUNA FIXA
+       ========================================================= */
+
+  .wx td.c1,
+  .wx th.c1 {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--pa);
+  }
+
+  .wx th.c1 {
+      background: #1D2024;
+  }
+
+  .wx thead th.c1 {
+      z-index: 3;
+  }
+
+  .wx tbody tr:hover td.c1 {
+      background: #202428;
+  }
+
+  .wx tbody tr.on td.c1 {
+      background: var(--green-soft);
+  }
+
+  .wx tbody tr.on:hover td.c1 {
+      background: var(--green-hover);
+  }
+
+  .wx tr.tot td.c1 {
+      background: #202428;
+  }
+
+  .wx td.c1 {
+      border-right: 1px solid var(--ln);
+  }
+
+  /* =========================================================
+       RESUMO
+       ========================================================= */
+
+  .sumr {
+      margin: .5rem 0 0;
+      font-size: .9rem;
+  }
+
+  .sumr div {
+      display: flex;
+      justify-content: space-between;
+      padding: .3rem .1rem;
+      border-bottom: 1px solid var(--ln);
+  }
+
+  .sumr div:last-child {
+      border-bottom: 0;
+      font-weight: 700;
+      border-top: 2px solid var(--fg);
+      padding-top: .4rem;
+  }
+
+  .sumr span:last-child {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+  }
+
+  /* =========================================================
+       LOGIN
+       ========================================================= */
+
+  #login {
+      max-width: 19rem;
+      margin: 16vh auto 0;
+      display: none;
+      flex-direction: column;
+      gap: .7rem;
+  }
+
+  #login h1 {
+      cursor: default;
+  }
+
+  #login h1 .tt {
+      text-decoration: none;
+  }
+
+  #login input {
+      font: inherit;
+      color: var(--fg);
+      padding: .55rem .7rem;
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      background: var(--field);
+  }
+
+  #login input::placeholder {
+      color: #747C83;
+  }
+
+  #login input:focus {
+      border-color: #68727A;
+      background: #24292E;
+      outline: none;
+  }
+
+  #login button {
+      font: inherit;
+      color: #111315;
+      background: var(--fg);
+      border: 0;
+      border-radius: 9px;
+      padding: .6rem;
+      cursor: pointer;
+  }
+
+  #login button:hover {
+      background: #FFFFFF;
+  }
+
+  #login .err {
+      color: var(--vm);
+      font-size: .85rem;
+      min-height: 1.1rem;
+  }
+
+  #login .out {
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      font-size: .8rem;
+      color: var(--mu);
+  }
+
+  #app {
+      display: none;
+  }
+
+  /* =========================================================
+       BARRA DE SELEÇÃO
+       ========================================================= */
+
+  #selbar {
+      position: fixed;
+      right: 1.6rem;
+      bottom: 1.6rem;
+
+      display: none;
+      align-items: center;
+      gap: 1.4rem;
+
+      background: rgba(32, 36, 40, .45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      color: var(--fg);
+
+      padding: .9rem 1.3rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .45);
+      z-index: 20;
+  }
+
+  #selbar .info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+  }
+
+  #selbar .cnt {
+      font-size: .78rem;
+      color: var(--mu);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+  }
+
+  #selbar .val {
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+  }
+
+  #selbar button {
+      font: inherit;
+      color: #111315;
+      background: var(--fg);
+      border: 0;
+      border-radius: 9px;
+      padding: .5rem .9rem;
+      cursor: pointer;
+  }
+
+  #selbar button:hover {
+      background: #FFFFFF;
+  }
+
+  #selbar #seldup {
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--line-strong);
+  }
+
+  #selbar #seldup:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
+  }
+
+  /* =========================================================
+       NAVEGAÇÃO DE CICLOS
+       ========================================================= */
+
+  #fciclNav {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: .8rem;
+
+      margin: 0 0 1.2rem;
+      padding: .3rem 0;
+      width: fit-content;
+  }
+
+  #nomeCicloNav {
+      font: 700 1.05rem/1 inherit;
+      min-width: 9.5rem;
+      display: inline-block;
+  }
+
+  .cicloNav {
+      display: flex;
+      gap: .4rem;
+  }
+
+  .cicloNav button {
+      width: 2.2rem;
+      height: 2.2rem;
+      font-size: 1.2rem;
+      line-height: 1;
+
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+  }
+
+  .cicloNav button:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
+  }
+
+  .cicloNav button:disabled {
+      opacity: .3;
+      cursor: default;
+  }
+
+  .cicloNav .btHoje {
+      width: auto;
+      padding: 0 .8rem;
+      font-size: .85rem;
+  }
+
+  /* =========================================================
+       MODAL — NOVO LANÇAMENTO
+       ========================================================= */
+
+  dialog#modalNovo,
+  dialog#modalGrafico,
+  dialog#modalComparativo {
+      color: var(--fg);
+      background: var(--pa);
+      border: 1px solid var(--ln);
+  }
+
+  dialog#modalNovo {
+      border: 1px solid var(--ln);
+      border-radius: 16px;
+      padding: 0;
+      width: min(30rem, 92vw);
+      max-height: 88vh;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+  }
+
+  dialog#modalNovo::backdrop,
+  dialog#modalGrafico::backdrop,
+  dialog#modalComparativo::backdrop {
+      background: rgba(0, 0, 0, .68);
+  }
+
+  #formNovo {
+      display: flex;
+      flex-direction: column;
+      padding: 1.3rem;
+      gap: 1rem;
+      overflow-y: auto;
+      max-height: 88vh;
+  }
+
+  .modalHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+  }
+
+  .modalHead h2 {
+      font: 700 1.1rem/1 inherit;
+      margin: 0;
+      color: var(--fg);
+  }
+
+  #fechaNovo,
+  #fechaGrafico,
+  #fechaComparativo {
+      font-size: 1.5rem;
+      line-height: 1;
+
+      background: transparent;
+      border: 0;
+      color: var(--mu);
+
+      cursor: pointer;
+      padding: .2rem .4rem;
+  }
+
+  #fechaNovo:hover,
+  #fechaGrafico:hover,
+  #fechaComparativo:hover {
+      color: var(--fg);
+  }
+
+  /* =========================================================
+       FORMULÁRIO
+       ========================================================= */
+
+  .fm {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+  }
+
+  .fm>span {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--mu);
+  }
+
+  .fm .req {
+      color: var(--vm);
+      font-weight: 700;
+  }
+
+  .fm input[type=text],
+  .fm input[type=date],
+  .fm select {
+      font: 16px inherit;
+      color: var(--fg);
+
+      padding: .65rem .8rem;
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+
+      background: var(--field);
+      width: 100%;
+  }
+
+  .fm input[type=text]::placeholder {
+      color: #747C83;
+  }
+
+  .fm input[type=text]:focus,
+  .fm input[type=date]:focus,
+  .fm select:focus {
+      border-color: #68727A;
+      background: #24292E;
+      outline: none;
+  }
+
+  .fm select {
+      appearance: none;
+      cursor: pointer;
+
+      background-color: var(--field);
+      background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%239CA3AA' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+
+      background-repeat: no-repeat;
+      background-position: right .8rem center;
+
+      padding-right: 2rem;
+  }
+
+  .fmChecks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+  }
+
+  .fmChk {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+
+      padding: .6rem .7rem;
+
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+
+      cursor: pointer;
+      font-size: .92rem;
+      user-select: none;
+  }
+
+  .fmChk:hover {
+      background: var(--field-hover);
+      border-color: var(--line-strong);
+  }
+
+  .fmChk input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: #6FCB8F;
+  }
+
+  /* =========================================================
+       DINHEIRO
+       ========================================================= */
+
+  .moneyWrap {
+      display: flex;
+      align-items: stretch;
+
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+
+      overflow: hidden;
+      background: var(--field);
+  }
+
+  .sinalBt {
+      width: 2.4rem;
+
+      border: 0;
+      border-right: 1px solid var(--ln);
+
+      background: #191C1F;
+      color: var(--vm);
+
+      font-size: 1.15rem;
+      font-weight: 700;
+
+      cursor: pointer;
+  }
+
+  .sinalBt:hover:not(:disabled) {
+      background: var(--red-soft);
+  }
+
+  .sinalBt.pos {
+      color: var(--vd);
+  }
+
+  .sinalBt.pos:hover:not(:disabled) {
+      background: var(--green-soft);
+  }
+
+  .sinalBt.neutro {
+      color: var(--mu);
+      cursor: default;
+  }
+
+  .sinalBt:disabled {
+      opacity: .6;
+  }
+
+  .moneyPrefix {
+      display: flex;
+      align-items: center;
+
+      padding: 0 .5rem;
+
+      background: #191C1F;
+      color: var(--mu);
+
+      font-weight: 600;
+      font-size: .9rem;
+  }
+
+  .moneyWrap input {
+      border: 0;
+      border-radius: 0;
+
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+
+      flex: 1;
+      min-width: 0;
+
+      color: var(--fg);
+      background: var(--field);
+  }
+
+  .moneyWrap input:focus {
+      outline: none;
+  }
+
+  .hintNeg {
+      color: var(--mu);
+      font-size: .74rem;
+  }
+
+  /* =========================================================
+       MENSAGEM DO MODAL
+       ========================================================= */
+
+  .erroNovo {
+      color: var(--vm);
+      font-size: .85rem;
+      margin: 0;
+      min-height: 1.1rem;
+  }
+
+  .erroNovo.okNovo.ok {
+      color: var(--vd);
+  }
+
+  #fIsaWrap[hidden] {
+      display: none;
+  }
+
+  /* =========================================================
+       BOTÕES DO MODAL
+       ========================================================= */
+
+  .modalActs {
+      display: flex;
+      gap: .7rem;
+      margin-top: .2rem;
+  }
+
+  .btSec,
+  .btPri {
+      flex: 1;
+      padding: .75rem;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      border: 0;
+  }
+
+  .btSec {
+      background: var(--field);
+      color: var(--fg);
+      border: 1px solid var(--ln);
+  }
+
+  .btSec:hover {
+      background: var(--field-hover);
+      border-color: var(--line-strong);
+  }
+
+  .btPri {
+      background: var(--fg);
+      color: #111315;
+      width: 100%;
+      margin-top: .3rem;
+  }
+
+  .btPri:hover {
+      background: #FFFFFF;
+  }
+
+  .btPri:disabled {
+      opacity: .5;
+      cursor: default;
+  }
+
+  .sd {
+      display: block;
+      font-size: .68rem;
+      font-weight: 400;
+      color: var(--mu);
+      margin-top: .1rem;
+  }
+
+  /* =========================================================
+       GRÁFICOS
+       ========================================================= */
+
+  #modalGrafico {
+      width: min(44rem, 94vw);
+      max-height: 92vh;
+      padding: 1.5rem;
+  }
+
+  #modalGrafico .meta {
+      margin: .2rem 0 1rem;
+  }
+
+  #modalComparativo {
+      width: min(48rem, 94vw);
+      max-height: 92vh;
+      padding: 1.5rem;
+  }
+
+  #modalGrafico canvas,
+  #modalComparativo canvas {
+      color: var(--fg);
+  }
+
+  /* =========================================================
+       SCROLLBAR
+       ========================================================= */
+
+  * {
+      scrollbar-width: thin;
+      scrollbar-color: #3B4147 transparent;
+  }
+
+  ::-webkit-scrollbar {
+      width: 9px;
+      height: 9px;
+  }
+
+  ::-webkit-scrollbar-track {
+      background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+      background: #363C42;
+      border-radius: 99px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+      background: #4A5259;
+  }
+
+  /* =========================================================
+       MOBILE
+       ========================================================= */
+
+  @media (max-width: 640px) {
+      body {
+          padding: 1.2rem .9rem;
+      }
+
+      h1 {
+          font-size: 1.15rem;
+      }
+
+      .head {
+          gap: .5rem;
+      }
+
+      /* mobile nao usa gaveta */
+      .tool {
+          display: none;
+      }
+
+      /* esconde abas nao-Ciclo no combo Visao */
+      #visao option[value=k] {
+          display: none;
+      }
+
+      /* tabela com scroll horizontal */
+      .wrap {
+          overflow-x: auto;
+      }
+
+      #selbar {
+          left: .8rem;
+          right: .8rem;
+          bottom: .8rem;
+          padding: .7rem 1rem;
+      }
+
+      #selbar .val {
+          font-size: 1.2rem;
+      }
+
+      #abreNovo .lbl {
+          display: none;
+      }
+
+      #abreNovo {
+          padding: .5rem;
+          width: 2rem;
+          height: 2rem;
+          justify-content: center;
+      }
+
+      dialog#modalNovo {
+          width: 100vw;
+          max-width: 100vw;
+          height: 100vh;
+          max-height: 100vh;
+          border-radius: 0;
+          margin: 0;
+      }
+
+      #formNovo {
+          max-height: 100vh;
+          padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+      }
+
+      .fmChecks {
+          grid-template-columns: 1fr 1fr;
+      }
+
+      dialog#modalGrafico,
+      dialog#modalComparativo {
+          width: 100vw;
+          max-width: 100vw;
+          height: 100vh;
+          max-height: 100vh;
+          border-radius: 0;
+          margin: 0;
+          padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+          overflow-y: auto;
+      }
+
+      #modalGrafico>div[style*=height],
+      #modalComparativo>div[style*=height] {
+          height: 320px !important;
+      }
+
+      .multiSelBtn {
+          min-width: 0;
+          max-width: 100%;
+      }
+  }
+
+  .blk h3 .tog {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.4rem;
+      height: 1.4rem;
+      margin-right: .35rem;
+      vertical-align: middle;
+
+      font: 400 .85rem/1 inherit;
+      color: var(--mu);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 6px;
+      cursor: pointer;
+  }
+
+  .blk h3 .tog:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+  }
+
+  .fr {
+      color: var(--vm);
+      font-weight: 700;
+      cursor: help;
+      margin-left: .25rem;
+  }
+
+  .avisoFr {
+      margin: -.5rem 0 0;
+      padding: .5rem .7rem;
+      font-size: .82rem;
+      line-height: 1.35;
+      color: var(--fg);
+      background: var(--orange-soft);
+      border: 1px solid #6A5330;
+      border-radius: 9px;
+  }
+
+  .btFiltro {
+      font: inherit;
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      padding: .42rem .9rem;
+      cursor: pointer;
+      white-space: nowrap;
+  }
+
+  .btFiltro:hover {
+      background: var(--field-hover);
+      border-color: var(--line-strong);
+  }
+
+  .blk h3 .bruto {
+      font-weight: 400;
+      font-size: .88rem;
+      color: var(--mu);
+      margin-left: .4rem;
+  }
+
+  .blk h3 .bruto s {
+      text-decoration: none;
+  }
+
+  tbody tr.sal td {
+      background: #1C2530;
+      font-style: italic;
+  }
+
+  tbody tr.sal:hover td {
+      background: #212C39;
+  }
+
+  tbody tr.res td {
+      background: var(--orange-soft);
+      font-weight: 600;
+  }
+
+  tbody tr.res:hover td {
+      background: #3D3124;
+  }
+
+  tbody tr.sug td {
+      background: var(--green-soft);
+      font-style: italic;
+  }
+
+  tbody tr.sug:hover td {
+      background: var(--green-hover);
+  }

@@ -21,9 +21,7 @@ const Estado = {
     filtroTexto: {},           // id da tabela -> { coluna: texto digitado } (filtro tipo DataGrip)
     linhasVisiveis: {},        // id da tabela -> array de linhas atualmente na tela (apos filtro de texto)
     fechados: {},
-    token: KEY,                // token de acesso: comeca com a chave publica, vira o da sessao apos login
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
-    usados: [],                // indices de periodos com movimento, na ordem — usado pelo navegador anterior/proximo
     ordComp: { k: 'total', d: 2 },
 };
 
@@ -33,7 +31,7 @@ const estadoOrdenacao = id => Estado.ordenacaoPorTabela[id] || (Estado.ordenacao
 const estadoFiltroTexto = id => Estado.filtroTexto[id] || (Estado.filtroTexto[id] = {});
 
 // HELPERS
-const el = id => document.getElementById(id);                                               // atalho pra getElementById
+const el = id => document.getElementById(id);
 // mostra/esconde um campo da barra de filtros com fade suave, em vez do corte seco do
 // atributo hidden. Ao aparecer: tira o hidden e roda o fadeIn. Ao sumir: roda o fadeOut
 // e SO' entao aplica hidden (fora do fluxo, sem deixar buraco) quando a animacao termina —
@@ -71,7 +69,7 @@ function mostraComFade(id, mostrar) {
         alvo._fadeOutTimer = setTimeout(termina, 250);   // duracao do fadeOut (.18s) + folga
     }
 }
-const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });  // formata em R$
+const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const corValor = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';                                     // classe css: vermelho/verde conforme o sinal
 const celValor = v => `<td class="n ${corValor(v)}">${brl(v)}`;                             // celula <td> ja formatada em R$
 
@@ -310,7 +308,6 @@ function atualizarCombos(lancamentosCrus) {
         : (idxAtual >= 0 ? idxAtual : usados.at(-1) ?? -1);
     el('ciclo').value = valorEscolhido;
 
-    Estado.usados = usados;         // lista de indices navegaveis (usada pelo combo Ciclo no modo completo)
     Estado.idxHoje = idxAtual;      // ancora do pre-preenchimento inicial de De/Ate (ciclo atual + proximo)
 
     // Comparar sempre agrupa por Categoria agora (sem filtro "Agrupar por" na toolbar) —
@@ -344,7 +341,6 @@ function atualizarCombos(lancamentosCrus) {
 async function load() {
     if (API.includes('SEUPROJETO')) return el('out').innerHTML = '<p class=empty>Cole API e KEY no topo do script.</p>';
     console.log('[diag] load() iniciou');
-    // el('st').textContent = 'Carregando…';
     try {
         console.time('[diag] carregarDados');
         const { lancamentosCrus } = await carregarDados();
@@ -355,8 +351,6 @@ async function load() {
         atualizarCombos(lancamentosCrus);
         console.timeEnd('[diag] atualizarCombos');
 
-        // const totalBacklog = Estado.lancamentos.filter(r => r.periodoIdx == null).length;
-        // el('st').innerHTML = `<b>${Estado.lancamentos.length}</b> Lançamentos · <b>${totalBacklog}</b> Itens no Backlog`;
         desenhar();
         console.log('[diag] load() terminou com sucesso');
     } catch (e) {
@@ -776,7 +770,7 @@ function celulaSaldoCiclo(idx) {
     const guardado = guardadoAte(idx);
     const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
     if (Math.abs(total) < 0.005) {
-        return temGuardado ? `<b class=vd>${brl(guardado)} guardado</b>` : `<b class=vd>Mês equalizado ✓</b>`;
+        return temGuardado ? `<b class=vd>${brl(guardado)}</b>` : `<b class=vd>Mês equalizado ✓</b>`;
     }
     return `<span class="${corSoma(total)}">${brl(total)}</span>`;
 }
@@ -836,7 +830,6 @@ function vCiclo() {
     // saldo que veio do ciclo anterior — positivo ou negativo, entra como uma linha
     // normal no comeco do bloco
     const anterior = saldoDoCiclo(i - 1);
-    console.log({ anterior })
     const linhaAnterior = Math.abs(anterior) > 0.005 && Estado.periodos[i - 1] &&
         dataISO(Estado.periodos[i - 1].fat) >= SALDO_DESDE
         ? [{
@@ -903,9 +896,9 @@ function vCiclo() {
     const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
     const extraDebito = Math.abs(totalDebito) < 0.005
         ? (temGuardado
-            ? `<b class=vd>${brl(guardado)} guardado</b>`
+            ? `<b class=vd>${brl(guardado)}</b>`
             : `<b class=vd>Mês equalizado ✓</b>`)
-        : (temGuardado ? `<span class=bruto>${brl(guardado)} guardado</span>` : '');
+        : (temGuardado ? `<span class=bruto>${brl(guardado)}</span>` : '');
 
     const blocoDebito = renderBloco(
         'Débito', totalDebito,
@@ -1248,6 +1241,7 @@ function desenhar() {
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
     if (typeof reposicionaSegCtls == 'function') reposicionaSegCtls();
     if (typeof atualizaBtCicloHoje == 'function') atualizaBtCicloHoje();
+    if (typeof atualizaBtsNavCiclo == 'function') atualizaBtsNavCiclo();
     console.timeEnd('[diag] desenhar');
 }
 
@@ -1396,6 +1390,31 @@ el('cicloHoje').onclick = () => {
     Estado.selecionados.clear();
     desenhar();
 };
+
+// ‹ / › navegam pro periodo anterior/seguinte, setando De E Ate juntos (entra direto no
+// modo blocos daquele ciclo). Anda pelas OPCOES reais do combo #compDe (ja filtradas
+// certo pra Isabella/perfil restrito e com Backlog como 1a opcao), nao por indice
+// aritmetico — assim respeita os mesmos limites de navegacao sem duplicar a logica.
+function navegaCiclo(direcao) {
+    const opcoes = [...el('compDe').options].map(o => o.value).filter(v => v !== '');
+    const atual = el('compDe').value || '';
+    const posAtual = opcoes.indexOf(atual);
+    const novaPos = posAtual < 0 ? (direcao > 0 ? 0 : -1) : posAtual + direcao;
+    if (novaPos < 0 || novaPos >= opcoes.length) return;
+    const novoValor = opcoes[novaPos];
+    el('compDe').value = novoValor;
+    el('compAte').value = novoValor == '-1' ? el('compAte').value : novoValor;
+    Estado.selecionados.clear();
+    desenhar();
+}
+function atualizaBtsNavCiclo() {
+    const opcoes = [...el('compDe').options].map(o => o.value).filter(v => v !== '');
+    const posAtual = opcoes.indexOf(el('compDe').value || '');
+    el('cicloAnterior').disabled = posAtual <= 0;
+    el('cicloProximo').disabled = posAtual < 0 || posAtual >= opcoes.length - 1;
+}
+el('cicloAnterior').onclick = () => navegaCiclo(-1);
+el('cicloProximo').onclick = () => navegaCiclo(1);
 
 // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
 // >>> LOG TEMP: try/catch aqui so pra diagnostico — sem isso, um erro no desenhar()

@@ -48,14 +48,6 @@
        CABEÇALHO
        ========================================================= */
 
-  h1 {
-      font: 700 1.35rem/1 inherit;
-      letter-spacing: -.02em;
-      margin: 0;
-      cursor: pointer;
-      display: inline-block;
-  }
-
   .head {
       display: flex;
       align-items: center;
@@ -63,44 +55,11 @@
       margin: 0 0 1.8rem;
   }
 
-  .head .sub {
-      margin: 0;
-      flex: 1;
-      font-size: .85rem;
-      color: var(--mu);
-      font-style: italic;
-  }
-
-  .head .sub b {
-      font-style: normal;
-      color: var(--fg);
-  }
-
-  h1 .tt {
-      text-decoration: underline;
-      text-underline-offset: 3px;
-  }
-
-  h1 .ic {
-      text-decoration: none;
-  }
-
-  h1:hover .tt {
-      color: var(--mu);
-  }
-
   .sub {
       font-size: .85rem;
       color: var(--mu);
       font-style: italic;
       margin: 0 0 1.8rem;
-  }
-
-  .sub a {
-      color: var(--fg);
-      cursor: pointer;
-      text-decoration: underline;
-      text-underline-offset: 2px;
   }
 
   /* =========================================================
@@ -446,21 +405,6 @@
       accent-color: #6FCB8F;
   }
 
-  .chk {
-      display: flex;
-      gap: 1.1rem;
-      align-items: center;
-      height: 2.1rem;
-  }
-
-  .chk label {
-      display: flex;
-      gap: .4rem;
-      align-items: center;
-      font-size: .92rem;
-      cursor: pointer;
-  }
-
   /* =========================================================
        BLOCOS
        ========================================================= */
@@ -492,30 +436,6 @@
       font-style: italic;
       font-size: .9rem;
       padding: .8rem;
-  }
-
-  /* =========================================================
-       BOTÕES SECUNDÁRIOS
-       ========================================================= */
-
-  .selTudoBt,
-  .verGraficoBt {
-      font: 400 .78rem/1 inherit;
-      vertical-align: middle;
-      color: var(--mu);
-      background: var(--field);
-      border: 1px solid var(--ln);
-      border-radius: 7px;
-      padding: .25rem .55rem;
-      cursor: pointer;
-      margin-left: .3rem;
-  }
-
-  .selTudoBt:hover,
-  .verGraficoBt:hover {
-      color: var(--fg);
-      background: var(--field-hover);
-      border-color: var(--fg);
   }
 
   /* =========================================================
@@ -777,34 +697,6 @@
   }
 
   /* =========================================================
-       RESUMO
-       ========================================================= */
-
-  .sumr {
-      margin: .5rem 0 0;
-      font-size: .9rem;
-  }
-
-  .sumr div {
-      display: flex;
-      justify-content: space-between;
-      padding: .3rem .1rem;
-      border-bottom: 1px solid var(--ln);
-  }
-
-  .sumr div:last-child {
-      border-bottom: 0;
-      font-weight: 700;
-      border-top: 2px solid var(--fg);
-      padding-top: .4rem;
-  }
-
-  .sumr span:last-child {
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-  }
-
-  /* =========================================================
        LOGIN
        ========================================================= */
 
@@ -814,14 +706,6 @@
       display: none;
       flex-direction: column;
       gap: .7rem;
-  }
-
-  #login h1 {
-      cursor: default;
-  }
-
-  #login h1 .tt {
-      text-decoration: none;
   }
 
   #login input {
@@ -861,14 +745,6 @@
       color: var(--vm);
       font-size: .85rem;
       min-height: 1.1rem;
-  }
-
-  #login .out {
-      cursor: pointer;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-      font-size: .8rem;
-      color: var(--mu);
   }
 
   #app {
@@ -985,6 +861,29 @@
   #navComparar .btHoje:hover {
       background: var(--field-hover);
       border-color: var(--fg);
+  }
+
+  .btNavCiclo {
+      width: 2.2rem;
+      height: 2.2rem;
+      font-size: 1.2rem;
+      line-height: 1;
+
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+  }
+
+  .btNavCiclo:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
+  }
+
+  .btNavCiclo:disabled {
+      opacity: .3;
+      cursor: default;
   }
 
   /* visualmente escondido mas ainda lido por leitor de tela — usado no "De"/"Até", que
@@ -1307,11 +1206,6 @@
       outline: none;
   }
 
-  .hintNeg {
-      color: var(--mu);
-      font-size: .74rem;
-  }
-
   .calcBt {
       flex: none;
       width: 2.4rem;
@@ -1440,13 +1334,6 @@
        BOTÕES DO MODAL
        ========================================================= */
 
-  .modalActs {
-      display: flex;
-      gap: .7rem;
-      margin-top: .2rem;
-  }
-
-  .btSec,
   .btPri {
       flex: 1;
       padding: .75rem;
@@ -1455,20 +1342,6 @@
       font-weight: 600;
       cursor: pointer;
       border: 0;
-  }
-
-  .btSec {
-      background: var(--field);
-      color: var(--fg);
-      border: 1px solid var(--ln);
-  }
-
-  .btSec:hover {
-      background: var(--field-hover);
-      border-color: var(--line-strong);
-  }
-
-  .btPri {
       background: var(--fg);
       color: #111315;
       width: 100%;
@@ -1577,21 +1450,12 @@
           padding: 1.2rem .9rem;
       }
 
-      h1 {
-          font-size: 1.15rem;
-      }
-
       .head {
           gap: .5rem;
       }
 
       /* mobile nao usa gaveta */
       .tool {
-          display: none;
-      }
-
-      /* esconde abas nao-Ciclo no combo Visao */
-      #visao option[value=k] {
           display: none;
       }
 
@@ -1609,10 +1473,6 @@
 
       #selbar .val {
           font-size: 1.2rem;
-      }
-
-      #abreNovo .lbl {
-          display: none;
       }
 
       #abreNovo {
@@ -1724,14 +1584,6 @@
       font-size: .88rem;
       color: var(--mu);
       margin-left: .4rem;
-  }
-
-  .blk h3 .bruto.vd {
-      color: var(--vd);
-  }
-
-  .blk h3 .bruto s {
-      text-decoration: none;
   }
 
   tbody tr.sal td {

@@ -145,6 +145,15 @@ function nomePeriodoAbrev(fatStr) {
     return `${MESES[mesAnterior - 1].slice(0, 3)}/${String(ano).slice(-2)}`;
 }
 
+// So' o nome do mes (sem ano) de um periodo — usado nas colunas "Somente <mes>" da
+// comparacao 1-a-1 entre 2 periodos.
+function nomeMesPeriodo(fatStr) {
+    const iso = dataISO(fatStr), m = +iso.slice(5, 7);
+    let mesAnterior = m - 1;
+    if (mesAnterior == 0) mesAnterior = 12;
+    return MESES[mesAnterior - 1];
+}
+
 // Dado o 'venc' de uma fatura, em qual periodo ela APARECE na tela: o periodo cujo 'fat' cai no mes seguinte ao vencimento (nome do periodo = mes anterior ao 'fat').
 function periodoQueExibeVencimento(vencimento) {
     if (!vencimento) return -1;
@@ -898,6 +907,11 @@ function vCiclo() {
 
 // Visão "Comparar": uma matriz [categoria/nome/etc × periodo], com totais por linha e coluna.
 function vComp() {
+    // reseta ANTES de qualquer return antecipado — senao um valor de uma chamada
+    // anterior fica "preso" (ex: filtro "Somente Diferentes" continua aparecendo mesmo
+    // depois de trocar De/Ate pra um intervalo que nao tem mais 2 periodos)
+    Estado._comparacao2Periodos = false;
+
     const coluna = el('grupo').value;
     // so mostra a matriz depois que o usuario escolhe De E Ate — nunca vem preenchida sozinha
     const deTexto = el('compDe').value, ateTexto = el('compAte').value;
@@ -936,20 +950,60 @@ function vComp() {
     const oc = Estado.ordComp;
     const seta = k => oc.k == k ? (oc.d == 1 ? ' <span class=ar>↑</span>' : ' <span class=ar>↓</span>') : '';
 
+    // com EXATAMENTE 2 periodos no intervalo (De/Ate cronologicos), duas colunas extras
+    // no inicio marcam o que sumiu do 1o pro 2o mes ("Somente <mes 1>": tinha valor no
+    // 1o, celula vazia no 2o) e o que surgiu ("Somente <mes 2>": vazio no 1o, valor no
+    // 2o). Exposto em Estado._comparacao2Periodos pra desenhar() saber se mostra o
+    // filtro "Somente Diferentes" na toolbar (so' faz sentido com exatamente 2 periodos).
+    const comparacao2Periodos = periodosUsados.length == 2;
+    Estado._comparacao2Periodos = comparacao2Periodos;
+    const [idxPrimeiro, idxSegundo] = periodosUsados;
+    const deixouDePagar = chave => comparacao2Periodos && matriz[chave][idxPrimeiro] != null && matriz[chave][idxSegundo] == null;
+    const comecouAPagar = chave => comparacao2Periodos && matriz[chave][idxPrimeiro] == null && matriz[chave][idxSegundo] != null;
+    const nomeMes1 = comparacao2Periodos ? nomeMesPeriodo(Estado.periodos[idxPrimeiro].fat) : '';
+    const nomeMes2 = comparacao2Periodos ? nomeMesPeriodo(Estado.periodos[idxSegundo].fat) : '';
+
+    // "Somente Diferentes": com o filtro ligado, mostra so as linhas que sumiram ou
+    // surgiram entre os 2 periodos — as que tem valor nos dois (sem diferenca) somem.
+    const somenteDif = comparacao2Periodos && el('somenteDif').value == 'S';
+
+    // ao LIGAR o filtro, passa a ordenar pela coluna "Somente <2º mês>" (a coisa nova
+    // fica em cima); ao DESLIGAR, volta a ordenar pela coluna principal (nome/categ/o
+    // que estiver em "Agrupar por"). So dispara na TRANSICAO (nao a cada redesenho,
+    // senao o usuario nunca conseguiria reordenar manualmente por outra coluna).
+    if (somenteDif && !Estado._somenteDifAnterior) oc.k = 'dif2', oc.d = 2;
+    else if (!somenteDif && Estado._somenteDifAnterior) oc.k = 'chave', oc.d = 1;
+    Estado._somenteDifAnterior = somenteDif;
+
+    const chavesFiltradas = Object.keys(matriz).filter(chave =>
+        !somenteDif || deixouDePagar(chave) || comecouAPagar(chave));
+
     const cabecalho = `<tr><th class=c1 onclick="sortComp('chave')">${capitaliza(coluna)}${seta('chave')}` +
+        (comparacao2Periodos
+            ? `<th class="n colDif" title="Tinha em ${nomeMes1}, não tem mais em ${nomeMes2}" onclick="sortComp('dif1')">Somente ${nomeMes1}${seta('dif1')}</th>` +
+            `<th class="n colDif" title="Não tinha em ${nomeMes1}, passou a ter em ${nomeMes2}" onclick="sortComp('dif2')">Somente ${nomeMes2}${seta('dif2')}</th>`
+            : '') +
         periodosUsados.map(i => `<th class=n onclick="sortComp('${i}')">${nomePeriodo(Estado.periodos[i].fat)}${seta(String(i))}`).join('') +
         `<th class=n onclick="sortComp('total')">Total${seta('total')}</thead>`;
 
-    // ordena pela coluna escolhida: 'chave' e' alfabetica, 'total' e as colunas de
-    // periodo sao numericas (celula vazia conta como zero)
-    const valorDaLinha = chave => oc.k == 'total' ? totalDaChave(chave) : (matriz[chave][+oc.k] || 0);
-    const corpo = Object.keys(matriz).sort((a, b) => {
+    // ordena pela coluna escolhida: 'chave' e' alfabetica; 'dif1'/'dif2' sao booleanos
+    // (deixou/comecou a pagar primeiro); 'total' e as colunas de periodo sao numericas
+    // (celula vazia conta como zero)
+    const valorDaLinha = chave =>
+        oc.k == 'total' ? totalDaChave(chave)
+            : oc.k == 'dif1' ? (deixouDePagar(chave) ? 1 : 0)
+                : oc.k == 'dif2' ? (comecouAPagar(chave) ? 1 : 0)
+                    : (matriz[chave][+oc.k] || 0);
+    const corpo = chavesFiltradas.sort((a, b) => {
         const cmp = oc.k == 'chave'
             ? String(a).localeCompare(String(b), 'pt')
             : valorDaLinha(a) - valorDaLinha(b);
         return oc.d == 1 ? cmp : -cmp;
     }).map(chave =>
         `<tr><td class=c1>${chave}` +
+        (comparacao2Periodos
+            ? `<td class="n colDif">${deixouDePagar(chave) ? '<span class=difOk>✓</span>' : ''}</td><td class="n colDif">${comecouAPagar(chave) ? '<span class=difNovo>✓</span>' : ''}</td>`
+            : '') +
         periodosUsados.map(i => matriz[chave][i] == null ? '<td class=n>·' : celSoma(matriz[chave][i])).join('') +
         celSoma(totalDaChave(chave))
     ).join('');
@@ -957,6 +1011,7 @@ function vComp() {
     const linhasNoIntervalo = linhas.filter(r => dentroDoIntervalo(r.periodoIdx));
     const totalPorPeriodo = i => linhasNoIntervalo.filter(r => r.periodoIdx == i).reduce((s, r) => s + r.v, 0);
     const linhaTotal = '<tr class=tot><td class=c1>Total' +
+        (comparacao2Periodos ? '<td class="n colDif"><td class="n colDif">' : '') +
         periodosUsados.map(i => celSoma(totalPorPeriodo(i))).join('') +
         celSoma(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
 
@@ -964,7 +1019,7 @@ function vComp() {
     // distinto da coluna escolhida vira uma linha) e o intervalo de datas do periodo
     // De/Ate. A contagem de "N registros" (quantos lancamentos foram somados) ja vem
     // de graca da blocoCasca, igual nos blocos Debito/Credito — nao repete aqui.
-    const nGrupos = Object.keys(matriz).length;
+    const nGrupos = chavesFiltradas.length;
     const nRegistros = linhasNoIntervalo.length;
     const iniPeriodo = Estado.periodos[periodosUsados[0]];
     const fimPeriodo = Estado.periodos[periodosUsados.at(-1)];
@@ -1046,6 +1101,10 @@ function desenhar() {
     const trocouVisao = Estado._ultimaVisao != null && Estado._ultimaVisao != visao;
     Estado._ultimaVisao = visao;
     el('out').innerHTML = visao == 'c' ? vCiclo() : vComp();
+    // "Somente Diferentes" so faz sentido comparando EXATAMENTE 2 periodos — vComp()
+    // deixa a informacao pronta em Estado._comparacao2Periodos como efeito colateral,
+    // porque so' ali se sabe quantos periodos a matriz de fato usou.
+    mostraComFade('fdif', visao == 'k' && !simples && !!Estado._comparacao2Periodos);
     if (trocouVisao) {
         el('out').classList.remove('fadeIn');
         void el('out').offsetWidth;   // forca reflow pra reiniciar a animacao mesmo se ja rodou antes
@@ -1301,14 +1360,14 @@ function ligaSegCtl(idSelect, idSeg) {
     seg._posiciona = posicionaThumb;   // exposto pra recalcular quando o container reaparece (estava hidden)
     posicionaThumb();
 }
-['visao'].forEach(id => ligaSegCtl(id, 'seg' + capitaliza(id)));
+['visao', 'somenteDif'].forEach(id => ligaSegCtl(id, 'seg' + capitaliza(id)));
 
 // o select fica hidden quando o modo simples esconde o filtro de visao — reposiciona
 // o thumb (chamado no fim de desenhar(), depois que os hidden ja foram decididos),
 // cobrindo o caso de o container acabar de reaparecer na tela (offsetLeft/offsetWidth
 // so' sao corretos com o elemento visivel)
 function reposicionaSegCtls() {
-    ['segVisao'].forEach(id => {
+    ['segVisao', 'segSomenteDif'].forEach(id => {
         const s = el(id);
         if (s && !s.closest('[hidden]') && s._posiciona) s._posiciona();
     });

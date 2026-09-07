@@ -118,6 +118,17 @@
         <label class=f id=fgrupo><span>Agrupar</span>
           <select id=grupo></select>
         </label>
+        <label class=f id=fdif><span>Linhas</span>
+          <select id=somenteDif hidden>
+            <option value=N>Todas
+            <option value=S>Diferentes
+          </select>
+          <div class=segCtl id=segSomenteDif role=tablist aria-label="Linhas">
+            <span class=segThumb></span>
+            <button type=button class=segOpt data-valor=N role=tab>Todas</button>
+            <button type=button class=segOpt data-valor=S role=tab>Diferentes</button>
+          </div>
+        </label>
         <label class=f id=fevol><span>&nbsp;</span>
           <button type=button id=btEvolucao class=btFiltro>Evolução</button>
         </label>

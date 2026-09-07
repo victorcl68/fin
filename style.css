@@ -640,6 +640,41 @@
       white-space: nowrap;
   }
 
+  /* colunas "Somente <mês>" da comparacao 1-a-1 (visao Comparar, exatamente 2 periodos):
+     bem mais estreitas que as colunas numericas normais, ja que so' levam um check. */
+  .colDif {
+      width: 2.2rem;
+      min-width: 2.2rem;
+      text-align: center;
+      padding-left: .3rem;
+      padding-right: .3rem;
+  }
+
+  .difOk,
+  .difNovo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 50%;
+      font-size: .75rem;
+      font-weight: 700;
+      line-height: 1;
+  }
+
+  /* esquerda ("Somente <1º mês>", sumiu do 1º pro 2º) = verde */
+  .difOk {
+      color: #10231A;
+      background: var(--vd);
+  }
+
+  /* direita ("Somente <2º mês>", surgiu no 2º) = vermelho */
+  .difNovo {
+      color: #2B1211;
+      background: var(--vm);
+  }
+
   /* =========================================================
        CORES DE VALORES
        ========================================================= */

@@ -23,6 +23,8 @@ const Estado = {
     fechados: {},
     restrito: false,           // true quando quem esta logado e o perfil restrito (Isabella)
     ordComp: { k: 'total', d: 2 },
+    simulando: false,          // modo simulacao: lancamentos com _sim=true injetados so' em memoria, nunca vao pro banco
+    _proxIdSimulado: 0,        // contador curto pra gerar ids "sim-N-parcela" (em vez de Date.now(), que fica gigante e ilegivel)
 };
 
 const modoSimples = () => Estado.restrito || matchMedia('(max-width: 640px)').matches;
@@ -501,7 +503,7 @@ const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'v
     : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
         : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data'
             ? (r.data ? dataBR(r.data) + (ehFronteira(r) ? '<span class=fr title="Compra no dia do fechamento: capturada em D+1, entrou na fatura seguinte">*</span>' : '') : '—')
-            : textoOuTraco(r[chave])}`
+            : (chave == 'nome' && r._sim ? '<span class=simIco title="Simulado — não foi salvo">✦</span> ' : '') + textoOuTraco(r[chave])}`
 ).join('');
 // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
 const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
@@ -531,7 +533,7 @@ const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
     return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead><tbody>` +
         ordenadas.map(r => {
             const chave = chaveSelecao(r), marcada = selecionavel && chave && Estado.selecionados.has(chave);
-            return `<tr class="${r._fat ? 'fat ' : ''}${r._sal ? 'sal ' : ''}${r._res ? 'res ' : ''}${r._sug != null ? 'sug ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
+            return `<tr class="${r._fat ? 'fat ' : ''}${r._sal ? 'sal ' : ''}${r._res ? 'res ' : ''}${r._sug != null ? 'sug ' : ''}${r._sim ? 'sim ' : ''}${marcada ? 'on' : ''}${selecionavel && chave ? ' pick' : ''}" data-sid="${selecionavel ? chave : ''}">` + celulasDaLinha(r);
         }).join('') + '</tbody></table></div>';
 };
 
@@ -623,9 +625,18 @@ function totalBaseDoCiclo(idx, base, abat, saldoAnteriorFn) {
 // e o mesmo criterio apareçam em todos: saldo negativo -> resgate cobrindo o deficit; saldo
 // positivo -> aporte sugerido escoando o excedente (sempre, mesmo sem aporte real no ciclo).
 // A Isabella (perfil restrito) nunca ve essas linhas.
-function ajusteInvestimento(totalBase) {
+// `guardadoDisponivel` (patrimonio acumulado ATE O CICLO ANTERIOR, de guardadoAte(idx-1)) LIMITA
+// o resgate: nao da' pra resgatar mais do que existe guardado. Se o deficit for maior que o
+// guardado, resgata so' o que tem — o resto do deficit fica negativo de verdade no saldo do
+// ciclo, em vez de fingir (via um resgate maior que o patrimonio real) que o mes fechou em zero.
+function ajusteInvestimento(totalBase, guardadoDisponivel = Infinity) {
     if (Estado.restrito) return null;
-    if (totalBase < -0.005) return { tipo: 'resgate', nome: 'Resgate necessário', categ: 'Investimento', v: -totalBase };
+    if (totalBase < -0.005) {
+        const deficit = -totalBase;
+        const resgate = Math.min(deficit, Math.max(0, guardadoDisponivel));
+        if (resgate <= 0.005) return null;   // sem nada guardado pra resgatar — o mes fica negativo, sem linha de ajuste
+        return { tipo: 'resgate', nome: 'Resgate necessário', categ: 'Investimento', v: resgate };
+    }
     if (totalBase > 0.005) return { tipo: 'aporte', nome: 'Aporte sugerido', categ: 'Investimento', v: -totalBase };
     return null;
 }
@@ -646,7 +657,8 @@ function saldoDoCiclo(idx) {
 
     const { base, abat } = baseEAbatFiltrados();
     const totalBase = totalBaseDoCiclo(idx, base, abat, saldoDoCiclo);
-    const ajuste = ajusteInvestimento(totalBase);
+    const ajuste = ajusteInvestimento(totalBase,
+        guardadoDisponivelNoCiclo(idx, base, guardadoAte(idx - 1)));
     _cacheAjuste[idx] = ajuste;
     const total = totalBase + (ajuste ? ajuste.v : 0);
 
@@ -676,7 +688,8 @@ function saldoCicloContaUnica(idx) {
 
     const { base, abat } = baseEAbatContaUnica();
     const totalBase = totalBaseDoCiclo(idx, base, abat, saldoCicloContaUnica);
-    const ajuste = ajusteInvestimento(totalBase);
+    const ajuste = ajusteInvestimento(totalBase,
+        guardadoDisponivelNoCiclo(idx, base, guardadoAteContaUnica(idx - 1)));
     _cacheAjusteUnico[idx] = ajuste;
     const total = totalBase + (ajuste ? ajuste.v : 0);
 
@@ -759,18 +772,51 @@ function guardadoAte(idx) {
     return reais + hipotetico;
 }
 
+// Quanto SOBRA pra bancar o Resgate necessario do ciclo `idx`: o guardado que veio do ciclo
+// anterior MENOS o efeito dos investimentos REAIS ja lancados dentro do proprio ciclo `idx`.
+// Sem descontar esses, um resgate real do mes (ex: R$2.456,34) era ignorado no limite e o
+// Resgate necessario podia sacar dinheiro que aquele resgate real ja tinha levado — deixando
+// o guardado negativo e sobrando um residuo no saldo do ciclo (o caso "-R$10,00" no titulo
+// do Debito, com o guardado do mes seguinte aparecendo em -9,99).
+function guardadoDisponivelNoCiclo(idx, base, guardadoAnterior) {
+    const reaisDoCiclo = base
+        .filter(r => r.inv && r.periodoIdx === idx)
+        .reduce((s, r) => s - r.v, 0);
+    return guardadoAnterior + reaisDoCiclo;
+}
+
+// Mesma logica de guardadoAte, mas na base "conta unica" (ignora o filtro de Titular) —
+// usada so' pra limitar o Resgate necessario de saldoCicloContaUnica/ajusteDoCicloContaUnica
+// (saldoPorDia, pizza de gastos), que tem que respeitar a MESMA base que calculou o saldo,
+// nunca misturar com a base filtrada por Titular que guardadoAte usa.
+function guardadoAteContaUnica(idx) {
+    const reais = baseContaUnica()
+        .filter(r => r.inv && r.periodoIdx != null && r.periodoIdx <= idx)
+        .reduce((s, r) => s - r.v, 0);
+
+    let hipotetico = 0;
+    for (let i = 0; i <= idx; i++) {
+        const ajuste = ajusteDoCicloContaUnica(i);
+        if (ajuste) hipotetico -= ajuste.v;
+    }
+
+    return reais + hipotetico;
+}
+
 // HTML do saldo de um ciclo com o mesmo tratamento usado no titulo do bloco Debito: ciclo
-// equalizado (saldo ~0) vira destaque verde de sucesso — "Mês equalizado ✓" sem nada
-// guardado, ou so' o valor guardado quando houver (o guardado ja fala por si, sem repetir
-// o texto). Saldo negativo (faltou) continua mostrando o valor normal, sem tratamento
-// especial. Usado tanto no titulo do bloco Debito (vCiclo) quanto na linha Total da
-// matriz Comparar, pra os dois lugares sempre concordarem sobre o mesmo mes.
+// equalizado (saldo ~0) vira destaque verde de sucesso — "R$ 0,00" sem nada guardado, ou
+// so' o valor guardado quando houver (o guardado ja fala por si, sem repetir o "R$ 0,00").
+// Saldo negativo (faltou) continua mostrando o valor normal, sem tratamento especial. Usado
+// tanto no titulo do bloco Debito (vCiclo) quanto na linha Total da matriz Comparar, pra os
+// dois lugares sempre concordarem sobre o mesmo mes.
 function celulaSaldoCiclo(idx) {
     const total = saldoDoCiclo(idx);
     const guardado = guardadoAte(idx);
     const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
     if (Math.abs(total) < 0.005) {
-        return temGuardado ? `<b class=vd>${brl(guardado)}</b>` : `<b class=vd>Mês equalizado ✓</b>`;
+        // guardado pode ser NEGATIVO (resgatou mais do que aportou historicamente) — a
+        // cor segue o sinal de verdade, nunca fixa em verde
+        return temGuardado ? `<b class="${corValor(guardado)}">${brl(guardado)}</b>` : `<b class=vd>${brl(0)}</b>`;
     }
     return `<span class="${corSoma(total)}">${brl(total)}</span>`;
 }
@@ -834,7 +880,7 @@ function vCiclo() {
         dataISO(Estado.periodos[i - 1].fat) >= SALDO_DESDE
         ? [{
             data: periodo.ini, nome: 'Saldo do mês anterior', categ: 'Saldo',
-            freq: '', id: -1, v: anterior, valor: anterior, _sal: 1
+            freq: '', id: -1, _sid: `sal:${i}`, v: anterior, valor: anterior, _sal: 1
         }]
         : [];
 
@@ -851,8 +897,20 @@ function vCiclo() {
 
     // Resgate necessario / Aporte sugerido: mesma regra usada em todo o app (ajusteInvestimento),
     // aplicada sobre o totalCiclo — que e' o mesmo valor que totalBaseDoCiclo(i) calcularia.
-    const ajuste = dataISO(periodo.fat) >= SALDO_DESDE ? ajusteInvestimento(totalCiclo) : null;
+    // Limitado ao que sobra de guardado NO MOMENTO do ajuste: o guardado do ciclo anterior
+    // menos os investimentos reais ja lancados dentro deste ciclo (ver
+    // guardadoDisponivelNoCiclo) — nao da' pra resgatar dinheiro que um resgate real do
+    // proprio mes ja levou.
+    const ajuste = dataISO(periodo.fat) >= SALDO_DESDE
+        ? ajusteInvestimento(totalCiclo,
+            guardadoDisponivelNoCiclo(i, filtrarLancamentos(), guardadoAte(i - 1)))
+        : null;
 
+    // _sid namespaced ("res:"/"sug:") pra nao colidir com o id de um lancamento real (ou
+    // simulado) que por acaso seja -1/-2/-5 — sem isso, chaveSelecao() (que prefere _sid
+    // mas cai pra String(id) quando falta) tratava as duas linhas como a MESMA chave,
+    // e o Map de selecao (1 valor por chave) descartava uma delas silenciosamente: a
+    // soma da barra flutuante ficava menor que o total do titulo, sem nenhum erro visivel.
     const linhaResgate = ajuste && ajuste.tipo == 'resgate'
         ? [{
             data: dataISO(periodo.fat),
@@ -860,6 +918,7 @@ function vCiclo() {
             categ: ajuste.categ,
             freq: '',
             id: -2,
+            _sid: `res:${i}`,
             v: ajuste.v,
             valor: ajuste.v,
             _res: 1
@@ -873,6 +932,7 @@ function vCiclo() {
             categ: ajuste.categ,
             freq: '',
             id: -5,
+            _sid: `sug:${i}`,
             v: ajuste.v,
             valor: ajuste.v,
             _sug: ajuste.v
@@ -886,19 +946,21 @@ function vCiclo() {
     ];
     const guardado = guardadoAte(i);
     const totalDebito = linhasDebito.reduce((s, r) => s + r.v, 0);
-    // ciclo equalizado (saldo zero): em vez do "R$ 0,00" sem graca, destaque em verde de
-    // sucesso. Usa a mesma tolerancia de ponto flutuante do resto do app (0.005) em vez de
-    // igualdade estrita, senao um resto de arredondamento tipo 0.0000000001 escapava do
-    // "== 0" mas ainda formatava como "R$ 0,00" na tela. Saldo negativo continua normal.
-    // Com algo guardado, o enfoque vira o valor guardado (e' o que importa agora), sem
-    // repetir o texto "Mês equalizado" — o valor guardado ja fala por si. Sem nada
-    // guardado, mostra so o texto de sucesso.
+    // ciclo equalizado (saldo zero): "R$ 0,00" em destaque verde de sucesso. Usa a mesma
+    // tolerancia de ponto flutuante do resto do app (0.005) em vez de igualdade estrita,
+    // senao um resto de arredondamento tipo 0.0000000001 escapava do "== 0" mas ainda
+    // formatava como "R$ 0,00" na tela. Saldo negativo continua normal. Com algo guardado,
+    // o enfoque vira o valor guardado (e' o que importa agora) — o guardado ja fala por si,
+    // sem repetir o "R$ 0,00".
     const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
+    // guardado pode ser NEGATIVO (resgatou mais do que aportou historicamente) — a cor
+    // tem que seguir o sinal de verdade (corValor), nunca fixa em verde, senao um
+    // patrimonio negativo aparece com destaque de sucesso por engano.
     const extraDebito = Math.abs(totalDebito) < 0.005
         ? (temGuardado
-            ? `<b class=vd>${brl(guardado)}</b>`
-            : `<b class=vd>Mês equalizado ✓</b>`)
-        : (temGuardado ? `<span class=bruto>${brl(guardado)}</span>` : '');
+            ? `<b class="${corValor(guardado)}">${brl(guardado)}</b>`
+            : `<b class=vd>${brl(0)}</b>`)
+        : (temGuardado ? `<span class="bruto ${corValor(guardado)}">${brl(guardado)}</span>` : '');
 
     const blocoDebito = renderBloco(
         'Débito', totalDebito,
@@ -975,7 +1037,7 @@ function vComp() {
         if (Math.abs(anterior) > 0.005 && Estado.periodos[idx - 1] && dataISO(Estado.periodos[idx - 1].fat) >= SALDO_DESDE) {
             sinteticas.push({
                 nome: 'Saldo do mês anterior', categ: 'Saldo', freq: '', pago: null,
-                id: -1, data: per.ini, isa: null, cred: false, ativo: true,
+                id: -1, _sid: `sal:${idx}`, data: per.ini, isa: null, cred: false, ativo: true,
                 v: anterior, valor: anterior, periodoIdx: idx,
             });
         }
@@ -987,7 +1049,7 @@ function vComp() {
             if (!valor) return;   // valor abatido e' positivo; entra como CREDITO na fatura (v positivo abate o debito)
             sinteticas.push({
                 nome: 'Abatimento de fatura' + sufixo, categ: 'Abatimento de fatura', freq: '', pago: null,
-                id: -6, data: dataISO(per.fat), isa: ehIsa, cred: false, ativo: true,
+                id: -6, _sid: `abt:${idx}:${ehIsa ? 'isa' : 'eu'}`, data: dataISO(per.fat), isa: ehIsa, cred: false, ativo: true,
                 v: valor, valor: valor, periodoIdx: idx,
             });
         });
@@ -995,7 +1057,9 @@ function vComp() {
         if (!ajuste) return;
         sinteticas.push({
             nome: ajuste.nome, categ: ajuste.categ, freq: '', pago: null,
-            id: ajuste.tipo == 'resgate' ? -2 : -5, data: dataISO(per.fat), isa: null,
+            id: ajuste.tipo == 'resgate' ? -2 : -5,
+            _sid: `${ajuste.tipo == 'resgate' ? 'res' : 'sug'}:${idx}`,
+            data: dataISO(per.fat), isa: null,
             cred: false, ativo: true, v: ajuste.v, valor: ajuste.v, periodoIdx: idx,
         });
     });
@@ -1104,8 +1168,8 @@ function vComp() {
     // sinteticas na matriz (ver injeção de `sinteticas` mais acima) — sem elas, um mes
     // zerado na visao Ciclo apareceria com saldo bruto (nao-zero) aqui no Comparar.
     // cada celula usa o MESMO tratamento do titulo do bloco Debito na visao Ciclo: mes
-    // equalizado (saldo ~0) vira "Mês equalizado ✓" ou o valor guardado, em vez do
-    // "R$ 0,00" sem graca — os dois lugares (aqui e o bloco Debito) sempre concordam.
+    // equalizado (saldo ~0) vira "R$ 0,00" em verde de destaque, ou o valor guardado quando
+    // houver — os dois lugares (aqui e o bloco Debito) sempre concordam.
     const celTotalPeriodo = i => `<td class=n>${celulaSaldoCiclo(i)}`;
     const linhaTotal = '<tr class=tot><td class=c1>Total' +
         (comparacao2Periodos ? '<td class="n colDif"><td class="n colDif">' : '') +
@@ -1844,11 +1908,12 @@ function categoriasPorPopularidade() {
     const todas = [...new Set(Estado.lancamentos.map(r => r.categ).filter(valorValido))];
     return todas.sort((a, b) => (contagem[b] || 0) - (contagem[a] || 0) || a.localeCompare(b, 'pt'));
 }
-function popularCategoriasNoForm() {
-    const atual = el('fCateg').value;
-    el('fCateg').innerHTML = '<option value="" disabled selected>Selecione…</option>' +
+function popularCategoriasNoForm(idSelect = 'fCateg') {
+    const select = el(idSelect);
+    const atual = select.value;
+    select.innerHTML = '<option value="" disabled selected>Selecione…</option>' +
         categoriasPorPopularidade().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-    if (atual) el('fCateg').value = atual;
+    if (atual) select.value = atual;
 }
 
 // ---- busca de categoria por nome parecido ----
@@ -2224,6 +2289,120 @@ async function submeteNovoLancamento() {
     }
 }
 
+
+// ===================================================================
+// MODO SIMULAÇÃO — lancamentos hipoteticos injetados DIRETO em Estado.lancamentos,
+// marcados com _sim=true. Nunca tocam o banco (nao passam por inserirLancamento):
+// desligar o modo ou recarregar dados (load() reconstroi Estado.lancamentos do zero a
+// partir do Supabase) apaga tudo sozinho, de graca — nao precisa filtrar nada em lugar
+// nenhum do resto do app pra "esconder" a simulacao, ela simplesmente deixa de existir.
+// Enquanto ativo, os simulados entram em TODAS as metricas (saldo, matriz Comparar,
+// graficos) exatamente como um lancamento real entraria, porque sao um.
+// ===================================================================
+const modalSimular = el('modalSimular');
+
+function atualizaBotaoSimulacao() {
+    el('toggleSimulacao').classList.toggle('ativo', Estado.simulando);
+    el('toggleSimulacao').title = Estado.simulando
+        ? 'Modo simulação ATIVO — clique pra desligar (apaga os lançamentos simulados)'
+        : 'Modo simulação: injeta lançamentos hipotéticos só na memória (nunca salva) — recarregar ou desligar apaga tudo';
+    el('abreSimular').hidden = !Estado.simulando;
+}
+
+el('toggleSimulacao').onclick = async () => {
+    if (Estado.simulando) {
+        // desligar = descartar: recarrega os dados de verdade do banco, que reconstroi
+        // Estado.lancamentos do zero SEM os simulados (eles nunca foram salvos)
+        Estado.simulando = false;
+        atualizaBotaoSimulacao();
+        await load();
+    } else {
+        Estado.simulando = true;
+        atualizaBotaoSimulacao();
+        desenhar();
+    }
+};
+
+function abreModalSimular() {
+    el('formSimular').reset();
+    popularCategoriasNoForm('fSimCateg');
+    el('fSimCateg').selectedIndex = 0;
+    el('fSimData').value = hojeISO();
+    el('fSimIsaWrap').hidden = Estado.restrito;
+    el('erroSimular').textContent = ''; el('erroSimular').classList.remove('ok');
+    modalSimular.showModal();
+    setTimeout(() => el('fSimNome').focus(), 50);
+}
+el('abreSimular').onclick = () => abreModalSimular();
+el('fechaSimular').onclick = () => modalSimular.close();
+modalSimular.addEventListener('click', e => { if (e.target == modalSimular) modalSimular.close(); });
+el('fSimDataHoje').onclick = () => { el('fSimData').value = hojeISO(); };
+el('fSimValor').addEventListener('input', e => {
+    const cursorNoFim = e.target.selectionEnd == e.target.value.length;
+    e.target.value = formataMascaraDinheiro(e.target.value);
+    if (cursorNoFim) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+});
+
+// cria N lancamentos simulados (parcelas), um por periodo seguinte, injetados direto em
+// Estado.lancamentos com _sim=true. periodoIdx da 1a parcela vem da mesma regra de
+// qualquer compra real (periodoDoCredito/periodoDoDebito); as parcelas seguintes so'
+// avancam +1 no INDICE de periodo (nao recalculam data de fechamento/fronteira de novo —
+// cada parcela cai exatamente 1 fatura depois da anterior, como parcelamento de verdade).
+el('salvaSimular').onclick = () => {
+    el('erroSimular').textContent = ''; el('erroSimular').classList.remove('ok');
+
+    const nome = el('fSimNome').value.trim();
+    if (!nome) { el('erroSimular').textContent = 'Preencha o nome.'; el('fSimNome').focus(); return; }
+    const valorTotal = valorMascaraParaNumero(el('fSimValor').value.trim() || '0');
+    if (!valorTotal) { el('erroSimular').textContent = 'Preencha o valor.'; el('fSimValor').focus(); return; }
+
+    const parcelas = +el('fSimParcelas').value;
+    const cred = el('fSimCred').checked;
+    const isa = el('fSimIsaWrap').hidden ? Estado.restrito : el('fSimIsa').checked;
+    const categ = el('fSimCateg').value || 'Simulação';
+    const data = el('fSimData').value || hojeISO();
+
+    // divide o total em N parcelas iguais, jogando o resto de arredondamento na ultima
+    // (ex: R$100 em 3x = 33,33 + 33,33 + 33,34) — nunca deixa a soma das parcelas diferir
+    // do valor total digitado por causa de arredondamento
+    const valorParcela = Math.round((valorTotal / parcelas) * 100) / 100;
+    const somaAteAntepenultima = valorParcela * (parcelas - 1);
+    const valorUltimaParcela = Math.round((valorTotal - somaAteAntepenultima) * 100) / 100;
+
+    const periodoIdx1a = !data ? null
+        : cred ? periodoDoCredito(data, isa, nome)
+            : periodoDoDebito(dataISO(data));
+
+    const grupoSimulado = ++Estado._proxIdSimulado;   // contador curto, so' pra diferenciar cada "compra simulada" das outras
+    const criadas = [];
+    for (let p = 0; p < parcelas; p++) {
+        const valorAssinado = (p == parcelas - 1 ? valorUltimaParcela : valorParcela) * (sinalSimuladoPositivo ? 1 : -1);
+        const periodoIdx = periodoIdx1a == null ? null : periodoIdx1a + p;
+        criadas.push({
+            id: `sim-${grupoSimulado}-${p}`,
+            nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
+            categ, freq: null, data,
+            cred, isa, pago: true, ativo: true,
+            valor: valorAssinado, v: valorAssinado,
+            inv: /^investimento$/i.test(categ.trim()),
+            periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
+            _sim: true,
+        });
+    }
+    Estado.lancamentos.push(...criadas);
+
+    el('erroSimular').textContent = `Simulado: ${parcelas}x ${brl(Math.abs(valorParcela))} · ${brl(Math.abs(valorTotal))} no total`;
+    el('erroSimular').classList.add('ok');
+    popularCategoriasNoForm('fSimCateg');
+    desenhar();
+    modalSimular.close();
+};
+
+// sinal (saida/entrada) do valor simulado — parcela de compra e' sempre saida por padrao
+// (diferente do form real, aqui nao tem botao de +/− visivel: assume saida, que cobre o
+// caso de uso principal "e se eu comprasse X"). Mantido como variavel pra dar pra
+// estender com um toggle depois, sem mudar o resto da logica de submissao.
+let sinalSimuladoPositivo = false;
 
 // ===================================================================
 // LOGIN (Supabase Auth)

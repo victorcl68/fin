@@ -110,6 +110,38 @@
       animation: girar 0.8s linear infinite;
   }
 
+  #toggleSimulacao,
+  #abreSimular {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      color: var(--mu);
+      background: var(--field);
+      border: 1px solid var(--ln);
+      border-radius: 9px;
+      cursor: pointer;
+  }
+
+  #toggleSimulacao:hover,
+  #abreSimular:hover {
+      background: var(--field-hover);
+      border-color: var(--fg);
+  }
+
+  #toggleSimulacao.ativo {
+      color: #F0A83A;
+      background: var(--orange-soft);
+      border-color: #F0A83A;
+  }
+
+  #toggleSimulacao.ativo:hover {
+      color: #10231A;
+      background: #F0A83A;
+  }
+
   @keyframes girar {
       from {
           transform: rotate(0deg);
@@ -1611,4 +1643,18 @@
 
   tbody tr.sug:hover td {
       background: var(--green-hover);
+  }
+
+  /* linha de lancamento SIMULADO (modo simulacao) — listrado sutil, nunca confundido
+     com um lancamento real */
+  tbody tr.sim td {
+      background: repeating-linear-gradient(135deg, var(--orange-soft) 0 8px, transparent 8px 16px);
+  }
+
+  tbody tr.sim:hover td {
+      background: repeating-linear-gradient(135deg, #3D3124 0 8px, var(--field-hover) 8px 16px);
+  }
+
+  .simIco {
+      color: #F0A83A;
   }

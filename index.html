@@ -1,190 +1,197 @@
 <!doctype html>
 <html lang=pt-br>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width, initial-scale=1">
-<title>.</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="script.js" defer></script>
 
 <head>
-  <link rel="stylesheet" href="style.css">
+  <meta charset=utf-8>
+  <meta name=viewport content="width=device-width, initial-scale=1">
+  <title>.</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
-<div id=login>
-  <input id=email type=email autocomplete=username placeholder="E-mail">
-  <input id=senha type=password autocomplete=current-password placeholder="Senha">
-  <div class=err id=lerr></div>
-</div>
 
-<div id=app>
-  <div class=head>
-    <button id=sair title="Encerrar" aria-label="Encerrar">
-      <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
-        stroke-linejoin=round>
-        <path d="M12 3v9" />
-        <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
-      </svg>
-    </button>
+<body>
 
-    <button id=recarregar title="Recarregar dados" aria-label="Recarregar dados">
-      <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke="currentColor" stroke-width="2.2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 11a8 8 0 0 0-14.9-4" />
-        <path d="M4 4v5h5" />
-        <path d="M4 13a8 8 0 0 0 14.9 4" />
-        <path d="M20 20v-5h-5" />
-      </svg>
-    </button>
-
-    <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
-      <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
-        stroke-linejoin=round>
-        <line x1=12 y1=5 x2=12 y2=19 />
-        <line x1=5 y1=12 x2=19 y2=12 />
-      </svg>
-    </button>
+  <div id=login>
+    <input id=email type=email autocomplete=username placeholder="E-mail">
+    <input id=senha type=password autocomplete=current-password placeholder="Senha">
+    <div class=err id=lerr></div>
   </div>
-  <p class=sub><span id=st></span></p>
 
-  <div class=f id=fciclNav>
-    <span id=nomeCicloNav>—</span>
-    <div class=cicloNav>
-      <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
-      <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
-      <button type=button id=cicloHoje class=btHoje>Ciclo atual</button>
+  <div id=app>
+    <div class=head>
+      <button id=sair title="Encerrar" aria-label="Encerrar">
+        <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
+          stroke-linejoin=round>
+          <path d="M12 3v9" />
+          <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+        </svg>
+      </button>
+
+      <button id=recarregar title="Recarregar dados" aria-label="Recarregar dados">
+        <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 11a8 8 0 0 0-14.9-4" />
+          <path d="M4 4v5h5" />
+          <path d="M4 13a8 8 0 0 0 14.9 4" />
+          <path d="M20 20v-5h-5" />
+        </svg>
+      </button>
+
+      <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
+        <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
+          stroke-linejoin=round>
+          <line x1=12 y1=5 x2=12 y2=19 />
+          <line x1=5 y1=12 x2=19 y2=12 />
+        </svg>
+      </button>
     </div>
-  </div>
+    <p class=sub><span id=st></span></p>
 
-  <div class=tool>
-    <div class=row>
-      <label class=f id=fvisao><span>Visão</span>
-        <select id=visao>
-          <option value=c>Ciclo
-          <option value=k>Comparar
-        </select>
-      </label>
-      <label class=f id=fciclo><span>Ciclo</span>
-        <select id=ciclo></select>
-      </label>
-      <label class=f id=forigem><span>Origem</span>
-        <select id=origem>
-          <option value=A>Tudo
-          <option value=D>Débito
-          <option value=F>Crédito
-        </select>
-      </label>
-      <label class=f id=ftit><span>Titular</span>
-        <select id=titular>
-          <option value=T>Todos
-          <option value=E>Eu
-          <option value=I>Isabella
-        </select>
-      </label>
-      <label class=f id=fevol><span>&nbsp;</span>
-        <button type=button id=btEvolucao class=btFiltro>Ver evolução</button>
-      </label>
-      <label class=f id=fgrupo><span>Agrupar por</span>
-        <select id=grupo></select>
-      </label>
-      <label class=f id=fde><span>De</span>
-        <select id=compDe></select>
-      </label>
-      <label class=f id=fate><span>Até</span>
-        <select id=compAte></select>
-      </label>
-    </div>
-    <div class=row id=fsit>
-      <label class=f><span>Pago</span>
-        <select id=fpago>
-          <option value=B>Ambos
-          <option value=S>Sim
-          <option value=N>Não
-        </select>
-      </label>
-      <label class=f><span>Ativo</span>
-        <select id=fativo>
-          <option value=S>Sim
-          <option value=B>Ambos
-          <option value=N>Não
-        </select>
-      </label>
-    </div>
-  </div>
-  <div id=out></div>
-  <div id=selbar><span id=selinfo class=info></span>
-    <button id=seldup>Duplicar</button>
-    <button id=selacao>Selecionar tudo</button>
-  </div>
-
-  <dialog id=modalNovo>
-    <form id=formNovo method=dialog>
-      <div class=modalHead>
-        <h2 id=tituloNovo>Novo lançamento</h2>
-        <button type=button id=fechaNovo aria-label="Fechar">×</button>
+    <div class=f id=fciclNav>
+      <span id=nomeCicloNav>—</span>
+      <div class=cicloNav>
+        <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
+        <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
+        <button type=button id=cicloHoje class=btHoje>Ciclo atual</button>
       </div>
+    </div>
 
-      <div class=fmChecks>
-        <label class=fmChk>
-          <input type=checkbox id=fCred><span>Crédito</span></label>
-        <label class=fmChk id=fIsaWrap>
-          <input type=checkbox id=fIsa><span>Isabella</span></label>
+    <div class=tool>
+      <div class=row>
+        <label class=f id=fvisao><span>Visão</span>
+          <select id=visao>
+            <option value=c>Ciclo
+            <option value=k>Comparar
+          </select>
+        </label>
+        <label class=f id=fciclo><span>Ciclo</span>
+          <select id=ciclo></select>
+        </label>
+        <label class=f id=forigem><span>Origem</span>
+          <select id=origem>
+            <option value=A>Tudo
+            <option value=D>Débito
+            <option value=F>Crédito
+          </select>
+        </label>
+        <label class=f id=ftit><span>Titular</span>
+          <select id=titular>
+            <option value=T>Todos
+            <option value=E>Eu
+            <option value=I>Isabella
+          </select>
+        </label>
+        <label class=f id=fevol><span>&nbsp;</span>
+          <button type=button id=btEvolucao class=btFiltro>Ver evolução</button>
+        </label>
+        <label class=f id=fgrupo><span>Agrupar por</span>
+          <select id=grupo></select>
+        </label>
+        <label class=f id=fde><span>De</span>
+          <select id=compDe></select>
+        </label>
+        <label class=f id=fate><span>Até</span>
+          <select id=compAte></select>
+        </label>
       </div>
+      <div class=row id=fsit>
+        <label class=f><span>Pago</span>
+          <select id=fpago>
+            <option value=B>Ambos
+            <option value=S>Sim
+            <option value=N>Não
+          </select>
+        </label>
+        <label class=f><span>Ativo</span>
+          <select id=fativo>
+            <option value=S>Sim
+            <option value=B>Ambos
+            <option value=N>Não
+          </select>
+        </label>
+      </div>
+    </div>
+    <div id=out></div>
+    <div id=selbar><span id=selinfo class=info></span>
+      <button id=seldup>Duplicar</button>
+      <button id=selacao>Selecionar tudo</button>
+    </div>
 
-      <label class=fm><span>Nome <b class=req>*</b></span>
-        <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off>
-      </label>
-
-      <label class=fm><span>Data</span>
-        <input type=date id=fData>
-      </label>
-
-      <p class=avisoFr id=avisoFr hidden></p>
-
-      <label class=fm><span>Valor</span>
-        <div class=moneyWrap>
-          <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
-          <span class=moneyPrefix>R$</span>
-          <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
+    <dialog id=modalNovo>
+      <form id=formNovo method=dialog>
+        <div class=modalHead>
+          <h2 id=tituloNovo>Novo lançamento</h2>
+          <button type=button id=fechaNovo aria-label="Fechar">×</button>
         </div>
-      </label>
 
-      <label class=fm><span>Categoria <b class=req>*</b></span>
-        <select id=fCateg required></select>
-      </label>
+        <div class=fmChecks>
+          <label class=fmChk>
+            <input type=checkbox id=fCred><span>Crédito</span></label>
+          <label class=fmChk id=fIsaWrap>
+            <input type=checkbox id=fIsa><span>Isabella</span></label>
+        </div>
 
-      <p class="erroNovo okNovo" id=erroNovo></p>
+        <label class=fm><span>Nome <b class=req>*</b></span>
+          <input type=text id=fNome required placeholder="Ex: Mercado, Aluguel…" autocomplete=off>
+        </label>
 
-      <button type=button id=salvaNovo class=btPri>Salvar</button>
-    </form>
-  </dialog>
+        <label class=fm><span>Data</span>
+          <input type=date id=fData>
+        </label>
 
-  <dialog id=modalGrafico>
-    <div class=modalHead>
-      <h2>Gastos do ciclo</h2>
-      <button type=button id=fechaGrafico aria-label="Fechar">×</button>
-    </div>
-    <p class=meta id=graficoSubtitulo></p>
-    <div class=f id=fExcluirCat>
-      <span>Excluir categorias</span>
-      <div class=multiSel id=excluirCatWrap>
-        <button type=button id=excluirCatBtn class=multiSelBtn>Nenhuma excluída</button>
-        <div class=multiSelDrop id=excluirCatDrop></div>
+        <p class=avisoFr id=avisoFr hidden></p>
+
+        <label class=fm><span>Valor</span>
+          <div class=moneyWrap>
+            <button type=button id=fSinal class=sinalBt aria-label="Alternar entre saída e entrada">−</button>
+            <span class=moneyPrefix>R$</span>
+            <input type=text inputmode=numeric id=fValor placeholder="0,00" autocomplete=off>
+          </div>
+        </label>
+
+        <label class=fm><span>Categoria <b class=req>*</b></span>
+          <select id=fCateg required></select>
+        </label>
+
+        <p class="erroNovo okNovo" id=erroNovo></p>
+
+        <button type=button id=salvaNovo class=btPri>Salvar</button>
+      </form>
+    </dialog>
+
+    <dialog id=modalGrafico>
+      <div class=modalHead>
+        <h2>Gastos do ciclo</h2>
+        <button type=button id=fechaGrafico aria-label="Fechar">×</button>
       </div>
-    </div>
-    <div style="position:relative;height:480px;margin-top:1rem">
-      <canvas id=canvasGraficoGastos role=img aria-label="Gráfico de pizza dos gastos por categoria no ciclo"></canvas>
-    </div>
-    <p class=empty id=graficoVazio hidden>Sem gastos neste ciclo.</p>
-  </dialog>
+      <p class=meta id=graficoSubtitulo></p>
+      <div class=f id=fExcluirCat>
+        <span>Excluir categorias</span>
+        <div class=multiSel id=excluirCatWrap>
+          <button type=button id=excluirCatBtn class=multiSelBtn>Nenhuma excluída</button>
+          <div class=multiSelDrop id=excluirCatDrop></div>
+        </div>
+      </div>
+      <div style="position:relative;height:480px;margin-top:1rem">
+        <canvas id=canvasGraficoGastos role=img
+          aria-label="Gráfico de pizza dos gastos por categoria no ciclo"></canvas>
+      </div>
+      <p class=empty id=graficoVazio hidden>Sem gastos neste ciclo.</p>
+    </dialog>
 
-  <dialog id=modalComparativo>
-    <div class=modalHead>
-      <h2>Ganho x Gasto x Aportado</h2>
-      <button type=button id=fechaComparativo aria-label="Fechar">×</button>
-    </div>
-    <div style="position:relative;height:420px;margin-top:.6rem">
-      <canvas id=canvasEvolucao role=img
-        aria-label="Gráfico de barras comparando ganho, gasto e aportado mês a mês"></canvas>
-    </div>
-  </dialog>
-</div>
+    <dialog id=modalComparativo>
+      <div class=modalHead>
+        <h2>Ganho x Gasto x Aportado</h2>
+        <button type=button id=fechaComparativo aria-label="Fechar">×</button>
+      </div>
+      <div style="position:relative;height:420px;margin-top:.6rem">
+        <canvas id=canvasEvolucao role=img
+          aria-label="Gráfico de barras comparando ganho, gasto e aportado mês a mês"></canvas>
+      </div>
+    </dialog>
+    <script src="./script.js" defer></script>
+  </div>
+</body>
+
+</html>

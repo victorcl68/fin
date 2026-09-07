@@ -2026,6 +2026,21 @@ el('fValor').addEventListener('keydown', e => {
 });
 
 // ---- abrir modal: foco no Nome, categorias populares, Isa so pra quem nao e' a Isabella ----
+// select de Parcelas so' precisa ser populado uma vez (1x a 40x) — nao muda entre aberturas
+if (el('fParcelas').options.length < 40) {
+    for (let n = 2; n <= 40; n++) el('fParcelas').add(new Option(`${n}x`, n));
+}
+
+// mostra/esconde "Parcelas" conforme Credito: parcelar so' faz sentido no credito (debito
+// e' sempre a vista). Desmarcar Credito com uma opcao de parcela ja escolhida volta pra 1x
+// sozinho, senao um "3x" escondido ficaria selecionado por baixo dos panos.
+function atualizaVisibilidadeParcelas() {
+    const mostra = el('fCred').checked;
+    el('fParcelasWrap').hidden = !mostra;
+    if (!mostra) el('fParcelas').value = 1;
+}
+el('fCred').addEventListener('change', atualizaVisibilidadeParcelas);
+
 function abreModalNovo(prefill) {
     el('formNovo').reset();
     popularCategoriasNoForm();
@@ -2033,7 +2048,15 @@ function abreModalNovo(prefill) {
     sinalPositivo = false;
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
     el('fIsaWrap').hidden = Estado.restrito;   // Isabella nao lanca "pra" Isabella, ja e' o padrao dela
-    el('tituloNovo').textContent = prefill ? 'Duplicar lançamento' : 'Novo lançamento';
+
+    // titulo e aviso mudam conforme o modo simulacao global (Estado.simulando): o MESMO
+    // formulario serve pra lancamento real (vai pro banco) e simulado (so' memoria) —
+    // ver submeteNovoLancamento, que decide o destino no momento de salvar.
+    el('avisoSimulando').hidden = !Estado.simulando;
+    el('tituloNovo').textContent = Estado.simulando
+        ? 'Simular compra'
+        : (prefill ? 'Duplicar lançamento' : 'Novo lançamento');
+    el('salvaNovo').textContent = Estado.simulando ? 'Simular' : 'Salvar';
 
     if (prefill) {
         // copia tudo, inclusive data e valor: e' um ponto de partida, voce edita o que quiser
@@ -2053,6 +2076,7 @@ function abreModalNovo(prefill) {
     }
     atualizaSinalUI();
     atualizaAvisoFronteira();
+    atualizaVisibilidadeParcelas();
 
     modalNovo.showModal();
     // duplicando, o foco vai pro Valor (o que mais muda); do zero, vai pro Nome
@@ -2302,7 +2326,22 @@ el('seldup').onclick = () => {
     if (r) { modalNovo.dataset.viaDuplicar = '1'; abreModalNovo(r); }
 };
 
+// divide um valor total em N parcelas iguais, jogando o resto de arredondamento na
+// ultima (ex: R$100 em 3x = 33,33 + 33,33 + 33,34) — a soma das parcelas nunca diverge
+// do total digitado por causa de arredondamento.
+function valorDasParcelas(valorTotal, parcelas) {
+    const valorParcela = Math.round((valorTotal / parcelas) * 100) / 100;
+    const somaAteAntepenultima = valorParcela * (parcelas - 1);
+    const valorUltima = Math.round((valorTotal - somaAteAntepenultima) * 100) / 100;
+    return Array.from({ length: parcelas }, (_, p) => p == parcelas - 1 ? valorUltima : valorParcela);
+}
+
 // ---- salvar: nao fecha o modal, so limpa valor/data e mostra confirmacao ----
+// MESMO formulario serve pros dois destinos — a chave e' Estado.simulando (o toggle
+// global no topo): ligado, as parcelas viram lancamentos _sim=true SO' na memoria
+// (nunca chamam inserirLancamento, nunca tocam o Supabase — ver o bloco MODO SIMULACAO
+// mais abaixo); desligado, cada parcela e' um POST real, sequencial, uma fatura depois
+// da outra. Fora do credito (ou 1x), e' sempre uma unica linha.
 async function submeteNovoLancamento() {
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
 
@@ -2312,42 +2351,28 @@ async function submeteNovoLancamento() {
     if (!categ) { el('erroNovo').textContent = 'Escolha uma categoria.'; el('fCateg').focus(); return; }
 
     const data = el('fData').value || null;
-    const freq = null;   // frequencia sempre nula (campo removido do formulario)
     const valorDigitado = el('fValor').value.trim();
-    const valorNum = valorDigitado ? valorMascaraParaNumero(valorDigitado) * (sinalPositivo ? 1 : -1) : null;
+    const valorTotal = valorDigitado ? valorMascaraParaNumero(valorDigitado) : 0;
+    if (!valorTotal) { el('erroNovo').textContent = 'Preencha o valor.'; el('fValor').focus(); return; }
 
-    // Ativo e Pago nao aparecem mais no formulario — sempre true, como definido
-    const payload = {
-        data, nome, categ, freq, valor: valorNum,
-        cred: el('fCred').checked,
-        isa: el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked,
-        pago: true,
-        ativo: true,
-    };
+    const cred = el('fCred').checked;
+    const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
+    const parcelas = cred ? +el('fParcelas').value : 1;
+    const valores = valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1));
 
-    // trava o botao e o Enter enquanto o POST esta no ar, senao um clique duplo
-    // (ou Enter repetido) grava o mesmo lancamento duas vezes
-    if (el('salvaNovo').disabled) return;
+    if (el('salvaNovo').disabled) return;   // trava clique duplo / Enter repetido
     el('salvaNovo').disabled = true;
-    el('salvaNovo').textContent = 'Salvando…';
+    el('salvaNovo').textContent = Estado.simulando ? 'Simulando…' : 'Salvando…';
 
     try {
-        const linhaCriada = await inserirLancamento(payload);
-
-        let periodoIdx;
-        if (!linhaCriada.data) periodoIdx = null;
-        else if (linhaCriada.cred) periodoIdx = periodoDoCredito(linhaCriada.data, linhaCriada.isa, linhaCriada.nome);
-        else periodoIdx = periodoDoDebito(dataISO(linhaCriada.data));
-        Estado.lancamentos.push({
-            ...linhaCriada,
-            v: +linhaCriada.valor || 0,
-            inv: /^investimento$/i.test(String(linhaCriada.categ || '').trim()),
-            periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
-        });
+        if (Estado.simulando) simulaLancamentoParcelado({ nome, categ, data, cred, isa, parcelas, valores });
+        else await salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, parcelas, valores });
 
         // sucesso: NAO fecha o modal. Limpa so valor/data, mantem nome/categoria/cred/isa
         // pro proximo lancamento da mesma sessao (ex: varios itens do mesmo mercado).
-        el('erroNovo').textContent = `Salvo: ${brl(linhaCriada.valor || 0)}`;
+        const totalAssinado = valores.reduce((s, v) => s + v, 0);
+        el('erroNovo').textContent = (Estado.simulando ? 'Simulado: ' : 'Salvo: ') +
+            (parcelas > 1 ? `${parcelas}x ${brl(Math.abs(valores[0]))} · ${brl(Math.abs(totalAssinado))} no total` : brl(totalAssinado));
         el('erroNovo').classList.add('ok');
         el('fNome').value = '';
         el('fValor').value = ''; sinalPositivo = false; atualizaSinalUI();
@@ -2361,7 +2386,33 @@ async function submeteNovoLancamento() {
         el('erroNovo').textContent = 'Falhou ao salvar: ' + err.message;
     } finally {
         el('salvaNovo').disabled = false;
-        el('salvaNovo').textContent = 'Salvar';
+        el('salvaNovo').textContent = Estado.simulando ? 'Simular' : 'Salvar';
+    }
+}
+
+// grava as N parcelas como lancamentos REAIS no Supabase, uma por vez (sequencial, pra
+// preservar a ordem e simplificar o tratamento de erro no meio do caminho). A 1a parcela
+// usa o periodoIdx calculado a partir da data digitada; cada parcela seguinte so' avanca
+// +1 nesse INDICE de periodo (nao recalcula fechamento/fronteira de novo) — cada parcela
+// cai exatamente 1 fatura depois da anterior, como parcelamento de verdade.
+async function salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, parcelas, valores }) {
+    let periodoIdx = !data ? null : cred ? periodoDoCredito(data, isa, nome) : periodoDoDebito(dataISO(data));
+
+    for (let p = 0; p < parcelas; p++) {
+        const payload = {
+            data, freq: null, cred, isa, pago: true, ativo: true,
+            nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
+            categ, valor: valores[p],
+        };
+        const linhaCriada = await inserirLancamento(payload);
+        const idxValido = periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null;
+        Estado.lancamentos.push({
+            ...linhaCriada,
+            v: +linhaCriada.valor || 0,
+            inv: /^investimento$/i.test(String(linhaCriada.categ || '').trim()),
+            periodoIdx: idxValido,
+        });
+        if (periodoIdx != null) periodoIdx += 1;
     }
 }
 
@@ -2374,15 +2425,18 @@ async function submeteNovoLancamento() {
 // nenhum do resto do app pra "esconder" a simulacao, ela simplesmente deixa de existir.
 // Enquanto ativo, os simulados entram em TODAS as metricas (saldo, matriz Comparar,
 // graficos) exatamente como um lancamento real entraria, porque sao um.
+//
+// O formulario de lancamento e' o MESMO de sempre (modalNovo/#abreNovo) — nao ha mais um
+// modal "Simular compra" separado. Enquanto o toggle abaixo estiver ligado,
+// submeteNovoLancamento() desvia pra simulaLancamentoParcelado() em vez de gravar no
+// banco (ver abreModalNovo, que tambem troca titulo/texto do botao conforme o modo).
 // ===================================================================
-const modalSimular = el('modalSimular');
-
 function atualizaBotaoSimulacao() {
     el('toggleSimulacao').classList.toggle('ativo', Estado.simulando);
     el('toggleSimulacao').title = Estado.simulando
         ? 'Modo simulação ATIVO — clique pra desligar (apaga os lançamentos simulados)'
         : 'Modo simulação: injeta lançamentos hipotéticos só na memória (nunca salva) — recarregar ou desligar apaga tudo';
-    el('abreSimular').hidden = !Estado.simulando;
+    document.body.classList.toggle('simulando', Estado.simulando);
 }
 
 el('toggleSimulacao').onclick = async () => {
@@ -2399,62 +2453,18 @@ el('toggleSimulacao').onclick = async () => {
     }
 };
 
-function abreModalSimular() {
-    el('formSimular').reset();
-    popularCategoriasNoForm('fSimCateg');
-    el('fSimCateg').selectedIndex = 0;
-    el('fSimData').value = hojeISO();
-    el('fSimIsaWrap').hidden = Estado.restrito;
-    el('erroSimular').textContent = ''; el('erroSimular').classList.remove('ok');
-    modalSimular.showModal();
-    setTimeout(() => el('fSimNome').focus(), 50);
-}
-el('abreSimular').onclick = () => abreModalSimular();
-el('fechaSimular').onclick = () => modalSimular.close();
-modalSimular.addEventListener('click', e => { if (e.target == modalSimular) modalSimular.close(); });
-el('fSimDataHoje').onclick = () => { el('fSimData').value = hojeISO(); };
-el('fSimValor').addEventListener('input', e => {
-    const cursorNoFim = e.target.selectionEnd == e.target.value.length;
-    e.target.value = formataMascaraDinheiro(e.target.value);
-    if (cursorNoFim) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
-});
-
 // cria N lancamentos simulados (parcelas), um por periodo seguinte, injetados direto em
 // Estado.lancamentos com _sim=true. periodoIdx da 1a parcela vem da mesma regra de
 // qualquer compra real (periodoDoCredito/periodoDoDebito); as parcelas seguintes so'
 // avancam +1 no INDICE de periodo (nao recalculam data de fechamento/fronteira de novo —
 // cada parcela cai exatamente 1 fatura depois da anterior, como parcelamento de verdade).
-el('salvaSimular').onclick = () => {
-    el('erroSimular').textContent = ''; el('erroSimular').classList.remove('ok');
-
-    const nome = el('fSimNome').value.trim();
-    if (!nome) { el('erroSimular').textContent = 'Preencha o nome.'; el('fSimNome').focus(); return; }
-    const valorTotal = valorMascaraParaNumero(el('fSimValor').value.trim() || '0');
-    if (!valorTotal) { el('erroSimular').textContent = 'Preencha o valor.'; el('fSimValor').focus(); return; }
-
-    const parcelas = +el('fSimParcelas').value;
-    const cred = el('fSimCred').checked;
-    const isa = el('fSimIsaWrap').hidden ? Estado.restrito : el('fSimIsa').checked;
-    const categ = el('fSimCateg').value || 'Simulação';
-    const data = el('fSimData').value || hojeISO();
-
-    // divide o total em N parcelas iguais, jogando o resto de arredondamento na ultima
-    // (ex: R$100 em 3x = 33,33 + 33,33 + 33,34) — nunca deixa a soma das parcelas diferir
-    // do valor total digitado por causa de arredondamento
-    const valorParcela = Math.round((valorTotal / parcelas) * 100) / 100;
-    const somaAteAntepenultima = valorParcela * (parcelas - 1);
-    const valorUltimaParcela = Math.round((valorTotal - somaAteAntepenultima) * 100) / 100;
-
-    const periodoIdx1a = !data ? null
-        : cred ? periodoDoCredito(data, isa, nome)
-            : periodoDoDebito(dataISO(data));
-
+function simulaLancamentoParcelado({ nome, categ, data, cred, isa, parcelas, valores }) {
+    const periodoIdx1a = !data ? null : cred ? periodoDoCredito(data, isa, nome) : periodoDoDebito(dataISO(data));
     const grupoSimulado = ++Estado._proxIdSimulado;   // contador curto, so' pra diferenciar cada "compra simulada" das outras
-    const criadas = [];
-    for (let p = 0; p < parcelas; p++) {
-        const valorAssinado = (p == parcelas - 1 ? valorUltimaParcela : valorParcela) * (sinalSimuladoPositivo ? 1 : -1);
+
+    const criadas = valores.map((valorAssinado, p) => {
         const periodoIdx = periodoIdx1a == null ? null : periodoIdx1a + p;
-        criadas.push({
+        return {
             id: `sim-${grupoSimulado}-${p}`,
             nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
             categ, freq: null, data,
@@ -2463,22 +2473,10 @@ el('salvaSimular').onclick = () => {
             inv: /^investimento$/i.test(categ.trim()),
             periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
             _sim: true,
-        });
-    }
+        };
+    });
     Estado.lancamentos.push(...criadas);
-
-    el('erroSimular').textContent = `Simulado: ${parcelas}x ${brl(Math.abs(valorParcela))} · ${brl(Math.abs(valorTotal))} no total`;
-    el('erroSimular').classList.add('ok');
-    popularCategoriasNoForm('fSimCateg');
-    desenhar();
-    modalSimular.close();
-};
-
-// sinal (saida/entrada) do valor simulado — parcela de compra e' sempre saida por padrao
-// (diferente do form real, aqui nao tem botao de +/− visivel: assume saida, que cobre o
-// caso de uso principal "e se eu comprasse X"). Mantido como variavel pra dar pra
-// estender com um toggle depois, sem mudar o resto da logica de submissao.
-let sinalSimuladoPositivo = false;
+}
 
 // ===================================================================
 // LOGIN (Supabase Auth)

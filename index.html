@@ -38,15 +38,6 @@
         </div>
       </div>
 
-      <button id=abreSimular title="Simular compra" aria-label="Simular compra" hidden>
-        <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
-          stroke-linejoin=round>
-          <path d="M9 2h6l1 4H8z" />
-          <path d="M6 6h12l1 15H5z" />
-          <path d="M9 10a3 3 0 0 0 6 0" />
-        </svg>
-      </button>
-
       <button id=toggleSimulacao title="Modo simulação: injeta lançamentos hipotéticos só na memória (nunca salva) — recarregar ou desligar apaga tudo"
         aria-label="Ativar modo simulação">
         <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
@@ -139,6 +130,7 @@
     <div id=out></div>
     <div id=selbar><span id=selinfo class=info></span>
       <button id=seldup>Duplicar</button>
+      <button id=seldel class=btPerigo>Excluir</button>
       <button id=selacao>Limpar</button>
     </div>
 
@@ -148,6 +140,8 @@
           <h2 id=tituloNovo>Novo lançamento</h2>
           <button type=button id=fechaNovo aria-label="Fechar">×</button>
         </div>
+
+        <p class=avisoFr id=avisoSimulando hidden>Isso não salva nada — some ao recarregar ou desligar a simulação.</p>
 
         <div class=fmChecks>
           <label class=fmChk>
@@ -194,6 +188,12 @@
           </div>
         </label>
 
+        <label class=fm id=fParcelasWrap hidden><span>Parcelas</span>
+          <select id=fParcelas>
+            <option value=1>À vista (1x)
+          </select>
+        </label>
+
         <label class=fm><span>Categoria <b class=req>*</b></span>
           <select id=fCateg required></select>
         </label>
@@ -201,68 +201,6 @@
         <p class="erroNovo okNovo" id=erroNovo></p>
 
         <button type=button id=salvaNovo class=btPri>Salvar</button>
-      </form>
-    </dialog>
-
-    <dialog id=modalSimular>
-      <form id=formSimular method=dialog>
-        <div class=modalHead>
-          <h2>Simular compra</h2>
-          <button type=button id=fechaSimular aria-label="Fechar">×</button>
-        </div>
-
-        <p class=avisoFr id=avisoSimular>Isso não salva nada — some ao recarregar ou desligar a simulação.</p>
-
-        <div class=fmChecks>
-          <label class=fmChk>
-            <input type=checkbox id=fSimCred checked><span>Crédito</span></label>
-          <label class=fmChk id=fSimIsaWrap>
-            <input type=checkbox id=fSimIsa><span>Isabella</span></label>
-        </div>
-
-        <label class=fm><span>Nome <b class=req>*</b></span>
-          <input type=text id=fSimNome required placeholder="Ex: PS5" autocomplete=off>
-        </label>
-
-        <label class=fm><span>Data da compra</span>
-          <div class=dataWrap>
-            <input type=date id=fSimData>
-            <button type=button id=fSimDataHoje class=btHojeMini title="Hoje"
-              aria-label="Definir data de hoje">Hoje</button>
-          </div>
-        </label>
-
-        <label class=fm><span>Valor total <b class=req>*</b></span>
-          <div class=moneyWrap>
-            <span class=moneyPrefix>R$</span>
-            <input type=text inputmode=numeric id=fSimValor placeholder="0,00" autocomplete=off>
-          </div>
-        </label>
-
-        <label class=fm><span>Parcelas</span>
-          <select id=fSimParcelas>
-            <option value=1>À vista (1x)
-            <option value=2>2x
-            <option value=3>3x
-            <option value=4>4x
-            <option value=5>5x
-            <option value=6>6x
-            <option value=7>7x
-            <option value=8>8x
-            <option value=9>9x
-            <option value=10>10x
-            <option value=11>11x
-            <option value=12>12x
-          </select>
-        </label>
-
-        <label class=fm><span>Categoria</span>
-          <select id=fSimCateg></select>
-        </label>
-
-        <p class="erroNovo okNovo" id=erroSimular></p>
-
-        <button type=button id=salvaSimular class=btPri>Simular</button>
       </form>
     </dialog>
 

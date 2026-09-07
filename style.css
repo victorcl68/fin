@@ -110,8 +110,7 @@
       animation: girar 0.8s linear infinite;
   }
 
-  #toggleSimulacao,
-  #abreSimular {
+  #toggleSimulacao {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -125,8 +124,7 @@
       cursor: pointer;
   }
 
-  #toggleSimulacao:hover,
-  #abreSimular:hover {
+  #toggleSimulacao:hover {
       background: var(--field-hover);
       border-color: var(--fg);
   }
@@ -781,6 +779,36 @@
 
   #app {
       display: none;
+  }
+
+  /* modo simulacao ativo: uma vinheta fixa cobre as BORDAS da tela (centro limpo, sem
+     blur nenhum no conteudo/texto) — o efeito de "quadro de sonho/flashback" dos
+     quadrinhos, com um leve tom laranja (a mesma cor do toggle ligado) esfumacando os
+     cantos. E' so' um overlay visual (pointer-events:none, position:fixed acima do
+     #app): nao broca clique nem entra na "top layer" dos <dialog>, que continuam
+     abrindo por cima normalmente. */
+  body.simulando::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center,
+              transparent 58%,
+              rgba(20, 15, 10, .32) 84%,
+              rgba(16, 12, 8, .7) 100%);
+      backdrop-filter: blur(1.8px);
+      -webkit-backdrop-filter: blur(1.8px);
+      mask-image: radial-gradient(ellipse at center, transparent 56%, #000 88%);
+      -webkit-mask-image: radial-gradient(ellipse at center, transparent 56%, #000 88%);
+      opacity: 0;
+      animation: vinhetaSonho .3s ease forwards;
+  }
+
+  @keyframes vinhetaSonho {
+      to {
+          opacity: 1;
+      }
   }
 
   /* =========================================================

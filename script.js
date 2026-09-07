@@ -137,6 +137,14 @@ function nomePeriodo(fatStr) {
     return `${MESES[mesAnterior - 1]} ${ano}`;
 }
 
+// Mesma logica de nomePeriodo, mas abreviada ("Set/26") — usada no titulo da visao Comparar.
+function nomePeriodoAbrev(fatStr) {
+    const iso = dataISO(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+    let mesAnterior = m - 1, ano = y;
+    if (mesAnterior == 0) { mesAnterior = 12; ano--; }
+    return `${MESES[mesAnterior - 1].slice(0, 3)}/${String(ano).slice(-2)}`;
+}
+
 // Dado o 'venc' de uma fatura, em qual periodo ela APARECE na tela: o periodo cujo 'fat' cai no mes seguinte ao vencimento (nome do periodo = mes anterior ao 'fat').
 function periodoQueExibeVencimento(vencimento) {
     if (!vencimento) return -1;
@@ -512,22 +520,30 @@ const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
         }).join('') + '</tbody></table></div>';
 };
 
+// casca comum de TODOS os blocos (Débito/Crédito/Backlog/Comparar): titulo com botao
+// de collapse + linha de meta info + corpo por baixo. E' a MESMA estrutura/diagramacao
+// pra todo mundo, inclusive o collapse (▾/▸, Estado.fechados[idTabela]) — assim trocar
+// de visao (Ciclo <-> Comparar) fica impercetivel, os blocos sao visualmente identicos.
+// 'corpoFn' e' chamada so' quando o bloco esta aberto (evita montar a tabela/matriz a
+// toa quando esta fechado).
+function blocoCasca(tituloHtml, subtitulo, n, idTabela, corpoFn) {
+    const fechado = !!Estado.fechados[idTabela];
+    const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
+    const corpo = fechado ? '' : corpoFn();
+    return `<div class=blk><h3>${btnTog}${tituloHtml}</h3><p class=meta>${n} ${n == 1 ? 'registro' : 'registros'} · ${subtitulo}</p>${corpo}</div>`;
+}
+
 // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
 // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
 // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
 // "Ver gráfico" mora na toolbar (#btGrafico, ao lado do filtro Ativo), nao mais aqui.
 const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, extra = '') => {
-    const fechado = !!Estado.fechados[idTabela];
-    const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
-
-    // recolhido: mantem titulo, total e subtitulo — some so a tabela
-    const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
-    const n = linhas.length;   // quantas linhas essa tabela tem
     // 'extra' preenchido substitui o total no destaque: o titulo passa a exibir o que
     // falta pagar em evidencia, com o bruto de lado, apagado.
     const valor = extra.startsWith('<b') ? extra
         : `<b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra}`;
-    return `<div class=blk><h3>${btnTog}${titulo} · ${valor}</h3><p class=meta>${n} ${n == 1 ? 'registro' : 'registros'} · ${subtitulo}</p>${corpo}</div>`;
+    return blocoCasca(`${titulo} · ${valor}`, subtitulo, linhas.length, idTabela,
+        () => renderTabela(linhas, idTabela, selecionavel));
 };
 
 
@@ -944,19 +960,28 @@ function vComp() {
         periodosUsados.map(i => celSoma(totalPorPeriodo(i))).join('') +
         celSoma(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
 
-    // subtitulo dinamico igual ao dos blocos Debito/Credito: quantas linhas a matriz tem
-    // (varia com o "Agrupar por" — cada valor distinto da coluna escolhida vira uma linha),
-    // quantos lancamentos foram somados nelas, e o intervalo de datas do periodo De/Ate
+    // subtitulo: quantas linhas a matriz tem (varia com o "Agrupar por" — cada valor
+    // distinto da coluna escolhida vira uma linha) e o intervalo de datas do periodo
+    // De/Ate. A contagem de "N registros" (quantos lancamentos foram somados) ja vem
+    // de graca da blocoCasca, igual nos blocos Debito/Credito — nao repete aqui.
     const nGrupos = Object.keys(matriz).length;
     const nRegistros = linhasNoIntervalo.length;
     const iniPeriodo = Estado.periodos[periodosUsados[0]];
     const fimPeriodo = Estado.periodos[periodosUsados.at(-1)];
     const subtitulo =
         `${nGrupos} ${nGrupos == 1 ? capitaliza(coluna) : capitaliza(coluna) + 's'}` +
-        ` · ${nRegistros} ${nRegistros == 1 ? 'registro' : 'registros'}` +
         (iniPeriodo && fimPeriodo ? ` · ${dataBR(iniPeriodo.ini)} a ${dataBR(fimPeriodo.fat)}` : '');
 
-    return `<p class=meta>${subtitulo}</p><div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
+    // titulo no mesmo estilo dos blocos Debito/Credito
+    const tituloPeriodo = iniPeriodo && fimPeriodo
+        ? `Comparação ${nomePeriodoAbrev(iniPeriodo.fat)} até ${nomePeriodoAbrev(fimPeriodo.fat)}`
+        : 'Comparação';
+
+    // MESMA casca (blocoCasca) usada por Debito/Credito/Backlog: titulo, botao de
+    // collapse (▾/▸), linha de meta info e o corpo por baixo — pra trocar de visao
+    // (Ciclo <-> Comparar) ser impercetivel, os blocos ficam visualmente identicos.
+    return blocoCasca(tituloPeriodo, subtitulo, nRegistros, 'cp',
+        () => `<div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`);
 }
 
 

@@ -34,6 +34,43 @@ const estadoFiltroTexto = id => Estado.filtroTexto[id] || (Estado.filtroTexto[id
 
 // HELPERS
 const el = id => document.getElementById(id);                                               // atalho pra getElementById
+// mostra/esconde um campo da barra de filtros com fade suave, em vez do corte seco do
+// atributo hidden. Ao aparecer: tira o hidden e roda o fadeIn. Ao sumir: roda o fadeOut
+// e SO' entao aplica hidden (fora do fluxo, sem deixar buraco) quando a animacao termina —
+// nao antes, senao o hidden corta a transicao no meio.
+// Duas redes de seguranca contra o campo ficar preso visivel pra sempre:
+//  1) se for chamada de novo antes do fadeOut anterior terminar (troca rapida de visao,
+//     ida e volta), o timer/listener pendentes sao cancelados aqui e reagendados do zero;
+//  2) um setTimeout um pouco mais longo que a animacao aplica hidden=true de qualquer
+//     jeito, caso o evento 'animationend' nunca dispare (prefers-reduced-motion desativa
+//     a animacao sem disparar o evento, aba em background, etc) — sem essa rede, o campo
+//     fica visivel escondido atras do 'return' de jaResolvidoAssim pra sempre.
+function mostraComFade(id, mostrar) {
+    const alvo = el(id);
+    if (alvo._fadeOutHandler) { alvo.removeEventListener('animationend', alvo._fadeOutHandler); alvo._fadeOutHandler = null; }
+    if (alvo._fadeOutTimer) { clearTimeout(alvo._fadeOutTimer); alvo._fadeOutTimer = null; }
+    // "definitivamente visivel" = sem hidden e sem estar no meio de um fadeOut (que ainda
+    // vai acabar escondendo). So pula o trabalho se o estado final ja bate com o pedido.
+    const jaResolvidoAssim = mostrar ? (!alvo.hidden && !alvo.classList.contains('fadeOut')) : alvo.hidden;
+    if (jaResolvidoAssim) return;
+    alvo.classList.remove('fadeIn', 'fadeOut');
+    if (mostrar) {
+        alvo.hidden = false;
+        void alvo.offsetWidth;   // forca reflow pra garantir que a animacao rode desde o inicio
+        alvo.classList.add('fadeIn');
+    } else {
+        alvo.classList.add('fadeOut');
+        const termina = () => {
+            alvo.hidden = true;
+            alvo.classList.remove('fadeOut');
+            if (alvo._fadeOutHandler) { alvo.removeEventListener('animationend', alvo._fadeOutHandler); alvo._fadeOutHandler = null; }
+            if (alvo._fadeOutTimer) { clearTimeout(alvo._fadeOutTimer); alvo._fadeOutTimer = null; }
+        };
+        alvo._fadeOutHandler = termina;
+        alvo.addEventListener('animationend', termina, { once: true });
+        alvo._fadeOutTimer = setTimeout(termina, 250);   // duracao do fadeOut (.18s) + folga
+    }
+}
 const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });  // formata em R$
 const corValor = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';                                     // classe css: vermelho/verde conforme o sinal
 const celValor = v => `<td class="n ${corValor(v)}">${brl(v)}`;                             // celula <td> ja formatada em R$
@@ -355,14 +392,6 @@ function atualizaAvisoFronteira() {
         `Dia do fechamento: capturada em D+1, vai cair em ${alvo}. Confira na fatura.`;
 }
 
-// qual tabela contem as linhas selecionadas — a barra e' global, mas "selecionar tudo"
-// so faz sentido dentro de uma tabela
-function tabelaDaSelecao() {
-    const chave = [...Estado.selecionados.keys()][0];
-    if (!chave) return null;
-    return Object.keys(Estado.linhasVisiveis)
-        .find(id => (Estado.linhasVisiveis[id] || []).some(r => chaveSelecao(r) === chave)) || null;
-}
 // monta o <tr> de cabecalho de uma tabela, com a setinha de ordenacao na coluna ativa
 function cabecalhoTabela(idTabela) {
     const cols = colunasAtivas();
@@ -486,13 +515,10 @@ const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
 // um card "Débito"/"Crédito"/"Backlog": titulo + total, subtitulo, tabela por baixo.
 // quando selecionavel, ganha um botao "Selecionar tudo" que marca/desmarca todas as linhas
 // dessa tabela de uma vez (respeitando o filtro de texto ativo, se houver).
-const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, periodoIdxGrafico = null, extra = '') => {
+// "Ver gráfico" mora na toolbar (#btGrafico, ao lado do filtro Ativo), nao mais aqui.
+const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = false, extra = '') => {
     const fechado = !!Estado.fechados[idTabela];
     const btnTog = `<button type=button class=tog onclick="alternarBloco('${idTabela}')" aria-label="${fechado ? 'Expandir' : 'Recolher'}">${fechado ? '▸' : '▾'}</button>`;
-    const btnGrafico = periodoIdxGrafico != null && !fechado
-        ? `<button type="button" class="selTudoBt" onclick="abrirGraficoGastos(${periodoIdxGrafico})">Ver gráfico</button>`
-        : '';
-
 
     // recolhido: mantem titulo, total e subtitulo — some so a tabela
     const corpo = fechado ? '' : renderTabela(linhas, idTabela, selecionavel);
@@ -501,7 +527,7 @@ const renderBloco = (titulo, total, subtitulo, linhas, idTabela, selecionavel = 
     // falta pagar em evidencia, com o bruto de lado, apagado.
     const valor = extra.startsWith('<b') ? extra
         : `<b class="${corSoma(total)}">${brl(Math.abs(total))}</b>${extra}`;
-    return `<div class=blk><h3>${btnTog}${titulo} · ${valor} ${btnGrafico}</h3><p class=meta>${n} ${n == 1 ? 'linha' : 'linhas'} · ${subtitulo}</p>${corpo}</div>`;
+    return `<div class=blk><h3>${btnTog}${titulo} · ${valor}</h3><p class=meta>${n} ${n == 1 ? 'registro' : 'registros'} · ${subtitulo}</p>${corpo}</div>`;
 };
 
 
@@ -813,13 +839,25 @@ function vCiclo() {
         ...linhaSugestao
     ];
     const guardado = guardadoAte(i);
-    const extraDebito = !Estado.restrito && Math.abs(guardado) > 0.005
-        ? `<span class=bruto>${brl(guardado)} guardado</span>` : '';
+    const totalDebito = linhasDebito.reduce((s, r) => s + r.v, 0);
+    // ciclo equalizado (saldo zero): em vez do "R$ 0,00" sem graca, destaque em verde de
+    // sucesso. Usa a mesma tolerancia de ponto flutuante do resto do app (0.005) em vez de
+    // igualdade estrita, senao um resto de arredondamento tipo 0.0000000001 escapava do
+    // "== 0" mas ainda formatava como "R$ 0,00" na tela. Saldo negativo continua normal.
+    // Com algo guardado, o enfoque vira o valor guardado (e' o que importa agora), sem
+    // repetir o texto "Mês equalizado" — o valor guardado ja fala por si. Sem nada
+    // guardado, mostra so o texto de sucesso.
+    const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
+    const extraDebito = Math.abs(totalDebito) < 0.005
+        ? (temGuardado
+            ? `<b class=vd>${brl(guardado)} guardado</b>`
+            : `<b class=vd>Mês equalizado ✓</b>`)
+        : (temGuardado ? `<span class=bruto>${brl(guardado)} guardado</span>` : '');
 
     const blocoDebito = renderBloco(
-        'Débito', linhasDebito.reduce((s, r) => s + r.v, 0),
+        'Débito', totalDebito,
         `${periodo.ini ? dataBR(periodo.ini) : 'inicio'} a ${dataBR(periodo.fat)}`,
-        linhasDebito, 'db', true, null, extraDebito
+        linhasDebito, 'db', true, extraDebito
     );
 
     // so a Isabella (perfil restrito) nao ve o bloco Credito. No mobile, quem nao e' a
@@ -833,7 +871,7 @@ function vCiclo() {
     const blocoCredito = renderBloco(
         'Crédito', totalCredito,
         Estado.periodos[i - 1] ? nomePeriodo(Estado.periodos[i - 1].fat) : '—',
-        creditos, 'cr', true, null,
+        creditos, 'cr', true,
         houveAbatimento && faltaPagar > 0.005
             ? `<b class="${corSoma(totalFaturaLiquido)}">${brl(faltaPagar)}</b><span class=bruto>de ${brl(Math.abs(totalCredito))}</span>`
             : ''
@@ -906,7 +944,19 @@ function vComp() {
         periodosUsados.map(i => celSoma(totalPorPeriodo(i))).join('') +
         celSoma(linhasNoIntervalo.reduce((s, r) => s + r.v, 0));
 
-    return `<div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
+    // subtitulo dinamico igual ao dos blocos Debito/Credito: quantas linhas a matriz tem
+    // (varia com o "Agrupar por" — cada valor distinto da coluna escolhida vira uma linha),
+    // quantos lancamentos foram somados nelas, e o intervalo de datas do periodo De/Ate
+    const nGrupos = Object.keys(matriz).length;
+    const nRegistros = linhasNoIntervalo.length;
+    const iniPeriodo = Estado.periodos[periodosUsados[0]];
+    const fimPeriodo = Estado.periodos[periodosUsados.at(-1)];
+    const subtitulo =
+        `${nGrupos} ${nGrupos == 1 ? capitaliza(coluna) : capitaliza(coluna) + 's'}` +
+        ` · ${nRegistros} ${nRegistros == 1 ? 'registro' : 'registros'}` +
+        (iniPeriodo && fimPeriodo ? ` · ${dataBR(iniPeriodo.ini)} a ${dataBR(fimPeriodo.fat)}` : '');
+
+    return `<p class=meta>${subtitulo}</p><div class="wrap wx"><table><thead>${cabecalho}<tbody>${corpo}${linhaTotal}</tbody></table></div>`;
 }
 
 
@@ -932,27 +982,53 @@ function desenhar() {
     const visao = simples ? 'c' : el('visao').value;   // modo simples so mostra Ciclo
 
     el('fciclo').hidden = true;   // modo simples usa o navegador anterior/proximo, nao o combo
-    el('forigem').hidden = el('fgrupo').hidden = el('fde').hidden = el('fate').hidden = visao != 'k' || simples;
+    // Origem/Agrupar por so fazem sentido na visao Comparar — somem de verdade (hidden)
+    // fora do fluxo, sem deixar buraco reservado, mas com um fade suave em vez de corte
+    // seco (mesma sensacao do fade do #out ao trocar de visao).
+    mostraComFade('forigem', visao == 'k' && !simples);
+    mostraComFade('fgrupo', visao == 'k' && !simples);
     el('ftit').hidden = simples;
-    // navegador de ciclos so faz sentido na visao Ciclo — Comparar usa De/Ate e o
-    // Balanco mostra todos os periodos de uma vez
-    el('fciclNav').hidden = visao != 'c';
+    // #fciclNav e' um slot fixo em .head: mostra o navegador de ciclo na visao Ciclo,
+    // ou os seletores De/Ate na visao Comparar — nunca os dois, mas sempre no MESMO
+    // container, pra trocar de visao nao mexer na posicao/altura do cabecalho.
+    el('navCiclo').hidden = visao != 'c';
+    el('navComparar').hidden = visao != 'k';
     if (visao == 'c') atualizaNavegadorCiclo();
+    // ao entrar em Comparar sem De/Ate escolhidos ainda, pre-preenche com o ciclo ATUAL
+    // (o que contem hoje) e o PROXIMO — assim a matriz ja aparece de cara, sem precisar
+    // escolher os dois manualmente toda vez que troca de visao
+    if (visao == 'k' && !el('compDe').value && !el('compAte').value && Estado.idxHoje >= 0) {
+        const proximo = Estado.usados.find(idx => idx > Estado.idxHoje);
+        el('compDe').value = Estado.idxHoje;
+        el('compAte').value = proximo ?? Estado.idxHoje;
+    }
     if (simples) {
-        el('fsit').hidden = el('fvisao').hidden = true;
+        el('fsit').hidden = el('fativoWrap').hidden = el('fvisao').hidden = true;
         el('fpago').value = 'B'; el('fativo').value = 'S';   // ve tudo (pago+aberto), so os ativos
     }
     const noBacklog = visao == 'c' && +el('ciclo').value < 0;
     if (!simples) el('fativo').value = noBacklog ? 'B' : 'S';
     if (visao != 'k') el('origem').value = 'A';
 
-    // el('fgraf').hidden = visao != 'c' || simples || +el('ciclo').value < 0;
-    el('fevol').hidden = visao != 'k' || simples || !el('compDe').value || !el('compAte').value;
-    // el('btGrafico').dataset.idx = el('ciclo').value;
+    // "Ver gráfico" so faz sentido na visao Ciclo, com um ciclo de verdade selecionado
+    // (fora do Backlog, que nao tem periodo pra desenhar a pizza)
+    mostraComFade('fgraf', visao == 'c' && !simples && !noBacklog);
+    el('btGrafico').dataset.idx = el('ciclo').value;
+    mostraComFade('fevol', visao == 'k' && !simples && !!el('compDe').value && !!el('compAte').value);
 
+    // fade suave SO quando a visao mudou de verdade (Ciclo <-> Comparar) — nao em todo
+    // redesenho (ex: digitar num filtro de texto), senao a tela piscaria a cada tecla
+    const trocouVisao = Estado._ultimaVisao != null && Estado._ultimaVisao != visao;
+    Estado._ultimaVisao = visao;
     el('out').innerHTML = visao == 'c' ? vCiclo() : vComp();
+    if (trocouVisao) {
+        el('out').classList.remove('fadeIn');
+        void el('out').offsetWidth;   // forca reflow pra reiniciar a animacao mesmo se ja rodou antes
+        el('out').classList.add('fadeIn');
+    }
     if (visao != 'c') Estado.selecionados.clear();   // troca de aba (ou modo simples) limpa a selecao
     if (typeof atualizaBarraSelecao == 'function') atualizaBarraSelecao();
+    if (typeof reposicionaSegCtls == 'function') reposicionaSegCtls();
     console.timeEnd('[diag] desenhar');
 }
 
@@ -983,13 +1059,7 @@ function atualizaBarraSelecao() {
         el('selinfo').innerHTML =
             `<span class=cnt>${Estado.selecionados.size} selecionados</span>` +
             `<span class="val ${corSoma(soma)}">${brl(soma)}</span>`;
-
-        // o botao vira Limpar quando ja esta tudo marcado
-        const id = tabelaDaSelecao();
-        const todas = (Estado.linhasVisiveis[id] || []).map(chaveSelecao).filter(Boolean);
-        const tudoMarcado = todas.length > 0 && todas.every(c => Estado.selecionados.has(c));
-        el('selacao').textContent = tudoMarcado ? 'Limpar' : 'Selecionar tudo';
-        el('selacao').dataset.modo = tudoMarcado ? 'limpar' : 'tudo';
+        el('selacao').textContent = 'Limpar';
     }
 
     el('selbar').style.display = 'flex';
@@ -1025,32 +1095,25 @@ function alternarSelecao(chave) {
     desenhar();
 }
 
-// shift-click: seleciona o intervalo entre a ultima linha clicada e a linha atual,
+// shift-click: aplica na linha atual o intervalo entre ela e a ultima linha clicada,
 // dentro da MESMA tabela (respeitando a ordem em que as linhas estao na tela agora).
+// A ACAO (marcar ou desmarcar) segue o que um clique normal faria na linha atual: se ela
+// ja estava marcada, o shift desmarca o intervalo inteiro; senao, marca o intervalo inteiro.
 function selecionarIntervalo(idTabela, chave) {
     const linhas = (Estado.linhasVisiveis[idTabela] || []).map(chaveSelecao).filter(Boolean);
     const iAtual = linhas.indexOf(chave);
     const iAncora = linhas.indexOf(Estado.ultimaClicada);
     if (iAtual < 0 || iAncora < 0) { alternarSelecao(chave); return; }
+    const desmarcando = Estado.selecionados.has(chave);
     const [ini, fim] = iAncora <= iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
     for (let i = ini; i <= fim; i++) {
         const c = linhas[i];
-        if (!Estado.selecionados.has(c)) Estado.selecionados.set(c, valorDaChave(c));
+        if (desmarcando) Estado.selecionados.delete(c);
+        else if (!Estado.selecionados.has(c)) Estado.selecionados.set(c, valorDaChave(c));
     }
     Estado.ultimaClicada = chave;
     desenhar();
 }
-// marca/desmarca de uma vez todas as linhas visiveis de uma tabela (respeita filtro de texto ativo).
-// se todas ja estao marcadas, desmarca tudo (toggle); senao, marca as que faltam.
-window.selecionarTudo = idTabela => {
-    const chaves = (Estado.linhasVisiveis[idTabela] || []).map(chaveSelecao).filter(Boolean);
-    const todasMarcadas = chaves.length > 0 && chaves.every(c => Estado.selecionados.has(c));
-    chaves.forEach(chave => {
-        if (todasMarcadas) Estado.selecionados.delete(chave);
-        else if (!Estado.selecionados.has(chave)) Estado.selecionados.set(chave, valorDaChave(chave));
-    });
-    desenhar();   // redesenha pra refletir o novo estado 'on' em todas as linhas de uma vez
-};
 
 window.alternarBloco = idTabela => {
     Estado.fechados[idTabela] = !Estado.fechados[idTabela];
@@ -1073,11 +1136,7 @@ el('out').addEventListener('click', e => {
     }
     alternarSelecao(linha.dataset.sid);
 });
-el('selacao').onclick = () => {
-    if (el('selacao').dataset.modo == 'limpar') { Estado.selecionados.clear(); desenhar(); return; }
-    const id = tabelaDaSelecao();
-    if (id) selecionarTudo(id);
-};
+el('selacao').onclick = () => { Estado.selecionados.clear(); desenhar(); };
 el('ciclo').addEventListener('change', () => { Estado.selecionados.clear(); atualizaBarraSelecao(); });
 
 // Alcance da navegacao: a Isabella fica presa aos tres ciclos em volta de hoje
@@ -1119,15 +1178,116 @@ el('cicloHoje').onclick = () => {
     desenhar();
 };
 
-// el('btGrafico').onclick = () => abrirGraficoGastos(+el('btGrafico').dataset.idx);
+el('btGrafico').onclick = () => abrirGraficoGastos(+el('btGrafico').dataset.idx);
 el('btEvolucao').onclick = () => abrirGraficoEvolucao(+el('compDe').value, +el('compAte').value);
 
 // qualquer select/checkbox da barra de ferramentas redesenha a tela ao mudar
 // >>> LOG TEMP: try/catch aqui so pra diagnostico — sem isso, um erro no desenhar()
 // disparado por um filtro (fora do try do load()) sumia sem aparecer em lugar nenhum.
-document.querySelectorAll('.tool select,.tool input').forEach(e => e.onchange = () => {
+// compDe/compAte moraram em .tool ate virarem parte do slot #navComparar (em .head,
+// pra nao dar "tremor" de layout ao trocar Ciclo/Comparar) — por isso entram na
+// selecao aqui tambem, senao o "onchange" generico da toolbar nunca os alcança.
+document.querySelectorAll('.tool select,.tool input,#navComparar select').forEach(e => e.onchange = () => {
     try { desenhar(); } catch (err) { console.error('[diag] erro ao redesenhar apos mudar filtro:', err); }
 });
+
+// ===================================================================
+// SEGMENTED CONTROL (Visão) — liga um <select> escondido a um toggle estilizado, com
+// o "thumb" deslizando entre as opcoes. O <select> continua sendo a fonte de verdade
+// (o resto do app so' le/muda .value dele), o segCtl e' so' a camada visual por cima,
+// sincronizada nos dois sentidos.
+// ===================================================================
+function ligaSegCtl(idSelect, idSeg) {
+    const select = el(idSelect), seg = el(idSeg);
+    const thumb = seg.querySelector('.segThumb');
+    const botoes = [...seg.querySelectorAll('.segOpt')];
+
+    function escolhe(valor, arrastando) {
+        const ativo = botoes.find(b => b.dataset.valor == valor);
+        if (!ativo) return;
+        seg.style.setProperty('--segX', ativo.offsetLeft - thumb.parentElement.clientLeft + 'px');
+        seg.style.setProperty('--segW', ativo.offsetWidth + 'px');
+        botoes.forEach(b => b.classList.toggle('on', b === ativo));
+        // durante o arraste o thumb segue o dedo/mouse 1:1 (sem a transicao de mola);
+        // ela volta assim que soltar, pro "snap" final ficar suave
+        thumb.classList.toggle('semTransicao', !!arrastando);
+        if (!arrastando && select.value !== valor) {
+            select.value = valor;
+            select.dispatchEvent(new Event('change'));   // aciona o listener generico que redesenha a tela
+        }
+    }
+
+    botoes.forEach(b => b.addEventListener('click', () => escolhe(b.dataset.valor, false)));
+
+    // arrastar o thumb feito interruptor de verdade: segura em qualquer ponto do
+    // controle, o thumb segue o ponteiro em tempo real, solta = decide pelo lado mais
+    // proximo de onde parou (nao precisa arrastar ate a borda).
+    let arrastando = false, offsetInicial = 0;
+    const larguraSeg = () => {
+        const cs = getComputedStyle(seg);
+        return seg.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    };
+    const valorMaisProximo = x => {
+        const meio = larguraSeg() / 2;
+        return botoes[x < meio ? 0 : botoes.length - 1].dataset.valor;
+    };
+
+    thumb.addEventListener('pointerdown', e => {
+        arrastando = true;
+        thumb.setPointerCapture(e.pointerId);
+        const thumbX = parseFloat(getComputedStyle(seg).getPropertyValue('--segX')) || 0;
+        offsetInicial = e.clientX - thumbX;
+        thumb.classList.add('segurando');
+    });
+    thumb.addEventListener('pointermove', e => {
+        if (!arrastando) return;
+        const largura = larguraSeg();
+        const thumbW = thumb.offsetWidth;
+        const x = Math.min(Math.max(0, e.clientX - offsetInicial), largura - thumbW);
+        seg.style.setProperty('--segX', x + 'px');
+        thumb.classList.add('semTransicao');
+        // troca de valor (e dispara o redesenho) assim que o CENTRO do thumb passa da
+        // metade do controle — nao precisa soltar pra decidir, o valor muda no meio do
+        // arraste, feito um interruptor de verdade que troca o estado ao cruzar o ponto
+        // central, so o "snap" visual final acontece ao soltar.
+        const valorAlvo = valorMaisProximo(x + thumbW / 2);
+        if (select.value !== valorAlvo) {
+            select.value = valorAlvo;
+            select.dispatchEvent(new Event('change'));
+            botoes.forEach(b => b.classList.toggle('on', b.dataset.valor === valorAlvo));
+        }
+    });
+    const soltaArraste = () => {
+        if (!arrastando) return;
+        arrastando = false;
+        thumb.classList.remove('segurando');
+        const x = parseFloat(getComputedStyle(seg).getPropertyValue('--segX')) || 0;
+        escolhe(valorMaisProximo(x + thumb.offsetWidth / 2), false);
+    };
+    thumb.addEventListener('pointerup', soltaArraste);
+    thumb.addEventListener('pointercancel', soltaArraste);
+
+    // enquanto arrastando==true o thumb esta seguindo o dedo/mouse livremente — um
+    // desenhar() disparado pelo proprio dispatchEvent('change') do meio do arraste
+    // NAO pode chamar posicionaThumb() e resetar --segX pro valor "snapado", senao
+    // interrompe o gesto no meio. So reposiciona de fato quando nao ha arraste em curso.
+    function posicionaThumb() { if (!arrastando) escolhe(select.value, false); }
+
+    seg._posiciona = posicionaThumb;   // exposto pra recalcular quando o container reaparece (estava hidden)
+    posicionaThumb();
+}
+['visao'].forEach(id => ligaSegCtl(id, 'seg' + capitaliza(id)));
+
+// o select fica hidden quando o modo simples esconde o filtro de visao — reposiciona
+// o thumb (chamado no fim de desenhar(), depois que os hidden ja foram decididos),
+// cobrindo o caso de o container acabar de reaparecer na tela (offsetLeft/offsetWidth
+// so' sao corretos com o elemento visivel)
+function reposicionaSegCtls() {
+    ['segVisao'].forEach(id => {
+        const s = el(id);
+        if (s && !s.closest('[hidden]') && s._posiciona) s._posiciona();
+    });
+}
 
 // ===================================================================
 // GRÁFICO DE GASTOS DO CICLO (pizza)

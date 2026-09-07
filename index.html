@@ -20,11 +20,31 @@
 
   <div id=app>
     <div class=head>
-      <button id=sair title="Encerrar" aria-label="Encerrar">
+      <div class=f id=fciclNav>
+        <div id=navCiclo>
+          <div class=cicloNav>
+            <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
+            <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
+            <button type=button id=cicloHoje class=btHoje>Atual</button>
+          </div>
+          <span id=nomeCicloNav>—</span>
+        </div>
+        <div id=navComparar>
+          <label class=fInline id=fde><span class=srOnly>De</span>
+            <select id=compDe aria-label="De"></select>
+          </label>
+          <span class=navCompararAte>até</span>
+          <label class=fInline id=fate><span class=srOnly>Até</span>
+            <select id=compAte aria-label="Até"></select>
+          </label>
+        </div>
+      </div>
+
+      <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
         <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
           stroke-linejoin=round>
-          <path d="M12 3v9" />
-          <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
+          <line x1=12 y1=5 x2=12 y2=19 />
+          <line x1=5 y1=12 x2=19 y2=12 />
         </svg>
       </button>
 
@@ -38,32 +58,52 @@
         </svg>
       </button>
 
-      <button id=abreNovo title="Novo lançamento" aria-label="Novo lançamento">
+      <button id=sair title="Encerrar" aria-label="Encerrar">
         <svg viewBox="0 0 24 24" width=17 height=17 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round
           stroke-linejoin=round>
-          <line x1=12 y1=5 x2=12 y2=19 />
-          <line x1=5 y1=12 x2=19 y2=12 />
+          <path d="M12 3v9" />
+          <path d="M6.4 6.4a8 8 0 1 0 11.2 0" />
         </svg>
       </button>
     </div>
     <p class=sub><span id=st></span></p>
 
-    <div class=f id=fciclNav>
-      <span id=nomeCicloNav>—</span>
-      <div class=cicloNav>
-        <button type=button id=cicloAnterior aria-label="Ciclo anterior">‹</button>
-        <button type=button id=cicloProximo aria-label="Próximo ciclo">›</button>
-        <button type=button id=cicloHoje class=btHoje>Ciclo atual</button>
-      </div>
-    </div>
-
     <div class=tool>
       <div class=row>
         <label class=f id=fvisao><span>Visão</span>
-          <select id=visao>
+          <select id=visao hidden>
             <option value=c>Ciclo
             <option value=k>Comparar
           </select>
+          <div class=segCtl id=segVisao role=tablist aria-label="Visão">
+            <span class=segThumb></span>
+            <button type=button class=segOpt data-valor=c role=tab>Ciclo</button>
+            <button type=button class=segOpt data-valor=k role=tab>Comparar</button>
+          </div>
+        </label>
+        <label class=f id=ftit><span>Titular</span>
+          <select id=titular>
+            <option value=T>Todos
+            <option value=E>Eu
+            <option value=I>Isabella
+          </select>
+        </label>
+        <label class=f id=fsit><span>Pago</span>
+          <select id=fpago>
+            <option value=B>Ambos
+            <option value=S>Sim
+            <option value=N>Não
+          </select>
+        </label>
+        <label class=f id=fativoWrap><span>Ativo</span>
+          <select id=fativo>
+            <option value=S>Sim
+            <option value=B>Ambos
+            <option value=N>Não
+          </select>
+        </label>
+        <label class=f id=fgraf><span>&nbsp;</span>
+          <button type=button id=btGrafico class=btFiltro>Gráfico</button>
         </label>
         <label class=f id=fciclo><span>Ciclo</span>
           <select id=ciclo></select>
@@ -75,47 +115,18 @@
             <option value=F>Crédito
           </select>
         </label>
-        <label class=f id=ftit><span>Titular</span>
-          <select id=titular>
-            <option value=T>Todos
-            <option value=E>Eu
-            <option value=I>Isabella
-          </select>
-        </label>
-        <label class=f id=fevol><span>&nbsp;</span>
-          <button type=button id=btEvolucao class=btFiltro>Ver evolução</button>
-        </label>
         <label class=f id=fgrupo><span>Agrupar por</span>
           <select id=grupo></select>
         </label>
-        <label class=f id=fde><span>De</span>
-          <select id=compDe></select>
-        </label>
-        <label class=f id=fate><span>Até</span>
-          <select id=compAte></select>
-        </label>
-      </div>
-      <div class=row id=fsit>
-        <label class=f><span>Pago</span>
-          <select id=fpago>
-            <option value=B>Ambos
-            <option value=S>Sim
-            <option value=N>Não
-          </select>
-        </label>
-        <label class=f><span>Ativo</span>
-          <select id=fativo>
-            <option value=S>Sim
-            <option value=B>Ambos
-            <option value=N>Não
-          </select>
+        <label class=f id=fevol><span>&nbsp;</span>
+          <button type=button id=btEvolucao class=btFiltro>Evolução</button>
         </label>
       </div>
     </div>
     <div id=out></div>
     <div id=selbar><span id=selinfo class=info></span>
       <button id=seldup>Duplicar</button>
-      <button id=selacao>Selecionar tudo</button>
+      <button id=selacao>Limpar</button>
     </div>
 
     <dialog id=modalNovo>
@@ -139,7 +150,8 @@
         <label class=fm><span>Data</span>
           <div class=dataWrap>
             <input type=date id=fData>
-            <button type=button id=fDataHoje class=btHojeMini title="Hoje" aria-label="Definir data de hoje">Hoje</button>
+            <button type=button id=fDataHoje class=btHojeMini title="Hoje"
+              aria-label="Definir data de hoje">Hoje</button>
           </div>
         </label>
 
@@ -212,7 +224,8 @@
         <button type=button class=calcTecla data-calc=0>0</button>
         <button type=button class=calcTecla data-calc=ponto>,</button>
         <button type=button class="calcTecla calcOp" data-calc=back aria-label="Apagar">⌫</button>
-        <button type=button class="calcTecla calcIgual" data-calc=igual title="Inserir valor" aria-label="Inserir valor">✓</button>
+        <button type=button class="calcTecla calcIgual" data-calc=igual title="Inserir valor"
+          aria-label="Inserir valor">✓</button>
       </div>
     </dialog>
 

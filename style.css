@@ -114,17 +114,17 @@
       width: 2rem;
       height: 2rem;
       padding: 0;
-      color: var(--mu);
-      background: var(--pa);
-      border: 1px solid var(--ln);
+      color: var(--vm);
+      background: var(--red-soft);
+      border: 1px solid var(--vm);
       border-radius: 9px;
       cursor: pointer;
   }
 
   #sair:hover {
-      color: var(--vm);
+      color: #fff;
       border-color: var(--vm);
-      background: var(--red-soft);
+      background: var(--vm);
   }
 
   #recarregar {
@@ -134,17 +134,17 @@
       width: 2rem;
       height: 2rem;
       padding: 0;
-      color: var(--mu);
-      background: var(--pa);
-      border: 1px solid var(--ln);
+      color: var(--vd);
+      background: var(--green-soft);
+      border: 1px solid var(--vd);
       border-radius: 9px;
       cursor: pointer;
   }
 
   #recarregar:hover {
-      color: var(--fg);
-      border-color: var(--fg);
-      background: var(--field-hover);
+      color: #10231A;
+      border-color: var(--vd);
+      background: var(--vd);
   }
 
   #recarregar.carregando svg {
@@ -158,6 +158,38 @@
 
       to {
           transform: rotate(360deg);
+      }
+  }
+
+  /* disfarca a troca de estrutura de #out ao mudar de visao (tabelas Debito/Credito <->
+     matriz Comparar) e o aparecer/sumir dos filtros exclusivos de cada visao (Origem,
+     Agrupar por, Grafico, Ver evolucao) com o MESMO fade suave, em vez de uma troca
+     abrupta — os dois usam a mesma duracao/curva pra sentirem parte do mesmo gesto. */
+  #out.fadeIn,
+  .f.fadeIn {
+      animation: fadeSuave .32s cubic-bezier(.25, .1, .25, 1);
+  }
+
+  .f.fadeOut {
+      animation: fadeSuave .18s cubic-bezier(.4, 0, 1, 1) reverse;
+  }
+
+  @keyframes fadeSuave {
+      from {
+          opacity: 0;
+      }
+
+      to {
+          opacity: 1;
+      }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+      #out.fadeIn,
+      .f.fadeIn,
+      .f.fadeOut {
+          animation: none;
       }
   }
 
@@ -250,6 +282,94 @@
   select option {
       background: var(--field);
       color: var(--fg);
+  }
+
+  /* =========================================================
+       SEGMENTED CONTROL (Visão / Titular / Origem — liga-desliga estilizado)
+       ========================================================= */
+
+  .segCtl {
+      position: relative;
+      display: inline-flex;
+
+      padding: .2rem;
+      border: 1px solid var(--ln);
+      border-radius: 11px;
+      background: var(--field);
+  }
+
+  /* thumb arrastavel de verdade: segura e joga de um lado pro outro, feito um
+     interruptor fisico. Fica ATRAS do texto (z-index menor que .segOpt) — e' so' a
+     "pastilha" de fundo que realca a opcao ativa, nunca cobre o texto por cima. Pra
+     ainda dar pra segurar e arrastar de cima do texto ativo, o proprio .segOpt.on fica
+     com pointer-events:none (o clique atravessa ele e chega no thumb); o botao INATIVO
+     continua 100% clicavel normalmente. touch-action:none evita scroll/zoom ao arrastar. */
+  .segThumb {
+      position: absolute;
+      top: .2rem;
+      bottom: .2rem;
+      left: .2rem;
+      width: var(--segW, 0);
+      z-index: 0;
+
+      background: var(--pa);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+
+      transform: translateX(var(--segX, 0));
+      transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), width .28s cubic-bezier(.4, 0, .2, 1), box-shadow .15s ease;
+      pointer-events: auto;
+      cursor: grab;
+      touch-action: none;
+  }
+
+  .segThumb.semTransicao {
+      transition: width .28s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  .segThumb.segurando {
+      cursor: grabbing;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, .4);
+      transform: translateX(var(--segX, 0)) scale(1.04);
+  }
+
+  .segOpt {
+      position: relative;
+      z-index: 1;
+
+      border: 0;
+      background: transparent;
+      color: var(--mu);
+
+      font: 600 .85rem/1 inherit;
+      padding: .5rem .85rem;
+      border-radius: 8px;
+
+      cursor: pointer;
+      transition: color .2s ease;
+      white-space: nowrap;
+  }
+
+  .segOpt:hover {
+      color: var(--fg);
+  }
+
+  .segOpt.on {
+      color: var(--fg);
+      pointer-events: none;
+      cursor: grab;
+  }
+
+  .segOpt:active {
+      transform: scale(.96);
+      transition: transform .1s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+      .segThumb {
+          transition: none;
+      }
   }
 
   .multiSel {
@@ -359,7 +479,8 @@
       font-weight: 700;
   }
 
-  .blk .meta {
+  .blk .meta,
+  .meta {
       font-size: .85rem;
       color: var(--mu);
       font-style: italic;
@@ -793,22 +914,67 @@
        NAVEGAÇÃO DE CICLOS
        ========================================================= */
 
+  /* #fciclNav e' um slot fixo em .head: mostra #navCiclo OU #navComparar (nunca os
+     dois), conforme a visao ativa (Ciclo/Comparar) — trocar de visao so troca o
+     conteudo desse slot, sem mexer na posicao/altura do cabecalho ao redor. */
   #fciclNav {
       display: flex;
       flex-direction: row;
       align-items: center;
       justify-content: flex-start;
-      gap: .8rem;
 
-      margin: 0 0 1.2rem;
+      flex: 1;
+      min-width: 0;
+      margin: 0;
       padding: .3rem 0;
-      width: fit-content;
+  }
+
+  #navCiclo,
+  #navComparar {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: .8rem;
+  }
+
+  #navCiclo {
+      gap: .5rem;
   }
 
   #nomeCicloNav {
       font: 700 1.05rem/1 inherit;
       min-width: 9.5rem;
       display: inline-block;
+  }
+
+  /* visualmente escondido mas ainda lido por leitor de tela — usado no "De"/"Até" do
+     navComparar, que agora dispensa rotulo visivel (so' o select) pra bater exatamente
+     na mesma altura dos botoes .cicloNav (2.2rem) e nao esticar a linha do cabecalho */
+  .srOnly {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+  }
+
+  .fInline {
+      display: flex;
+  }
+
+  .fInline select {
+      height: 2.2rem;
+      padding-top: 0;
+      padding-bottom: 0;
+  }
+
+  .navCompararAte {
+      font-size: .8rem;
+      color: var(--mu);
   }
 
   .cicloNav {
@@ -1521,6 +1687,10 @@
       font-size: .88rem;
       color: var(--mu);
       margin-left: .4rem;
+  }
+
+  .blk h3 .bruto.vd {
+      color: var(--vd);
   }
 
   .blk h3 .bruto s {

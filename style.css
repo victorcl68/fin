@@ -881,6 +881,24 @@
       border-color: var(--fg);
   }
 
+  /* Excluir: mesma forma discreta do Duplicar, so' que em vermelho — a acao e'
+     irreversivel, entao nao deve parecer o botao primario (branco) da barra. */
+  #selbar #seldel {
+      color: var(--vm);
+      background: var(--red-soft);
+      border: 1px solid var(--vm);
+  }
+
+  #selbar #seldel:hover {
+      color: #111315;
+      background: var(--vm);
+  }
+
+  #selbar #seldel:disabled {
+      opacity: .6;
+      cursor: default;
+  }
+
   /* =========================================================
        NAVEGAÇÃO DE CICLOS
        ========================================================= */

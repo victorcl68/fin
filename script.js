@@ -260,6 +260,14 @@ const inserirLancamento = async payload => {
     return linhas[0];
 };
 
+const excluirLancamento = async id => {
+    const r = await fetch(`${API}/rest/v1/lancamentos?id=eq.${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { apikey: KEY, Authorization: 'Bearer ' + await tokenAtual() },
+    });
+    if (!r.ok) throw Error(`excluir: ${r.status} ${await r.text()}`);
+};
+
 // Busca periodos + lancamentos no Supabase e monta Estado.periodos / Estado.lancamentos, ja com a competencia (periodoIdx) de cada lancamento calculada. Nao mexe na tela.
 async function carregarDados() {
     const [periodosCrus, lancamentosCrus] = await Promise.all([buscar('periodos'), buscar('lancamentos')]);
@@ -1328,6 +1336,7 @@ function atualizaBarraSelecao() {
     // basta clicar nela de novo. Selecao multipla + soma funciona igual em qualquer
     // tela/perfil (mobile e Isabella inclusive) — nao depende mais de modoSimples().
     el('seldup').hidden = !chaveUnicaReal;
+    el('seldel').hidden = !chaveUnicaReal;
     el('selacao').hidden = !!chaveUnicaReal;
 
     if (chaveUnica) {
@@ -2324,6 +2333,34 @@ el('seldup').onclick = () => {
     const chave = [...Estado.selecionados.keys()][0];
     const r = Estado.lancamentos.find(x => String(x.id) == chave);
     if (r) { modalNovo.dataset.viaDuplicar = '1'; abreModalNovo(r); }
+};
+
+// excluir a linha selecionada, uma por vez. So' aparece com UMA linha real marcada (ver
+// chaveUnicaReal em atualizaBarraSelecao) — linha sintetica (fatura, saldo, resgate) nao
+// existe no banco e nao tem o que apagar. Pede confirmacao porque nao da' pra desfazer.
+// Lancamento simulado (_sim) nunca foi salvo: sai so' do array em memoria, sem DELETE.
+el('seldel').onclick = async () => {
+    const chave = [...Estado.selecionados.keys()][0];
+    const i = Estado.lancamentos.findIndex(x => String(x.id) == chave);
+    if (i < 0) return;
+
+    const r = Estado.lancamentos[i];
+    if (!confirm(`Excluir "${r.nome ?? ''}" (${brl(r.v || 0)})?\n\nNão dá pra desfazer.`)) return;
+
+    if (el('seldel').disabled) return;   // trava clique duplo enquanto o DELETE esta no ar
+    el('seldel').disabled = true;
+    el('seldel').textContent = 'Excluindo…';
+    try {
+        if (!r._sim) await excluirLancamento(r.id);
+        Estado.lancamentos.splice(i, 1);
+        Estado.selecionados.clear();
+        desenhar();
+    } catch (err) {
+        alert('Falhou ao excluir: ' + err.message);
+    } finally {
+        el('seldel').disabled = false;
+        el('seldel').textContent = 'Excluir';
+    }
 };
 
 // divide um valor total em N parcelas iguais, jogando o resto de arredondamento na

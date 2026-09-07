@@ -421,6 +421,13 @@
       background: var(--pa);
   }
 
+  /* evita a selecao de texto azul do navegador ao usar shift-click pra marcar um
+     intervalo de linhas — o shift-click nativo seleciona texto, o que fica feio
+     junto com o destaque das linhas marcadas. Inputs de filtro continuam selecionaveis. */
+  tbody tr.pick {
+      user-select: none;
+  }
+
   th {
       position: sticky;
       top: 0;
@@ -843,6 +850,7 @@
        ========================================================= */
 
   dialog#modalNovo,
+  dialog#modalCalc,
   dialog#modalGrafico,
   dialog#modalComparativo {
       color: var(--fg);
@@ -859,7 +867,15 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
   }
 
+  dialog#modalCalc {
+      border-radius: 16px;
+      padding: 1.1rem;
+      width: min(20rem, 92vw);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+  }
+
   dialog#modalNovo::backdrop,
+  dialog#modalCalc::backdrop,
   dialog#modalGrafico::backdrop,
   dialog#modalComparativo::backdrop {
       background: rgba(0, 0, 0, .68);
@@ -965,6 +981,36 @@
       background-position: right .8rem center;
 
       padding-right: 2rem;
+  }
+
+  .dataWrap {
+      display: flex;
+      gap: .4rem;
+      align-items: stretch;
+  }
+
+  .dataWrap input[type=date] {
+      flex: 1;
+  }
+
+  .btHojeMini {
+      flex: none;
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--mu);
+
+      padding: 0 .7rem;
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+
+      background: var(--field);
+      cursor: pointer;
+  }
+
+  .btHojeMini:hover {
+      background: var(--field-hover);
+      color: var(--fg);
+      border-color: var(--line-strong);
   }
 
   .fmChecks {
@@ -1087,6 +1133,28 @@
       font-size: .74rem;
   }
 
+  .calcBt {
+      flex: none;
+      width: 2.4rem;
+
+      border: 0;
+      border-left: 1px solid var(--ln);
+
+      background: #191C1F;
+      color: var(--mu);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      cursor: pointer;
+  }
+
+  .calcBt:hover {
+      background: var(--field-hover);
+      color: var(--fg);
+  }
+
   /* =========================================================
        MENSAGEM DO MODAL
        ========================================================= */
@@ -1096,6 +1164,89 @@
       font-size: .85rem;
       margin: 0;
       min-height: 1.1rem;
+  }
+
+  /* =========================================================
+       MODAL — CALCULADORA
+       ========================================================= */
+
+  .calcVisor {
+      margin-top: .9rem;
+
+      padding: .6rem .9rem .7rem;
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+      background: var(--field);
+  }
+
+  .calcExpr {
+      display: block;
+      width: 100%;
+
+      border: 0;
+      background: transparent;
+      padding: 0;
+
+      text-align: right;
+      font: 600 1.5rem/1.2 inherit;
+      font-variant-numeric: tabular-nums;
+      color: var(--fg);
+
+      overflow-x: auto;
+      white-space: nowrap;
+  }
+
+  .calcExpr:focus {
+      outline: none;
+  }
+
+  .calcResultado {
+      text-align: right;
+      font: 500 .95rem/1.3 inherit;
+      font-variant-numeric: tabular-nums;
+      color: var(--mu);
+
+      overflow-x: auto;
+      white-space: nowrap;
+  }
+
+  .calcGrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .5rem;
+      margin-top: .8rem;
+  }
+
+  .calcTecla {
+      padding: .8rem 0;
+      border: 1px solid var(--ln);
+      border-radius: 10px;
+
+      background: var(--field);
+      color: var(--fg);
+
+      font: 600 1.05rem/1 inherit;
+      cursor: pointer;
+  }
+
+  .calcTecla:hover {
+      background: var(--field-hover);
+      border-color: var(--line-strong);
+  }
+
+  .calcTecla.calcOp {
+      color: var(--mu);
+  }
+
+  .calcTecla.calcIgual {
+      background: #6FCB8F;
+      border-color: #6FCB8F;
+      color: #10231A;
+      font-size: 1.1rem;
+  }
+
+  .calcTecla.calcIgual:hover {
+      filter: brightness(1.08);
   }
 
   .erroNovo.okNovo.ok {

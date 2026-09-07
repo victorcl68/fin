@@ -454,10 +454,12 @@ const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'v
 // renderiza uma tabela completa (cabecalho + linhas). 'selecionavel' liga o clique-pra-somar por linha.
 const renderTabela = (linhasBrutas, idTabela, selecionavel) => {
     const linhas = linhasBrutas.filter(r => passaFiltroTexto(r, idTabela));
-    Estado.linhasVisiveis[idTabela] = linhas;   // guarda pro botao "Selecionar tudo" usar
-    if (!linhasBrutas.length) return '<p class=empty>Vazio</p>';
-    if (!linhas.length) return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`;
+    if (!linhasBrutas.length) { Estado.linhasVisiveis[idTabela] = []; return '<p class=empty>Vazio</p>'; }
+    if (!linhas.length) { Estado.linhasVisiveis[idTabela] = []; return `<div class=wrap><table><thead><tr>${cabecalhoTabela(idTabela)}</thead></table></div><p class=empty>Nenhum resultado com esse filtro.</p>`; }
     const ordenadas = ordenarLinhas(linhas, idTabela);
+    // guarda na ordem REAL da tela (pos-ordenacao) — usado por "Selecionar tudo" e pelo
+    // shift-click de intervalo, que dependem do indice bater com a posicao visual.
+    Estado.linhasVisiveis[idTabela] = ordenadas;
 
     // saldo do dia: so na tabela de Debito e so com data ASCENDENTE — em qualquer outra
     // ordem "fim do dia" nao corresponde ao que esta na tela. Marca DEPOIS de ordenar,
@@ -1019,6 +1021,23 @@ function alternarSelecao(chave) {
     if (modoSimples()) Estado.selecionados.clear();
     if (jaEstava) Estado.selecionados.delete(chave);
     else Estado.selecionados.set(chave, valorDaChave(chave));
+    Estado.ultimaClicada = chave;
+    desenhar();
+}
+
+// shift-click: seleciona o intervalo entre a ultima linha clicada e a linha atual,
+// dentro da MESMA tabela (respeitando a ordem em que as linhas estao na tela agora).
+function selecionarIntervalo(idTabela, chave) {
+    const linhas = (Estado.linhasVisiveis[idTabela] || []).map(chaveSelecao).filter(Boolean);
+    const iAtual = linhas.indexOf(chave);
+    const iAncora = linhas.indexOf(Estado.ultimaClicada);
+    if (iAtual < 0 || iAncora < 0) { alternarSelecao(chave); return; }
+    const [ini, fim] = iAncora <= iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
+    for (let i = ini; i <= fim; i++) {
+        const c = linhas[i];
+        if (!Estado.selecionados.has(c)) Estado.selecionados.set(c, valorDaChave(c));
+    }
+    Estado.ultimaClicada = chave;
     desenhar();
 }
 // marca/desmarca de uma vez todas as linhas visiveis de uma tabela (respeita filtro de texto ativo).
@@ -1045,7 +1064,14 @@ window.alternarBloco = idTabela => {
 
 el('out').addEventListener('click', e => {
     const linha = e.target.closest('tr[data-sid]');
-    if (linha && linha.dataset.sid && !e.target.closest('th')) alternarSelecao(linha.dataset.sid);
+    if (!linha || !linha.dataset.sid || e.target.closest('th')) return;
+    if (e.shiftKey) { const s = getSelection(); if (s) s.removeAllRanges(); }   // limpa a selecao de texto nativa do shift-click
+    if (e.shiftKey && !modoSimples() && Estado.ultimaClicada) {
+        const idTabela = Object.keys(Estado.linhasVisiveis)
+            .find(id => (Estado.linhasVisiveis[id] || []).some(r => chaveSelecao(r) === linha.dataset.sid));
+        if (idTabela) { selecionarIntervalo(idTabela, linha.dataset.sid); return; }
+    }
+    alternarSelecao(linha.dataset.sid);
 });
 el('selacao').onclick = () => {
     if (el('selacao').dataset.modo == 'limpar') { Estado.selecionados.clear(); desenhar(); return; }
@@ -1440,16 +1466,207 @@ function abreModalNovo(prefill) {
     // duplicando, o foco vai pro Valor (o que mais muda); do zero, vai pro Nome
     setTimeout(() => el(prefill ? 'fValor' : 'fNome').focus(), 50);
 }
+el('fDataHoje').onclick = () => {
+    el('fData').value = hojeISO();
+    atualizaAvisoFronteira();
+};
+
+// ===================================================================
+// CALCULADORA (modal auxiliar do campo Valor)
+// ===================================================================
+// Avalia so o subconjunto de expressao aceito pelo visor (numeros, + - X / %,
+// parenteses e virgula decimal) — nunca usa eval. O visor e' um <input> de verdade:
+// aceita digitacao direta do teclado e clique/toque pra posicionar o cursor no meio
+// da expressao (o proprio input cuida do caret — os botoes so inserem/apagam ali).
+const modalCalc = el('modalCalc');
+const calcInput = el('calcVisor');
+const calcExprAtual = () => calcInput.value;
+
+// insere um texto na posicao atual do cursor (substituindo a selecao, se houver) e
+// deixa o cursor logo depois do que foi inserido — igual digitar de verdade
+function calcInsere(texto) {
+    const ini = calcInput.selectionStart ?? calcInput.value.length;
+    const fim = calcInput.selectionEnd ?? calcInput.value.length;
+    calcInput.setRangeText(texto, ini, fim, 'end');
+    calcRenderiza();
+}
+function calcApaga() {
+    const ini = calcInput.selectionStart ?? calcInput.value.length;
+    const fim = calcInput.selectionEnd ?? calcInput.value.length;
+    if (ini == fim) { if (ini == 0) return; calcInput.setRangeText('', ini - 1, ini, 'end'); }
+    else calcInput.setRangeText('', ini, fim, 'end');
+    calcRenderiza();
+}
+
+// mostra, numa linha abaixo, o resultado parcial em tempo real (so quando a expressao
+// ja tem pelo menos um operador — um numero solto nao precisa repetir embaixo)
+function calcRenderiza() {
+    const expr = calcExprAtual();
+    const temOperador = /[+\-×÷%]/.test(expr.slice(1));   // ignora um '-' inicial (numero negativo)
+    const resultado = expr && temOperador ? calcAvalia(expr) : null;
+    el('calcResultado').innerHTML = resultado != null ? '= ' + brl(resultado).replace('R$', '').trim() : '&nbsp;';
+}
+
+// conta parenteses abertos ainda sem fechar (so na parte ANTES do cursor), pra "( )"
+// saber qual dos dois inserir na posicao onde voce esta
+function calcParensAbertosAte(pos) {
+    let n = 0;
+    for (const c of calcExprAtual().slice(0, pos)) { if (c == '(') n++; else if (c == ')') n--; }
+    return n;
+}
+
+function calcTokeniza(expr) {
+    return expr.match(/\d+\.?\d*|[+\-*/%()]/g) || [];
+}
+
+// shunting-yard simples: numeros, + - * /, parenteses e %. Regra do %: se vier
+// seguido de outro numero/parenteses, e' "a% de b" (ex: 15%100 = 15); se fechar a
+// expressao ou vier antes de um operador/fecha-parenteses, e' percentual do numero
+// anterior sozinho (ex: 50%+10 = 0,5+10). Precisao de ponto flutuante corrigida no final.
+function calcAvalia(expr) {
+    // visor usa os simbolos matematicos de verdade (× ÷) e virgula decimal — a avaliacao
+    // interna usa os operadores JS (* /) e ponto
+    const tokens = calcTokeniza(expr.replace(/,/g, '.').replace(/×/g, '*').replace(/÷/g, '/'));
+    if (!tokens.length) return null;
+
+    const precedencia = { '+': 1, '-': 1, '*': 2, '/': 2 };
+    const saida = [], operadores = [];
+    const aplicaTopo = () => {
+        const op = operadores.pop();
+        const b = saida.pop(), a = saida.pop();
+        if (a == null || b == null) throw Error('expressao invalida');
+        saida.push(op == '+' ? a + b : op == '-' ? a - b : op == '*' ? a * b : (b == 0 ? NaN : a / b));
+    };
+
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (/^\d/.test(t)) {
+            saida.push(+t);
+        } else if (t == '%') {
+            const proximo = tokens[i + 1];
+            if (proximo != null && proximo != ')' && !(proximo in precedencia)) {
+                // "a% de b": consome o proximo numero/parenteses aqui mesmo, com prioridade maxima
+                saida.push(saida.pop() / 100);
+                operadores.push('*');
+            } else {
+                saida.push(saida.pop() / 100);   // percentual isolado do numero anterior
+            }
+        } else if (t == '(') {
+            operadores.push(t);
+        } else if (t == ')') {
+            while (operadores.length && operadores.at(-1) != '(') aplicaTopo();
+            operadores.pop();
+        } else {
+            while (operadores.length && operadores.at(-1) != '(' && precedencia[operadores.at(-1)] >= precedencia[t]) aplicaTopo();
+            operadores.push(t);
+        }
+    }
+    while (operadores.length) aplicaTopo();
+    if (saida.length != 1 || !isFinite(saida[0])) return null;
+    return Math.round(saida[0] * 100) / 100;
+}
+
+function calcConfirma() {
+    const resultado = calcAvalia(calcExprAtual());
+    if (resultado == null) { el('calcResultado').textContent = 'Expressão inválida'; return; }
+    const bruto = Math.abs(resultado);
+    el('fValor').value = formataMascaraDinheiro(String(Math.round(bruto * 100)));
+    sinalPositivo = resultado > 0;
+    atualizaSinalUI();
+    modalCalc.close();
+}
+
+function calcToque(tecla) {
+    const pos = calcInput.selectionStart ?? calcInput.value.length;
+    const anterior = calcExprAtual().slice(0, pos).slice(-1);
+    const ehOperador = c => '+-×÷'.includes(c);
+
+    if (tecla == 'ac') { calcInput.value = ''; calcRenderiza(); calcInput.focus(); return; }
+    if (tecla == 'back') { calcApaga(); calcInput.focus(); return; }
+    if (tecla == 'paren') {
+        const podeFechar = calcParensAbertosAte(pos) > 0 && anterior && /[\d)%]/.test(anterior);
+        calcInsere(podeFechar ? ')' : '(');
+        calcInput.focus(); return;
+    }
+    if (tecla == 'pct') {
+        if (anterior && /[\d)]/.test(anterior)) calcInsere('%');
+        calcInput.focus(); return;
+    }
+    if (tecla == 'igual') { calcConfirma(); return; }
+
+    const mapa = { div: '÷', mul: '×', sub: '-', add: '+', ponto: ',' };
+    const chr = mapa[tecla] ?? tecla;   // digitos vem com o proprio valor em data-calc
+
+    if (chr == ',') {
+        const segmento = calcExprAtual().slice(0, pos).split(/[+\-×÷()]/).pop();
+        if (segmento.includes(',')) { calcInput.focus(); return; }
+        calcInsere((segmento ? '' : '0') + ',');
+    } else if (ehOperador(chr)) {
+        if (!calcExprAtual().slice(0, pos) && chr != '-') { calcInput.focus(); return; }
+        if (ehOperador(anterior)) { calcApaga(); calcInsere(chr); }   // troca o operador repetido
+        else calcInsere(chr);
+    } else {
+        calcInsere(chr);
+    }
+    calcInput.focus();
+}
+
+el('abreCalc').onclick = () => {
+    calcInput.value = '';
+    calcRenderiza();
+    modalCalc.showModal();
+    setTimeout(() => calcInput.focus(), 50);
+};
+el('fechaCalc').onclick = () => modalCalc.close();
+modalCalc.addEventListener('click', e => { if (e.target == modalCalc) modalCalc.close(); });
+// mousedown num botao tira o foco do input ANTES do click disparar, colapsando a
+// selecao/cursor — por isso cada clique inseria sempre na posicao errada (ex: "1+1"
+// virava "11+"). preventDefault aqui mantem o foco (e o cursor) no input o tempo todo.
+document.querySelectorAll('#modalCalc [data-calc]').forEach(bt => {
+    bt.addEventListener('mousedown', e => e.preventDefault());
+    bt.addEventListener('click', () => calcToque(bt.dataset.calc));
+});
+
+// digitacao direta do teclado fisico: cada tecla reconhecida passa pelo MESMO
+// calcToque() que os botoes usam (mesma logica de trocar operador repetido, virgula
+// unica por numero, etc). Teclas de navegacao/edicao do proprio input (setas, Home,
+// Backspace nativo, Ctrl+C/V) continuam funcionando normalmente.
+const CALC_TECLA_DO_KEY = {
+    '0': '0', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+    '+': 'add', '-': 'sub', '*': 'mul', 'x': 'mul', 'X': 'mul', '/': 'div', '%': 'pct',
+    '.': 'ponto', ',': 'ponto', '(': 'paren', ')': 'paren',
+};
+calcInput.addEventListener('keydown', e => {
+    if (e.key == 'Enter') { e.preventDefault(); calcConfirma(); return; }
+    if (e.key == 'Escape') { e.preventDefault(); modalCalc.close(); return; }
+    if (e.key == 'Backspace') { e.preventDefault(); calcToque('back'); return; }
+    if (['Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Tab'].includes(e.key)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;   // deixa passar Ctrl+C/V/A etc
+    const tecla = CALC_TECLA_DO_KEY[e.key];
+    e.preventDefault();   // bloqueia qualquer caractere que nao seja um dos reconhecidos acima
+    if (tecla) calcToque(tecla);
+});
+calcInput.addEventListener('click', calcRenderiza);
+calcInput.addEventListener('keyup', calcRenderiza);
+
 el('abreNovo').onclick = () => abreModalNovo();
 el('fechaNovo').onclick = () => modalNovo.close();
 el('salvaNovo').onclick = () => submeteNovoLancamento();
 modalNovo.addEventListener('click', e => { if (e.target == modalNovo) modalNovo.close(); });
 
+// ao fechar o modal (por qualquer via: X, clique fora, Esc, ou apos salvar), se ele foi
+// aberto pelo "Duplicar", desmarca a linha que originou o duplicado — senao ela ficava
+// selecionada na tabela depois de fechar, o que nao faz mais sentido.
+modalNovo.addEventListener('close', () => {
+    if (modalNovo.dataset.viaDuplicar) { Estado.selecionados.clear(); desenhar(); }
+    delete modalNovo.dataset.viaDuplicar;
+});
+
 // duplicar a linha selecionada: o modal abre pre-preenchido a partir dela
 el('seldup').onclick = () => {
     const chave = [...Estado.selecionados.keys()][0];
     const r = Estado.lancamentos.find(x => String(x.id) == chave);
-    if (r) abreModalNovo(r);
+    if (r) { modalNovo.dataset.viaDuplicar = '1'; abreModalNovo(r); }
 };
 
 // ---- salvar: nao fecha o modal, so limpa valor/data e mostra confirmacao ----

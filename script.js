@@ -2388,12 +2388,16 @@ async function submeteNovoLancamento() {
     const data = el('fData').value || null;
     const valorDigitado = el('fValor').value.trim();
     const valorTotal = valorDigitado ? valorMascaraParaNumero(valorDigitado) : 0;
-    if (!valorTotal) { el('erroNovo').textContent = 'Preencha o valor.'; el('fValor').focus(); return; }
 
     const cred = el('fCred').checked;
     const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
-    const parcelas = cred ? +el('fParcelas').value : 1;
-    const valores = valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1));
+    // valor em branco: cadastro sempre foi permitido assim (lancamento sem valor definido
+    // ainda, ex: assinatura de preco variavel). Sem valor nao ha o que dividir, entao
+    // parcelar fica sem efeito — 1 unica linha com valor null, igual sempre foi.
+    const parcelas = valorTotal && cred ? +el('fParcelas').value : 1;
+    const valores = valorTotal
+        ? valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1))
+        : [null];
 
     if (el('salvaNovo').disabled) return;   // trava clique duplo / Enter repetido
     el('salvaNovo').disabled = true;
@@ -2504,7 +2508,7 @@ function simulaLancamentoParcelado({ nome, categ, data, cred, isa, parcelas, val
             nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
             categ, freq: null, data,
             cred, isa, pago: true, ativo: true,
-            valor: valorAssinado, v: valorAssinado,
+            valor: valorAssinado, v: +valorAssinado || 0,   // v numerico seguro, igual carregarDados() faz com dados reais
             inv: /^investimento$/i.test(categ.trim()),
             periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,
             _sim: true,

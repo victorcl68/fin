@@ -639,6 +639,59 @@
       font-weight: 600;
   }
 
+  /* badge Pago/Aberto clicavel na tabela: alterna o status na hora (ver listener em
+     #out no script.js). Sublinhado tracejado so' no hover, pra nao parecer link o
+     tempo todo — mas ainda sinalizar que e' interativo ao passar o mouse. */
+  .togPago {
+      cursor: pointer;
+      transition: opacity .15s ease;
+  }
+
+  .togPago:hover {
+      text-decoration: underline dotted;
+      text-underline-offset: .2em;
+  }
+
+  /* Valor clicavel na tabela: mesma ideia do badge Pago, edicao inline (ver listener
+     em #out no script.js). */
+  .togValor {
+      cursor: pointer;
+      transition: opacity .15s ease;
+  }
+
+  .togValor:hover {
+      text-decoration: underline dotted;
+      text-underline-offset: .2em;
+  }
+
+  .inpValorSinal {
+      display: inline-block;
+      width: 1.1em;
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--mu);
+  }
+
+  .inpValorSinal:hover {
+      color: var(--fg);
+  }
+
+  .inpValor {
+      width: 6.5rem;
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      padding: .15rem .4rem;
+  }
+
+  .inpValor:focus {
+      outline: 2px solid var(--fg);
+      outline-offset: -1px;
+  }
+
   /* =========================================================
        LINHA DE FATURA
        ========================================================= */

@@ -74,6 +74,10 @@ function mostraComFade(id, mostrar) {
 const brl = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const corValor = v => v < 0 ? 'vm' : v > 0 ? 'vd' : '';                                     // classe css: vermelho/verde conforme o sinal
 const celValor = v => `<td class="n ${corValor(v)}">${brl(v)}`;                             // celula <td> ja formatada em R$
+// mesma celValor, mas clicavel pra edicao inline — so' pra lancamentos REAIS (id numerico
+// vindo do banco; linhas sinteticas tem id negativo fixo -1..-6, e simuladas tem id tipo
+// "sim-N-P", nenhum dos dois casos existe na tabela lancamentos pra dar PATCH).
+const celValorEditavel = r => `<td class="n ${corValor(r.v)}"><span class="togValor" data-tog-valor="${escapeHtml(String(r.id))}" title="Clique pra editar o valor">${brl(r.v)}</span>`;
 
 // Zona morta pra SOMAS/TOTAIS (nunca pra valor de lancamento individual): entre -R$50 e +R$50 (inclusive) fica cinza,
 // porque uma diferenca tao pequena nao muda decisao nenhuma — so pinta vermelho/verde quando o total realmente sai desse intervalo.
@@ -266,6 +270,24 @@ const excluirLancamento = async id => {
         headers: { apikey: KEY, Authorization: 'Bearer ' + await tokenAtual() },
     });
     if (!r.ok) throw Error(`excluir: ${r.status} ${await r.text()}`);
+};
+
+const atualizarLancamento = async (id, campos) => {
+    const r = await fetch(`${API}/rest/v1/lancamentos?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: {
+            apikey: KEY, Authorization: 'Bearer ' + await tokenAtual(),
+            'Content-Type': 'application/json', Prefer: 'return=representation',
+        },
+        body: JSON.stringify(campos),
+    });
+    if (!r.ok) throw Error(`atualizar: ${r.status} ${await r.text()}`);
+    const linhas = await r.json();
+    // com RLS sem policy de UPDATE pra essa linha, o Postgrest devolve 200 OK e 0 linhas
+    // afetadas (nao e' erro HTTP) — sem essa checagem, o app "achava" que salvou e so'
+    // o redraw local mudava, enquanto o banco continuava intocado.
+    if (!linhas.length) throw Error('nenhuma linha atualizada (RLS/policy do Supabase pode estar bloqueando UPDATE)');
+    return linhas[0];
 };
 
 // Busca periodos + lancamentos no Supabase e monta Estado.periodos / Estado.lancamentos, ja com a competencia (periodoIdx) de cada lancamento calculada. Nao mexe na tela.
@@ -502,13 +524,17 @@ const ehVazioTextual = v => {
     return ['', 'null', 'undefined', 'nan', 'none', 'n/a'].includes(limpo);
 };
 const textoOuTraco = v => ehVazioTextual(v) ? '—' : v;
+// linha REAL (existe na tabela lancamentos, da' pra dar PATCH): nao e' sintetica (fatura,
+// saldo anterior, resgate/aporte) nem simulada (so' memoria, nunca foi salva)
+const ehLinhaReal = r => !r._sug && !r._res && !r._sal && !r._fat && !r._sim;
 // monta as celulas <td> de uma linha, conforme o tipo de cada coluna
 const celulasDaLinha = r => colunasAtivas().map(([chave, , tipo]) => chave == 'valor'
     ? (r._sug != null
         ? `<td class="n ${corValor(r._sug)}">${brl(r._sug)}`
-        : (isMobile() ? celValorMobile(r) : celValor(r.v))).replace(/$/,
+        : (isMobile() ? celValorMobile(r) : (ehLinhaReal(r) ? celValorEditavel(r) : celValor(r.v)))).replace(/$/,
             r._saldo != null ? `<span class=sd>${brl(r._saldo)}</span>` : '')
-    : tipo == 'b' ? `<td>${r[chave] == null ? '—' : r[chave] ? '<span class=vd>Pago</span>' : '<span class=vm>Aberto</span>'}`
+    : tipo == 'b' ? `<td>${r[chave] == null ? '—'
+        : `<span class="${r[chave] ? 'vd' : 'vm'} togPago" data-tog-pago="${escapeHtml(String(r.id))}" title="Clique pra alternar Pago/Aberto">${r[chave] ? 'Pago' : 'Aberto'}</span>`}`
         : `<td class="${tipo == 'n' ? 'n' : ''}">${chave == 'data'
             ? (r.data ? dataBR(r.data) + (ehFronteira(r) ? '<span class=fr title="Compra no dia do fechamento: capturada em D+1, entrou na fatura seguinte">*</span>' : '') : '—')
             : (chave == 'nome' && r._sim ? '<span class=simIco title="Simulado — não foi salvo">✦</span> ' : '') + textoOuTraco(r[chave])}`
@@ -1412,6 +1438,106 @@ window.alternarBloco = idTabela => {
     }
     desenhar();
 };
+
+// clique no badge "Pago"/"Aberto" alterna o status na hora, sem selecionar a linha (o
+// listener de selecao abaixo esta no MESMO #out — precisa vir ANTES e parar a propagacao,
+// senao o clique tambem selecionaria a linha inteira por baixo do badge).
+el('out').addEventListener('click', async e => {
+    const badge = e.target.closest('[data-tog-pago]');
+    if (!badge) return;
+    // stopPropagation NAO basta aqui: os dois listeners estao no MESMO elemento (#out),
+    // entao ambos disparam na mesma fase de bubbling nao importa o que este pare de
+    // propagar — precisa de stopImmediatePropagation pra impedir o listener de selecao
+    // (registrado logo abaixo, no mesmo #out) de rodar tambem.
+    e.stopImmediatePropagation();
+
+    const id = badge.dataset.togPago;
+    const r = Estado.lancamentos.find(x => String(x.id) == id);
+    if (!r) return;
+
+    const novoPago = !r.pago;
+    badge.classList.toggle('vd', novoPago);
+    badge.classList.toggle('vm', !novoPago);
+    badge.textContent = novoPago ? 'Pago' : 'Aberto';
+    badge.style.opacity = .5;   // feedback imediato enquanto o PATCH esta no ar
+
+    try {
+        if (!r._sim) await atualizarLancamento(r.id, { pago: novoPago });
+        r.pago = novoPago;
+        desenhar();
+    } catch (err) {
+        badge.style.opacity = '';
+        alert('Falhou ao atualizar: ' + err.message);
+        desenhar();   // redesenha pra garantir que o badge volta a refletir o estado real
+    }
+});
+
+// clique no Valor troca o <span> por um <input> mascarado (mesma mascara do form de
+// lancamento), focado e com o texto ja selecionado. Enter ou blur confirma; Escape
+// cancela sem salvar. Mesmo esquema do toggle Pago acima: stopImmediatePropagation pra
+// nao disparar a selecao da linha por baixo.
+el('out').addEventListener('click', e => {
+    const span = e.target.closest('[data-tog-valor]');
+    if (!span) return;
+    // ja esta em edicao (input aberto): so' impede o clique de vazar pra selecao de
+    // linha por baixo — o proprio <input> cuida do cursor/foco nativamente.
+    if (span.classList.contains('editando')) { e.stopImmediatePropagation(); return; }
+    e.stopImmediatePropagation();
+
+    const id = span.dataset.togValor;
+    const r = Estado.lancamentos.find(x => String(x.id) == id);
+    if (!r) return;
+
+    const bruto = Math.abs(r.v || 0);
+    const negativo = (r.v || 0) < 0;
+    span.classList.add('editando');
+    span.innerHTML = `<span class=inpValorSinal>${negativo ? '−' : '+'}</span>` +
+        `<input type=text inputmode=numeric class=inpValor value="${bruto ? formataMascaraDinheiro(String(Math.round(bruto * 100))) : ''}" placeholder="0,00">`;
+    const input = span.querySelector('input');
+    const sinalEl = span.querySelector('.inpValorSinal');
+    let sinalNegativo = negativo;
+
+    input.addEventListener('input', () => {
+        const cursorNoFim = input.selectionEnd == input.value.length;
+        input.value = formataMascaraDinheiro(input.value);
+        if (cursorNoFim) input.setSelectionRange(input.value.length, input.value.length);
+    });
+    // clique no sinal (+/−) alterna, sem submeter nem perder o foco do input
+    sinalEl.onclick = ev => {
+        ev.stopImmediatePropagation();
+        sinalNegativo = !sinalNegativo;
+        sinalEl.textContent = sinalNegativo ? '−' : '+';
+        input.focus();
+    };
+
+    let concluido = false;
+    async function confirma() {
+        if (concluido) return;
+        concluido = true;
+        const novoValor = valorMascaraParaNumero(input.value.trim() || '0') * (sinalNegativo ? -1 : 1);
+        if (novoValor == r.v) { desenhar(); return; }   // nada mudou, so' redesenha (sai do modo edicao)
+        input.disabled = true;
+        try {
+            if (!r._sim) await atualizarLancamento(r.id, { valor: novoValor });
+            r.valor = novoValor;
+            r.v = novoValor;
+            desenhar();
+        } catch (err) {
+            alert('Falhou ao atualizar: ' + err.message);
+            desenhar();
+        }
+    }
+    function cancela() { concluido = true; desenhar(); }
+
+    input.addEventListener('keydown', ev => {
+        if (ev.key == 'Enter') { ev.preventDefault(); confirma(); }
+        else if (ev.key == 'Escape') { ev.preventDefault(); cancela(); }
+    });
+    input.addEventListener('blur', () => confirma());
+
+    input.focus();
+    input.select();
+});
 
 el('out').addEventListener('click', e => {
     const linha = e.target.closest('tr[data-sid]');

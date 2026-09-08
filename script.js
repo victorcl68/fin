@@ -2442,7 +2442,7 @@ async function salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, p
     for (let p = 0; p < parcelas; p++) {
         const payload = {
             data, freq: null, cred, isa, pago, ativo: true,
-            nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
+            nome,
             categ, valor: valores[p],
         };
         const linhaCriada = await inserirLancamento(payload);
@@ -2507,7 +2507,7 @@ function simulaLancamentoParcelado({ nome, categ, data, cred, isa, pago, parcela
         const periodoIdx = periodoIdx1a == null ? null : periodoIdx1a + p;
         return {
             id: `sim-${grupoSimulado}-${p}`,
-            nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
+            nome,
             categ, freq: null, data,
             cred, isa, pago, ativo: true,
             valor: valorAssinado, v: +valorAssinado || 0,   // v numerico seguro, igual carregarDados() faz com dados reais

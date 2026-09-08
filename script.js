@@ -2072,6 +2072,7 @@ function abreModalNovo(prefill) {
         el('fData').value = dataISO(prefill.data) || '';
         el('fCred').checked = !!prefill.cred;
         el('fIsa').checked = !!prefill.isa;
+        el('fPago').checked = prefill.pago !== false;   // so' desmarca se for explicitamente false
         const bruto = Math.abs(prefill.v || 0);
         if (bruto) {
             el('fValor').value = formataMascaraDinheiro(String(Math.round(bruto * 100)));
@@ -2391,6 +2392,7 @@ async function submeteNovoLancamento() {
 
     const cred = el('fCred').checked;
     const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
+    const pago = el('fPago').checked;
     // valor em branco: cadastro sempre foi permitido assim (lancamento sem valor definido
     // ainda, ex: assinatura de preco variavel). Sem valor nao ha o que dividir, entao
     // parcelar fica sem efeito — 1 unica linha com valor null, igual sempre foi.
@@ -2404,8 +2406,8 @@ async function submeteNovoLancamento() {
     el('salvaNovo').textContent = Estado.simulando ? 'Simulando…' : 'Salvando…';
 
     try {
-        if (Estado.simulando) simulaLancamentoParcelado({ nome, categ, data, cred, isa, parcelas, valores });
-        else await salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, parcelas, valores });
+        if (Estado.simulando) simulaLancamentoParcelado({ nome, categ, data, cred, isa, pago, parcelas, valores });
+        else await salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, pago, parcelas, valores });
 
         // sucesso: NAO fecha o modal. Limpa so valor/data, mantem nome/categoria/cred/isa
         // pro proximo lancamento da mesma sessao (ex: varios itens do mesmo mercado).
@@ -2434,12 +2436,12 @@ async function submeteNovoLancamento() {
 // usa o periodoIdx calculado a partir da data digitada; cada parcela seguinte so' avanca
 // +1 nesse INDICE de periodo (nao recalcula fechamento/fronteira de novo) — cada parcela
 // cai exatamente 1 fatura depois da anterior, como parcelamento de verdade.
-async function salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, parcelas, valores }) {
+async function salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, pago, parcelas, valores }) {
     let periodoIdx = !data ? null : cred ? periodoDoCredito(data, isa, nome) : periodoDoDebito(dataISO(data));
 
     for (let p = 0; p < parcelas; p++) {
         const payload = {
-            data, freq: null, cred, isa, pago: true, ativo: true,
+            data, freq: null, cred, isa, pago, ativo: true,
             nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
             categ, valor: valores[p],
         };
@@ -2497,7 +2499,7 @@ el('toggleSimulacao').onclick = async () => {
 // qualquer compra real (periodoDoCredito/periodoDoDebito); as parcelas seguintes so'
 // avancam +1 no INDICE de periodo (nao recalculam data de fechamento/fronteira de novo —
 // cada parcela cai exatamente 1 fatura depois da anterior, como parcelamento de verdade).
-function simulaLancamentoParcelado({ nome, categ, data, cred, isa, parcelas, valores }) {
+function simulaLancamentoParcelado({ nome, categ, data, cred, isa, pago, parcelas, valores }) {
     const periodoIdx1a = !data ? null : cred ? periodoDoCredito(data, isa, nome) : periodoDoDebito(dataISO(data));
     const grupoSimulado = ++Estado._proxIdSimulado;   // contador curto, so' pra diferenciar cada "compra simulada" das outras
 
@@ -2507,7 +2509,7 @@ function simulaLancamentoParcelado({ nome, categ, data, cred, isa, parcelas, val
             id: `sim-${grupoSimulado}-${p}`,
             nome: parcelas > 1 ? `${nome} (${p + 1}/${parcelas})` : nome,
             categ, freq: null, data,
-            cred, isa, pago: true, ativo: true,
+            cred, isa, pago, ativo: true,
             valor: valorAssinado, v: +valorAssinado || 0,   // v numerico seguro, igual carregarDados() faz com dados reais
             inv: /^investimento$/i.test(categ.trim()),
             periodoIdx: periodoIdx != null && periodoIdx >= 0 && periodoIdx < Estado.periodos.length ? periodoIdx : null,

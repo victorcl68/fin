@@ -632,13 +632,11 @@ function totalBaseDoCiclo(idx, base, abat, saldoAnteriorFn) {
 // Ciclo, saldo por dia, Comparar, pizza de gastos e evolucao — pra garantir que o mesmo numero
 // e o mesmo criterio apareçam em todos: saldo negativo -> resgate cobrindo o deficit; saldo
 // positivo -> aporte sugerido escoando o excedente (sempre, mesmo sem aporte real no ciclo).
-// A Isabella (perfil restrito) nunca ve essas linhas.
 // `guardadoDisponivel` (patrimonio acumulado ATE O CICLO ANTERIOR, de guardadoAte(idx-1)) LIMITA
 // o resgate: nao da' pra resgatar mais do que existe guardado. Se o deficit for maior que o
 // guardado, resgata so' o que tem — o resto do deficit fica negativo de verdade no saldo do
 // ciclo, em vez de fingir (via um resgate maior que o patrimonio real) que o mes fechou em zero.
 function ajusteInvestimento(totalBase, guardadoDisponivel = Infinity) {
-    if (Estado.restrito) return null;
     if (totalBase < -0.005) {
         const deficit = -totalBase;
         const resgate = Math.min(deficit, Math.max(0, guardadoDisponivel));
@@ -820,7 +818,7 @@ function guardadoAteContaUnica(idx) {
 function celulaSaldoCiclo(idx) {
     const total = saldoDoCiclo(idx);
     const guardado = guardadoAte(idx);
-    const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
+    const temGuardado = Math.abs(guardado) > 0.005;
     if (Math.abs(total) < 0.005) {
         // guardado pode ser NEGATIVO (resgatou mais do que aportou historicamente) — a
         // cor segue o sinal de verdade, nunca fixa em verde
@@ -960,7 +958,7 @@ function vCiclo() {
     // formatava como "R$ 0,00" na tela. Saldo negativo continua normal. Com algo guardado,
     // o enfoque vira o valor guardado (e' o que importa agora) — o guardado ja fala por si,
     // sem repetir o "R$ 0,00".
-    const temGuardado = !Estado.restrito && Math.abs(guardado) > 0.005;
+    const temGuardado = Math.abs(guardado) > 0.005;
     // guardado pode ser NEGATIVO (resgatou mais do que aportou historicamente) — a cor
     // tem que seguir o sinal de verdade (corValor), nunca fixa em verde, senao um
     // patrimonio negativo aparece com destaque de sucesso por engano.

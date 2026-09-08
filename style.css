@@ -1530,6 +1530,23 @@
 
       .head {
           gap: .5rem;
+          justify-content: space-between;
+      }
+
+      /* cabecalho minimo no mobile: so' as setas de navegacao de ciclo + adicionar +
+         recarregar + sair. Sem titulo do mes, sem "Atual", sem toggle de simulacao —
+         tudo isso fica escondido de verdade (nao so' colapsado), o espaco que sobra
+         e' redistribuido entre as duas setas e os 3 botoes de acao. */
+      #fde,
+      #navCompararAte,
+      #fate,
+      #cicloHoje,
+      #toggleSimulacao {
+          display: none;
+      }
+
+      #fciclNav {
+          flex: 0 0 auto;
       }
 
       /* mobile nao usa gaveta */

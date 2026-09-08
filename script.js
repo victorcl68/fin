@@ -267,9 +267,16 @@ const inserirLancamento = async payload => {
 const excluirLancamento = async id => {
     const r = await fetch(`${API}/rest/v1/lancamentos?id=eq.${encodeURIComponent(id)}`, {
         method: 'DELETE',
-        headers: { apikey: KEY, Authorization: 'Bearer ' + await tokenAtual() },
+        headers: {
+            apikey: KEY, Authorization: 'Bearer ' + await tokenAtual(),
+            Prefer: 'return=representation',
+        },
     });
     if (!r.ok) throw Error(`excluir: ${r.status} ${await r.text()}`);
+    const linhas = await r.json();
+    // com RLS sem policy de DELETE pra essa linha, o Postgrest devolve 200 OK e 0 linhas
+    // apagadas (nao e' erro HTTP) — mesma armadilha do atualizarLancamento (UPDATE).
+    if (!linhas.length) throw Error('nenhuma linha excluída (RLS/policy do Supabase pode estar bloqueando DELETE)');
 };
 
 const atualizarLancamento = async (id, campos) => {

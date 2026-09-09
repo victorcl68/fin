@@ -184,8 +184,11 @@ const RECORRENCIAS = {
 };
 
 // Data da p-esima ocorrencia (p=0 e' a 1a, que cai na propria data digitada) conforme a
-// Frequencia escolhida. Frequencia desconhecida ou vazia cai em Mensal — que e' o padrao
-// do formulario e o unico comportamento que existia antes deste campo virar regra.
+// Frequencia escolhida. Frequencia vazia ("sem recorrencia") ou desconhecida cai em
+// Mensal: com 1x so' isso nao muda nada (p=0 devolve a propria data), e a partir de 2x
+// PRECISA haver algum espacamento — sem regra as N linhas nasceriam todas na mesma data,
+// que e' exatamente o bug que fazia as parcelas desabarem no mesmo mes ao recarregar.
+// Mensal e' tambem o unico comportamento que existia antes deste campo virar regra.
 function dataDaOcorrencia(iso, p, freq) {
     const regra = RECORRENCIAS[freq] || RECORRENCIAS.Mensal;
     const passo = regra.passo * p;
@@ -2327,6 +2330,16 @@ function sugereModoValorParcelas() {
 }
 el('fCred').addEventListener('change', sugereModoValorParcelas);
 
+// Frequencia abre em "— Sem recorrencia", que e' o certo pra compra avulsa (1x) — o caso
+// mais comum de longe, e o que mantem a coluna Frequencia significando alguma coisa (se
+// todo lancamento nascesse "Mensal", a coluna nao distinguiria mais nada). A partir de 2x
+// a recorrencia passa a IMPORTAR (e' ela que decide a data de cada ocorrencia, ver
+// dataDaOcorrencia), entao aqui ela sobe pro padrao Mensal sozinha — so' quando ainda
+// estava vazia, pra nunca atropelar uma escolha explicita (Semanal, Anual...).
+el('fParcelas').addEventListener('change', () => {
+    if (+el('fParcelas').value > 1 && !el('fFreq').value) el('fFreq').value = 'Mensal';
+});
+
 function abreModalNovo(prefill) {
     el('formNovo').reset();
     popularCategoriasNoForm();
@@ -2352,10 +2365,11 @@ function abreModalNovo(prefill) {
         el('fCred').checked = !!prefill.cred;
         el('fIsa').checked = !!prefill.isa;
         el('fPago').checked = prefill.pago !== false;   // so' desmarca se for explicitamente false
-        // so' herda a frequencia do original se ela for uma das regras conhecidas —
-        // lancamento antigo pode ter freq vazia ou um texto livre qualquer, e atribuir
-        // isso a um <select> deixaria o campo em branco (selectedIndex -1)
-        el('fFreq').value = RECORRENCIAS[prefill.freq] ? prefill.freq : 'Mensal';
+        // so' herda a frequencia do original se ela for uma das regras conhecidas; senao
+        // cai em "sem recorrencia" — lancamento antigo pode ter freq vazia ou um texto
+        // livre qualquer, e atribuir isso a um <select> deixaria o campo em branco de
+        // verdade (selectedIndex -1), sem opcao nenhuma marcada
+        el('fFreq').value = RECORRENCIAS[prefill.freq] ? prefill.freq : '';
         const bruto = Math.abs(prefill.v || 0);
         if (bruto) {
             el('fValor').value = formataMascaraDinheiro(String(Math.round(bruto * 100)));
@@ -2364,7 +2378,7 @@ function abreModalNovo(prefill) {
     }
     else {
         el('fData').value = hojeISO();
-        el('fFreq').value = 'Mensal';   // padrao pros dois modos (Credito/Debito) — o usuario troca no select se nao for o caso
+        el('fFreq').value = '';   // avulso ate' que o Vezes diga o contrario (ver listener de #fParcelas)
     }
     atualizaSinalUI();
     atualizaAvisoFronteira();
@@ -2681,7 +2695,7 @@ async function submeteNovoLancamento() {
     const cred = el('fCred').checked;
     const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
     const pago = el('fPago').checked;
-    const freq = el('fFreq').value || null;   // sempre uma chave de RECORRENCIAS; o || null e' so' rede de seguranca
+    const freq = el('fFreq').value || null;   // "" (sem recorrencia) vira null, pra coluna freq ficar vazia no banco
     // valor em branco: cadastro sempre foi permitido assim (lancamento sem valor definido
     // ainda, ex: assinatura de preco variavel). Sem valor nao ha o que dividir nem repetir,
     // entao o campo Vezes/Dividir fica sem efeito — 1 unica linha com valor null, igual

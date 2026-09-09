@@ -114,6 +114,12 @@ const ehAntecipacaoFatura = categ => {
 // Antecipacao e' TRANSFERENCIA, nao gasto: a despesa ja foi contada na compra do credito. Entra no fluxo de caixa (bloco Debito) e fica fora das analises de gasto (Comparar, Balanco, evolucao, pizza) — senao a mesma despesa conta duas vezes.
 const ehTransferenciaFatura = r => !r.cred && ehAntecipacaoFatura(r.categ);
 
+// Variante da antecipacao pra fatura da Isabella: mesma logica de ehAntecipacaoFatura, so' que a categoria tambem menciona "Isabella" (ex: "Antecipacao Fatura Isabella"). Usada na hora de salvar pra forcar isa=true nesse lancamento mesmo que o checkbox "Isabella" do formulario nao tenha sido marcado — assim essa categoria sozinha ja garante que a antecipacao abate a fatura dela (alocacaoAntecipacoes), sem depender de lembrar do checkbox.
+const ehAntecipacaoFaturaIsabella = categ => ehAntecipacaoFatura(categ) && semAcento(categ).includes('isabella');
+
+// O combo de categoria e' um <select> montado a partir das categorias ja usadas (categoriasPorPopularidade), entao uma categoria inedita nunca teria como ser escolhida na primeira vez. Estas entram sempre na lista, mesmo sem nenhum lancamento.
+const CATEGORIAS_FIXAS = ['Antecipação Fatura Isabella'];
+
 // Captura: o emissor so registra a compra no dia seguinte (D+1) na maioria dos casos. Excecao: NuPay captura no mesmo dia — hoje isso e' sempre Uber. Fora dos dias de fronteira o deslocamento nao muda nada, entao a data que voce lanca continua sendo a da compra; o D+1 so importa quando a compra cai no dia do fechamento.
 const ehCapturaMesmoDia = nome => semAcento(nome).includes('uber');
 const dataCaptura = (dataStr, nome) =>
@@ -2268,7 +2274,7 @@ function categoriasPorPopularidade() {
         if (!r.categ || !r.data || dataISO(r.data) < limiteIso) return;
         contagem[r.categ] = (contagem[r.categ] || 0) + 1;
     });
-    const todas = [...new Set(Estado.lancamentos.map(r => r.categ).filter(valorValido))];
+    const todas = [...new Set([...Estado.lancamentos.map(r => r.categ), ...CATEGORIAS_FIXAS].filter(valorValido))];
     return todas.sort((a, b) => (contagem[b] || 0) - (contagem[a] || 0) || a.localeCompare(b, 'pt'));
 }
 function popularCategoriasNoForm(idSelect = 'fCateg') {
@@ -2693,7 +2699,8 @@ async function submeteNovoLancamento() {
     const valorTotal = valorDigitado ? valorMascaraParaNumero(valorDigitado) : 0;
 
     const cred = el('fCred').checked;
-    const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
+    // categoria "Antecipacao Fatura Isabella" forca isa=true mesmo sem marcar o checkbox — ver ehAntecipacaoFaturaIsabella.
+    const isa = ehAntecipacaoFaturaIsabella(categ) ? true : (el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked);
     const pago = el('fPago').checked;
     const freq = el('fFreq').value || null;   // "" (sem recorrencia) vira null, pra coluna freq ficar vazia no banco
     // valor em branco: cadastro sempre foi permitido assim (lancamento sem valor definido

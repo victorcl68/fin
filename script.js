@@ -2281,15 +2281,16 @@ if (el('fParcelas').options.length < 40) {
     for (let n = 2; n <= 40; n++) el('fParcelas').add(new Option(`${n}x`, n));
 }
 
-// mostra/esconde "Parcelas" conforme Credito: parcelar so' faz sentido no credito (debito
-// e' sempre a vista). Desmarcar Credito com uma opcao de parcela ja escolhida volta pra 1x
-// sozinho, senao um "3x" escondido ficaria selecionado por baixo dos panos.
-function atualizaVisibilidadeParcelas() {
-    const mostra = el('fCred').checked;
-    el('fParcelasWrap').hidden = !mostra;
-    if (!mostra) el('fParcelas').value = 1;
+// o campo (e o SELECT em si) e' o mesmo pros dois casos — so' o ROTULO muda conforme
+// Credito, porque o significado do numero e' diferente em cada um (ver submeteNovoLancamento):
+// no credito e' "Parcelas" (o valor digitado e' DIVIDIDO entre elas, ex: R$300 em 3x =
+// R$100 cada, uma por fatura seguinte); fora do credito e' "Repetições" (o valor digitado
+// se REPETE em cada lancamento, ex: R$50 3x = R$50 + R$50 + R$50, uma por mes seguinte —
+// serve pra lancar de uma vez uma assinatura/conta recorrente com valor fixo).
+function atualizaRotuloParcelas() {
+    el('lblParcelas').textContent = el('fCred').checked ? 'Parcelas' : 'Repetições';
 }
-el('fCred').addEventListener('change', atualizaVisibilidadeParcelas);
+el('fCred').addEventListener('change', atualizaRotuloParcelas);
 
 function abreModalNovo(prefill) {
     el('formNovo').reset();
@@ -2327,7 +2328,7 @@ function abreModalNovo(prefill) {
     }
     atualizaSinalUI();
     atualizaAvisoFronteira();
-    atualizaVisibilidadeParcelas();
+    atualizaRotuloParcelas();
 
     modalNovo.showModal();
     // duplicando, o foco vai pro Valor (o que mais muda); do zero, vai pro Nome
@@ -2620,7 +2621,10 @@ function valorDasParcelas(valorTotal, parcelas) {
 // global no topo): ligado, as parcelas viram lancamentos _sim=true SO' na memoria
 // (nunca chamam inserirLancamento, nunca tocam o Supabase — ver o bloco MODO SIMULACAO
 // mais abaixo); desligado, cada parcela e' um POST real, sequencial, uma fatura depois
-// da outra. Fora do credito (ou 1x), e' sempre uma unica linha.
+// da outra. No credito o campo "Parcelas" DIVIDE o valor digitado entre as N linhas
+// (valorDasParcelas); fora do credito ("Repetições") ele so' REPETE o valor digitado em
+// cada linha, sem dividir nada — pensado pra lancar de uma vez uma conta recorrente de
+// valor fixo (ex: assinatura, mensalidade) que ainda nao foi cadastrada.
 async function submeteNovoLancamento() {
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
 
@@ -2637,12 +2641,14 @@ async function submeteNovoLancamento() {
     const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
     const pago = el('fPago').checked;
     // valor em branco: cadastro sempre foi permitido assim (lancamento sem valor definido
-    // ainda, ex: assinatura de preco variavel). Sem valor nao ha o que dividir, entao
-    // parcelar fica sem efeito — 1 unica linha com valor null, igual sempre foi.
-    const parcelas = valorTotal && cred ? +el('fParcelas').value : 1;
-    const valores = valorTotal
-        ? valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1))
-        : [null];
+    // ainda, ex: assinatura de preco variavel). Sem valor nao ha o que dividir nem repetir,
+    // entao o campo Parcelas/Repetições fica sem efeito — 1 unica linha com valor null,
+    // igual sempre foi.
+    const parcelas = valorTotal ? +el('fParcelas').value : 1;
+    const valorAssinado = valorTotal * (sinalPositivo ? 1 : -1);
+    const valores = !valorTotal ? [null]
+        : cred ? valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1))
+            : Array(parcelas).fill(valorAssinado);   // "Repetições": mesmo valor digitado em cada linha, sem dividir
 
     if (el('salvaNovo').disabled) return;   // trava clique duplo / Enter repetido
     el('salvaNovo').disabled = true;

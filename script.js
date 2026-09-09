@@ -1887,6 +1887,51 @@ function limparFiltros() {
 el('btLimparFiltros').onclick = limparFiltros;
 
 // ===================================================================
+// VISUALIZAÇÃO: ROBERTA — acerto de contas
+// ===================================================================
+// Ela adiantou um valor de uma vez (entra POSITIVO na categoria) e a divida vai sendo
+// quitada aos poucos com o que sai pra ela (negativo — credito ou debito, tanto faz).
+// De proposito olha TODOS os lancamentos da categoria e IGNORA os filtros/ciclo da barra:
+// o acerto e' a relacao inteira, nao um recorte dela. So' 'ativo' conta — lancamento
+// desativado foi cancelado e nao movimentou dinheiro nenhum.
+const ehCategoriaRoberta = categ => semAcento(categ).trim() === 'roberta';
+
+function dadosRoberta() {
+    const linhas = Estado.lancamentos.filter(r => r.ativo && ehCategoriaRoberta(r.categ));
+    const elaPagou = linhas.reduce((s, r) => s + Math.max(r.v, 0), 0);
+    const jaPaguei = linhas.reduce((s, r) => s - Math.min(r.v, 0), 0);
+    // quitado passa de 100% se pagar a mais; a barra trava em 100 mas 'falta' fica negativo
+    const pctQuitado = elaPagou ? Math.min(100, jaPaguei / elaPagou * 100) : 0;
+    return { linhas, elaPagou, jaPaguei, falta: elaPagou - jaPaguei, pctQuitado, pctFalta: 100 - pctQuitado };
+}
+
+const pct1 = n => n.toFixed(1).replace('.', ',') + '%';
+
+function abrirVisRoberta() {
+    const d = dadosRoberta();
+    const quitado = d.falta <= 0.005;
+    el('robertaCorpo').innerHTML = !d.linhas.length
+        ? '<p class=meta>Nenhum lançamento ativo na categoria “Roberta” ainda.</p>'
+        : `<div class="robPct ${quitado ? 'vd' : 'vm'}">${pct1(quitado ? 0 : d.pctFalta)}</div>
+           <p class=robPctSub>${quitado ? 'quitado — nada a pagar' : 'falta pra quitar com ela'}</p>
+           <div class=robBarra><div class=robFill style="width:${d.pctQuitado.toFixed(2)}%"></div></div>
+           <div class=robLegenda>
+             <span>Você já pagou ${pct1(d.pctQuitado)}</span>
+             <span>${d.linhas.length} lançamento${d.linhas.length > 1 ? 's' : ''}</span>
+           </div>
+           <table class=robTab><tbody>
+             <tr><td>Ela te pagou<td class="n vm">${brl(d.elaPagou)}
+             <tr><td>Você já pagou<td class="n vd">${brl(d.jaPaguei)}
+             <tr class=tot><td>${d.falta < -0.005 ? 'Pagou a mais' : 'Falta'}<td class=n>${brl(Math.abs(d.falta))}
+           </tbody></table>`;
+    el('modalRoberta').showModal();
+}
+
+el('btRoberta').onclick = abrirVisRoberta;
+el('fechaRoberta').onclick = () => el('modalRoberta').close();
+el('modalRoberta').addEventListener('click', e => { if (e.target == el('modalRoberta')) el('modalRoberta').close(); });
+
+// ===================================================================
 // GRÁFICO DE GASTOS DO CICLO (pizza)
 // ===================================================================
 // Regra: total = soma de TUDO positivo no ciclo (renda, sem selecao manual).

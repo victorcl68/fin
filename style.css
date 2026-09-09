@@ -1044,6 +1044,79 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
   }
 
+  /* Roberta: ela adiantou um valor (o positivo da categoria) e a divida vai sendo quitada
+     com o que sai pra ela. Por isso o trilho e' VERMELHO (a divida inteira) e o
+     preenchimento VERDE (o que ja foi devolvido) — o verde cresce ate' cobrir tudo. */
+  dialog#modalRoberta {
+      border: 1px solid var(--ln);
+      border-radius: 16px;
+      padding: 1.3rem;
+      width: min(30rem, 92vw);
+      max-height: 88vh;
+      max-height: 88dvh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px var(--shadow);
+  }
+
+  .robPct {
+      font-size: 2.6rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-top: 1.4rem;   /* .modalHead nao tem margem propria */
+  }
+
+  .robPctSub {
+      color: var(--mu);
+      font-size: .9rem;
+      margin: .3rem 0 1.2rem;
+  }
+
+  .robBarra {
+      height: 1.7rem;
+      border-radius: 999px;
+      background: var(--vm);
+      border: 1px solid var(--ln);
+      overflow: hidden;
+  }
+
+  .robFill {
+      height: 100%;
+      background: var(--vd);
+      transition: width .45s ease;
+  }
+
+  .robLegenda {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: .5rem;
+      font-size: .85rem;
+      color: var(--mu);
+  }
+
+  .robTab {
+      width: 100%;
+      margin-top: 1.3rem;
+      border-collapse: collapse;
+  }
+
+  .robTab td {
+      padding: .5rem 0;
+      border-bottom: 1px solid var(--ln);
+  }
+
+  .robTab td.n {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+  }
+
+  .robTab tr.tot td {
+      border-bottom: none;
+      font-weight: 700;
+      font-size: 1.05rem;
+  }
+
+  dialog#modalRoberta::backdrop,
   dialog#modalNovo::backdrop,
   dialog#modalCalc::backdrop,
   dialog#modalGrafico::backdrop,

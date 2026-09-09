@@ -133,6 +133,12 @@
             title="Volta todos os filtros pro padrão inicial">Limpar filtros</button>
         </label>
       </div>
+      <div class=row id=rowVis>
+        <label class=f id=fvisRoberta><span>Visualizações</span>
+          <button type=button id=btRoberta class=btFiltro
+            title="Acerto de contas com a Roberta — ignora os filtros acima">Roberta</button>
+        </label>
+      </div>
     </div>
     <div id=out></div>
     <div id=selbar><span id=selinfo class=info></span>
@@ -262,6 +268,14 @@
         <button type=button class="calcTecla calcIgual" data-calc=igual title="Inserir valor"
           aria-label="Inserir valor">✓</button>
       </div>
+    </dialog>
+
+    <dialog id=modalRoberta>
+      <div class=modalHead>
+        <h2>Roberta</h2>
+        <button type=button id=fechaRoberta aria-label="Fechar">×</button>
+      </div>
+      <div id=robertaCorpo></div>
     </dialog>
 
     <dialog id=modalGrafico>

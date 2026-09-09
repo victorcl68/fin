@@ -1892,12 +1892,13 @@ el('btLimparFiltros').onclick = limparFiltros;
 // Ela adiantou um valor de uma vez (entra POSITIVO na categoria) e a divida vai sendo
 // quitada aos poucos com o que sai pra ela (negativo — credito ou debito, tanto faz).
 // De proposito olha TODOS os lancamentos da categoria e IGNORA os filtros/ciclo da barra:
-// o acerto e' a relacao inteira, nao um recorte dela. So' 'ativo' conta — lancamento
-// desativado foi cancelado e nao movimentou dinheiro nenhum.
+// o acerto e' a relacao inteira, nao um recorte dela. Conta so' o que ja e' fato: 'ativo'
+// (desativado foi cancelado) e 'pago' — enquanto o pagamento nao aconteceu o dinheiro nao
+// saiu, e contar agendado inflaria o progresso do acerto.
 const ehCategoriaRoberta = categ => semAcento(categ).trim() === 'roberta';
 
 function dadosRoberta() {
-    const linhas = Estado.lancamentos.filter(r => r.ativo && ehCategoriaRoberta(r.categ));
+    const linhas = Estado.lancamentos.filter(r => r.ativo && r.pago && ehCategoriaRoberta(r.categ));
     const elaPagou = linhas.reduce((s, r) => s + Math.max(r.v, 0), 0);
     const jaPaguei = linhas.reduce((s, r) => s - Math.min(r.v, 0), 0);
     // quitado passa de 100% se pagar a mais; a barra trava em 100 mas 'falta' fica negativo
@@ -1911,7 +1912,7 @@ function abrirVisRoberta() {
     const d = dadosRoberta();
     const quitado = d.falta <= 0.005;
     el('robertaCorpo').innerHTML = !d.linhas.length
-        ? '<p class=meta>Nenhum lançamento ativo na categoria “Roberta” ainda.</p>'
+        ? '<p class=meta>Nenhum lançamento pago na categoria “Roberta” ainda.</p>'
         : `<div class="robPct ${quitado ? 'vd' : 'vm'}">${pct1(quitado ? 0 : d.pctFalta)}</div>
            <p class=robPctSub>${quitado ? 'quitado — nada a pagar' : 'falta pra quitar com ela'}</p>
            <div class=robBarra><div class=robFill style="width:${d.pctQuitado.toFixed(2)}%"></div></div>

@@ -158,6 +158,40 @@ function somaMeses(iso, n) {
     return alvo.toISOString().slice(0, 10);
 }
 
+// Soma N dias corridos a uma data ISO (mesmo padrao UTC de proximoDia/menos30, so' que
+// com passo livre) — base das recorrencias que andam por semana, nao por mes.
+function somaDias(iso, n) {
+    if (!n) return dataISO(iso);
+    const d = new Date(dataISO(iso) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+}
+
+// As opcoes do campo Frequencia, e a REGRA de cada uma: como andar da 1a ocorrencia pra
+// proxima quando o lancamento e' repetido/parcelado em N vezes.
+//  - 'mes' anda de mes em mes preservando o DIA (via somaMeses, ja com clamp: dia 31 cai
+//    no ultimo dia do mes curto, e 29/02 vira 28/02 em ano nao bissexto);
+//  - 'dia' anda em dias corridos, o que mantem o MESMO DIA DA SEMANA (7 e 14 sao multiplos
+//    de 7) sem depender de calendario.
+// A chave e' exatamente o texto gravado na coluna 'freq' do banco — o <option value> no
+// index.html usa esses mesmos nomes, entao ler o select ja da' a regra direto.
+const RECORRENCIAS = {
+    Mensal: { tipo: 'mes', passo: 1 },
+    Semanal: { tipo: 'dia', passo: 7 },
+    Quinzenal: { tipo: 'dia', passo: 14 },   // "quinze" e' so' o nome de costume — a regra e' de 2 em 2 semanas, nao 15 dias
+    Semestral: { tipo: 'mes', passo: 6 },
+    Anual: { tipo: 'mes', passo: 12 },       // +12 meses = mesmo dia, ano seguinte
+};
+
+// Data da p-esima ocorrencia (p=0 e' a 1a, que cai na propria data digitada) conforme a
+// Frequencia escolhida. Frequencia desconhecida ou vazia cai em Mensal — que e' o padrao
+// do formulario e o unico comportamento que existia antes deste campo virar regra.
+function dataDaOcorrencia(iso, p, freq) {
+    const regra = RECORRENCIAS[freq] || RECORRENCIAS.Mensal;
+    const passo = regra.passo * p;
+    return regra.tipo == 'dia' ? somaDias(iso, passo) : somaMeses(iso, passo);
+}
+
 // Nome de exibicao de um periodo: sempre o MES ANTERIOR ao seu 'fat'. Ex.: periodo com fat=2026-07-06 se chama "Junho 2026" (o mes em que ele comecou).
 function nomePeriodo(fatStr) {
     const iso = dataISO(fatStr), y = +iso.slice(0, 4), m = +iso.slice(5, 7);
@@ -2281,16 +2315,17 @@ if (el('fParcelas').options.length < 40) {
     for (let n = 2; n <= 40; n++) el('fParcelas').add(new Option(`${n}x`, n));
 }
 
-// o campo (e o SELECT em si) e' o mesmo pros dois casos — so' o ROTULO muda conforme
-// Credito, porque o significado do numero e' diferente em cada um (ver submeteNovoLancamento):
-// no credito e' "Parcelas" (o valor digitado e' DIVIDIDO entre elas, ex: R$300 em 3x =
-// R$100 cada, uma por fatura seguinte); fora do credito e' "Repetições" (o valor digitado
-// se REPETE em cada lancamento, ex: R$50 3x = R$50 + R$50 + R$50, uma por mes seguinte —
-// serve pra lancar de uma vez uma assinatura/conta recorrente com valor fixo).
-function atualizaRotuloParcelas() {
-    el('lblParcelas').textContent = el('fCred').checked ? 'Parcelas' : 'Repetições';
+// "Dividir valor entre as vezes" e' independente de Credito/Debito — o usuario escolhe
+// nos dois modos (ver submeteNovoLancamento: marcado, o valor digitado e' DIVIDIDO entre
+// as N linhas, ex: R$300 em 3x = R$100 cada; desmarcado, o valor se REPETE em cada uma,
+// ex: R$50 3x = R$50 + R$50 + R$50 — util pra lancar de uma vez uma assinatura/conta
+// recorrente de valor fixo). So' um PALPITE inicial segue Credito ao ligar/desligar (compras
+// no credito costumam ser parceladas — dividir; contas fora do credito costumam repetir o
+// mesmo valor todo mes) — o usuario pode mudar na hora, o toggle nao trava em nada.
+function sugereModoValorParcelas() {
+    el('fDivide').checked = el('fCred').checked;
 }
-el('fCred').addEventListener('change', atualizaRotuloParcelas);
+el('fCred').addEventListener('change', sugereModoValorParcelas);
 
 function abreModalNovo(prefill) {
     el('formNovo').reset();
@@ -2317,6 +2352,10 @@ function abreModalNovo(prefill) {
         el('fCred').checked = !!prefill.cred;
         el('fIsa').checked = !!prefill.isa;
         el('fPago').checked = prefill.pago !== false;   // so' desmarca se for explicitamente false
+        // so' herda a frequencia do original se ela for uma das regras conhecidas —
+        // lancamento antigo pode ter freq vazia ou um texto livre qualquer, e atribuir
+        // isso a um <select> deixaria o campo em branco (selectedIndex -1)
+        el('fFreq').value = RECORRENCIAS[prefill.freq] ? prefill.freq : 'Mensal';
         const bruto = Math.abs(prefill.v || 0);
         if (bruto) {
             el('fValor').value = formataMascaraDinheiro(String(Math.round(bruto * 100)));
@@ -2325,10 +2364,11 @@ function abreModalNovo(prefill) {
     }
     else {
         el('fData').value = hojeISO();
+        el('fFreq').value = 'Mensal';   // padrao pros dois modos (Credito/Debito) — o usuario troca no select se nao for o caso
     }
     atualizaSinalUI();
     atualizaAvisoFronteira();
-    atualizaRotuloParcelas();
+    sugereModoValorParcelas();
 
     modalNovo.showModal();
     // duplicando, o foco vai pro Valor (o que mais muda); do zero, vai pro Nome
@@ -2621,10 +2661,11 @@ function valorDasParcelas(valorTotal, parcelas) {
 // global no topo): ligado, as parcelas viram lancamentos _sim=true SO' na memoria
 // (nunca chamam inserirLancamento, nunca tocam o Supabase — ver o bloco MODO SIMULACAO
 // mais abaixo); desligado, cada parcela e' um POST real, sequencial, uma fatura depois
-// da outra. No credito o campo "Parcelas" DIVIDE o valor digitado entre as N linhas
-// (valorDasParcelas); fora do credito ("Repetições") ele so' REPETE o valor digitado em
-// cada linha, sem dividir nada — pensado pra lancar de uma vez uma conta recorrente de
-// valor fixo (ex: assinatura, mensalidade) que ainda nao foi cadastrada.
+// da outra. "Dividir valor" (independente de Credito/Debito) escolhe se o campo "Vezes"
+// DIVIDE o valor digitado entre as N linhas (valorDasParcelas, ex: R$300 em 3x = R$100
+// cada) ou REPETE o mesmo valor em cada uma (ex: R$50 3x = R$50 + R$50 + R$50) — pensado
+// pra lancar de uma vez uma conta recorrente de valor fixo (ex: assinatura, mensalidade)
+// que ainda nao foi cadastrada.
 async function submeteNovoLancamento() {
     el('erroNovo').textContent = ''; el('erroNovo').classList.remove('ok');
 
@@ -2640,23 +2681,25 @@ async function submeteNovoLancamento() {
     const cred = el('fCred').checked;
     const isa = el('fIsaWrap').hidden ? Estado.restrito : el('fIsa').checked;
     const pago = el('fPago').checked;
+    const freq = el('fFreq').value || null;   // sempre uma chave de RECORRENCIAS; o || null e' so' rede de seguranca
     // valor em branco: cadastro sempre foi permitido assim (lancamento sem valor definido
     // ainda, ex: assinatura de preco variavel). Sem valor nao ha o que dividir nem repetir,
-    // entao o campo Parcelas/Repetições fica sem efeito — 1 unica linha com valor null,
-    // igual sempre foi.
+    // entao o campo Vezes/Dividir fica sem efeito — 1 unica linha com valor null, igual
+    // sempre foi.
     const parcelas = valorTotal ? +el('fParcelas').value : 1;
+    const dividir = el('fDivide').checked;
     const valorAssinado = valorTotal * (sinalPositivo ? 1 : -1);
     const valores = !valorTotal ? [null]
-        : cred ? valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1))
-            : Array(parcelas).fill(valorAssinado);   // "Repetições": mesmo valor digitado em cada linha, sem dividir
+        : dividir ? valorDasParcelas(valorTotal, parcelas).map(v => v * (sinalPositivo ? 1 : -1))
+            : Array(parcelas).fill(valorAssinado);   // repete o mesmo valor digitado em cada linha, sem dividir
 
     if (el('salvaNovo').disabled) return;   // trava clique duplo / Enter repetido
     el('salvaNovo').disabled = true;
     el('salvaNovo').textContent = Estado.simulando ? 'Simulando…' : 'Salvando…';
 
     try {
-        if (Estado.simulando) simulaLancamentoParcelado({ nome, categ, data, cred, isa, pago, parcelas, valores });
-        else await salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, pago, parcelas, valores });
+        if (Estado.simulando) simulaLancamentoParcelado({ nome, categ, freq, data, cred, isa, pago, parcelas, valores });
+        else await salvaLancamentoParceladoNoBanco({ nome, categ, freq, data, cred, isa, pago, parcelas, valores });
 
         // sucesso: NAO fecha o modal. Limpa so valor/data, mantem nome/categoria/cred/isa
         // pro proximo lancamento da mesma sessao (ex: varios itens do mesmo mercado).
@@ -2682,19 +2725,20 @@ async function submeteNovoLancamento() {
 
 // grava as N parcelas como lancamentos REAIS no Supabase, uma por vez (sequencial, pra
 // preservar a ordem e simplificar o tratamento de erro no meio do caminho). Cada parcela
-// p grava sua PROPRIA data (a data digitada + p meses, via somaMeses) — nao so' a mesma
-// data repetida — porque o periodoIdx nao e' uma coluna do banco: ele e' recalculado do
+// p grava sua PROPRIA data (a data digitada avancada p vezes pela regra da Frequencia
+// escolhida — ver dataDaOcorrencia) — nao so' a mesma data repetida — porque o
+// periodoIdx nao e' uma coluna do banco: ele e' recalculado do
 // zero a partir da 'data' toda vez que os dados sao carregados (ver carregarDados). Se
 // todas as parcelas fossem gravadas com a mesma data, o recalculo jogava todas de volta
 // pro mesmo mes ao dar F5/recarregar, mesmo com o periodoIdx correto (e passageiro) na
 // memoria logo apos o cadastro. Por isso o periodoIdx de cada parcela aqui usa a MESMA
 // funcao (periodoDoCredito/periodoDoDebito) que carregarDados() usaria com essa data —
 // garante que o que aparece na hora e' EXATAMENTE o que vai aparecer depois de recarregar.
-async function salvaLancamentoParceladoNoBanco({ nome, categ, data, cred, isa, pago, parcelas, valores }) {
+async function salvaLancamentoParceladoNoBanco({ nome, categ, freq, data, cred, isa, pago, parcelas, valores }) {
     for (let p = 0; p < parcelas; p++) {
-        const dataParcela = data ? somaMeses(data, p) : null;
+        const dataParcela = data ? dataDaOcorrencia(data, p, freq) : null;
         const payload = {
-            data: dataParcela, freq: null, cred, isa, pago, ativo: true,
+            data: dataParcela, freq, cred, isa, pago, ativo: true,
             nome,
             categ, valor: valores[p],
         };
@@ -2749,22 +2793,23 @@ el('toggleSimulacao').onclick = async () => {
 };
 
 // cria N lancamentos simulados (parcelas), um por periodo seguinte, injetados direto em
-// Estado.lancamentos com _sim=true. Cada parcela p ganha sua PROPRIA data (a digitada + p
-// meses, via somaMeses — mesma ideia de salvaLancamentoParceladoNoBanco) e o periodoIdx e'
+// Estado.lancamentos com _sim=true. Cada parcela p ganha sua PROPRIA data (a digitada
+// avancada p vezes pela regra da Frequencia, via dataDaOcorrencia — mesma ideia de
+// salvaLancamentoParceladoNoBanco) e o periodoIdx e'
 // derivado dessa data com a MESMA regra de qualquer lancamento real, em vez de so' somar
 // +1 no indice: sem isso a coluna Data mostrava a mesma data em todas as parcelas
 // enquanto elas apareciam espalhadas em ciclos diferentes, incoerente na tela.
-function simulaLancamentoParcelado({ nome, categ, data, cred, isa, pago, parcelas, valores }) {
+function simulaLancamentoParcelado({ nome, categ, freq, data, cred, isa, pago, parcelas, valores }) {
     const grupoSimulado = ++Estado._proxIdSimulado;   // contador curto, so' pra diferenciar cada "compra simulada" das outras
 
     const criadas = valores.map((valorAssinado, p) => {
-        const dataParcela = data ? somaMeses(data, p) : null;
+        const dataParcela = data ? dataDaOcorrencia(data, p, freq) : null;
         const periodoIdx = !dataParcela ? null
             : cred ? periodoDoCredito(dataParcela, isa, nome) : periodoDoDebito(dataISO(dataParcela));
         return {
             id: `sim-${grupoSimulado}-${p}`,
             nome,
-            categ, freq: null, data: dataParcela,
+            categ, freq, data: dataParcela,
             cred, isa, pago, ativo: true,
             valor: valorAssinado, v: +valorAssinado || 0,   // v numerico seguro, igual carregarDados() faz com dados reais
             inv: /^investimento$/i.test(categ.trim()),

@@ -471,12 +471,15 @@ const passaFiltroTriEstado = (idSelect, valor) => {
     const v = el(idSelect).value;
     return v == 'B' || (v == 'S') == !!valor;
 };
-// aplica todos os filtros ativos (situacao, origem, titular) sobre a lista de lancamentos
+// aplica todos os filtros ativos (situacao, origem, titular, valor) sobre a lista de lancamentos.
+// Valor: P/N pegam so' o que e' de fato positivo/negativo — lancamento sem valor (v = 0) nao e'
+// nem um nem outro, entao fica de fora dos dois recortes.
 const filtrarLancamentos = () => Estado.lancamentos.filter(r =>
     passaFiltroTriEstado('fativo', r.ativo) &&
     passaFiltroTriEstado('fpago', r.pago) &&
     ({ A: 1, D: !r.cred, F: r.cred })[el('origem').value] &&
-    ({ T: 1, E: !r.isa, I: r.isa })[el('titular').value]
+    ({ T: 1, E: !r.isa, I: r.isa })[el('titular').value] &&
+    ({ T: 1, P: r.v > 0, N: r.v < 0 })[el('fvalor').value]
 );
 
 // ===================================================================
@@ -1430,6 +1433,8 @@ function desenhar() {
     mostraComFade('forigem', !modoBlocos && !simples);
     if (modoBlocos) el('origem').value = 'A';
     el('ftit').hidden = simples;
+    el('fvalWrap').hidden = simples;
+    if (simples) el('fvalor').value = 'T';
     el('flimpar').hidden = simples;   // no modo simples quase nao ha filtro pra limpar
     if (simples) {
         el('fsit').hidden = el('fativoWrap').hidden = true;
@@ -1863,7 +1868,7 @@ document.querySelectorAll('.tool select,.tool input,#navComparar select').forEac
 // tambem o que o navegador seleciona sozinho na 1a carga. desenhar() ainda pode sobrescrever
 // alguns deles conforme o modo (ex: Ativo vira "Ambos" no Backlog, Origem volta pra "Tudo"
 // no modo blocos) — o padrao aqui e' so' o ponto de partida, igual na abertura da pagina.
-const FILTROS_PADRAO = { titular: 'T', fpago: 'B', fativo: 'S', origem: 'A', somenteDif: 'N' };
+const FILTROS_PADRAO = { titular: 'T', fpago: 'B', fativo: 'S', origem: 'A', somenteDif: 'N', fvalor: 'T' };
 
 function limparFiltros() {
     Object.entries(FILTROS_PADRAO).forEach(([id, valor]) => { el(id).value = valor; });

@@ -1592,17 +1592,23 @@
           justify-content: center;
       }
 
+      /* dvh (viewport visivel de verdade) e nao vh: com a barra de endereco embaixo, 100vh
+         e' MAIOR que a area visivel e o fim do form — o botao Salvar — fica atras dela.
+         O par vh/dvh e' proposital: vh e' o fallback de quem nao suporta dvh. */
       dialog#modalNovo {
           width: 100vw;
           max-width: 100vw;
           height: 100vh;
           max-height: 100vh;
+          height: 100dvh;
+          max-height: 100dvh;
           border-radius: 0;
           margin: 0;
       }
 
       #formNovo {
           max-height: 100vh;
+          max-height: 100dvh;
           padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
       }
 
@@ -1616,6 +1622,8 @@
           max-width: 100vw;
           height: 100vh;
           max-height: 100vh;
+          height: 100dvh;
+          max-height: 100dvh;
           border-radius: 0;
           margin: 0;
           padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));

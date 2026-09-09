@@ -112,18 +112,18 @@
           </select>
         </label>
         <label class=f id=fdif><span>Linhas</span>
-          <select id=somenteDif hidden>
+          <select id=somenteDif>
             <option value=N>Todas
             <option value=S>Diferentes
+            <option value=I>Diferentes (ignorar repetidas)
           </select>
-          <div class=segCtl id=segSomenteDif role=tablist aria-label="Linhas">
-            <span class=segThumb></span>
-            <button type=button class=segOpt data-valor=N role=tab>Todas</button>
-            <button type=button class=segOpt data-valor=S role=tab>Diferentes</button>
-          </div>
         </label>
         <label class=f id=fevol><span>&nbsp;</span>
           <button type=button id=btEvolucao class=btFiltro>Gráfico</button>
+        </label>
+        <label class=f id=flimpar><span>&nbsp;</span>
+          <button type=button id=btLimparFiltros class=btFiltro
+            title="Volta todos os filtros pro padrão inicial">Limpar filtros</button>
         </label>
       </div>
     </div>

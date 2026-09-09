@@ -273,94 +273,6 @@
       color: var(--fg);
   }
 
-  /* =========================================================
-       SEGMENTED CONTROL (Visão / Titular / Origem — liga-desliga estilizado)
-       ========================================================= */
-
-  .segCtl {
-      position: relative;
-      display: inline-flex;
-
-      padding: .2rem;
-      border: 1px solid var(--ln);
-      border-radius: 11px;
-      background: var(--field);
-  }
-
-  /* thumb arrastavel de verdade: segura e joga de um lado pro outro, feito um
-     interruptor fisico. Fica ATRAS do texto (z-index menor que .segOpt) — e' so' a
-     "pastilha" de fundo que realca a opcao ativa, nunca cobre o texto por cima. Pra
-     ainda dar pra segurar e arrastar de cima do texto ativo, o proprio .segOpt.on fica
-     com pointer-events:none (o clique atravessa ele e chega no thumb); o botao INATIVO
-     continua 100% clicavel normalmente. touch-action:none evita scroll/zoom ao arrastar. */
-  .segThumb {
-      position: absolute;
-      top: .2rem;
-      bottom: .2rem;
-      left: .2rem;
-      width: var(--segW, 0);
-      z-index: 0;
-
-      background: var(--pa);
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-
-      transform: translateX(var(--segX, 0));
-      transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), width .28s cubic-bezier(.4, 0, .2, 1), box-shadow .15s ease;
-      pointer-events: auto;
-      cursor: grab;
-      touch-action: none;
-  }
-
-  .segThumb.semTransicao {
-      transition: width .28s cubic-bezier(.4, 0, .2, 1);
-  }
-
-  .segThumb.segurando {
-      cursor: grabbing;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, .4);
-      transform: translateX(var(--segX, 0)) scale(1.04);
-  }
-
-  .segOpt {
-      position: relative;
-      z-index: 1;
-
-      border: 0;
-      background: transparent;
-      color: var(--mu);
-
-      font: 600 .85rem/1 inherit;
-      padding: .5rem .85rem;
-      border-radius: 8px;
-
-      cursor: pointer;
-      transition: color .2s ease;
-      white-space: nowrap;
-  }
-
-  .segOpt:hover {
-      color: var(--fg);
-  }
-
-  .segOpt.on {
-      color: var(--fg);
-      pointer-events: none;
-      cursor: grab;
-  }
-
-  .segOpt:active {
-      transform: scale(.96);
-      transition: transform .1s ease;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-      .segThumb {
-          transition: none;
-      }
-  }
-
   .multiSel {
       position: relative;
   }
@@ -551,6 +463,11 @@
       padding: .2rem .4rem;
   }
 
+  /* busca da coluna Valor: numero alinhado a direita, igual as celulas dessa coluna */
+  thead tr.filtros th.n input {
+      text-align: right;
+  }
+
   thead tr.filtros input:focus {
       border-color: #68727A;
       background: #24292E;
@@ -625,6 +542,17 @@
       background: var(--vm);
   }
 
+  /* asterisco de aviso colado no ✓ de difOk/difNovo: mesmo nome+valor apareceu 2x dentro
+     do MESMO ciclo, em meses diferentes — pode ser recorrencia caindo 2x no mesmo ciclo
+     (janela do periodo atravessando a virada do mes), nao uma mudanca real. So' um alerta
+     visual discreto, sem quebrar o layout do check redondo ao lado. */
+  .avisoDup {
+      margin-left: .15rem;
+      color: #F0A83A;
+      font-weight: 700;
+      cursor: help;
+  }
+
   /* =========================================================
        CORES DE VALORES
        ========================================================= */
@@ -662,6 +590,40 @@
   .togValor:hover {
       text-decoration: underline dotted;
       text-underline-offset: .2em;
+  }
+
+  /* Data clicavel na tabela: mesma ideia do Valor, edicao inline com <input type=date>
+     (ver listener em #out no script.js). */
+  .togData {
+      cursor: pointer;
+      transition: opacity .15s ease;
+  }
+
+  .togData:hover {
+      text-decoration: underline dotted;
+      text-underline-offset: .2em;
+  }
+
+  .inpData {
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      color: var(--fg);
+      background: var(--field);
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      padding: .15rem .4rem;
+  }
+
+  .inpData:focus {
+      outline: 2px solid var(--fg);
+      outline-offset: -1px;
+  }
+
+  /* o icone nativo do calendario e' preto por padrao e some no tema escuro */
+  .inpData::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: .6;
+      cursor: pointer;
   }
 
   .inpValorSinal {
